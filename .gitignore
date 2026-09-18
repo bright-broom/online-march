@@ -50,3 +50,9 @@ next-env.d.ts
 # local tooling
 /.claude/.cc-writes
 /.claude/settings.local.json
+
+# deploy diagnostics & third-party agent skills installed by integrations
+/.deploy
+/.agents
+/skills-lock.json
+/.claude/skills/

@@ -33,7 +33,19 @@ npm run dev        # http://localhost:3000
 
 5. Deploy。`npm run build` が `db:migrate` を先に実行（DATABASE_URL がある場合）。
 6. 初回のみデモデータ: ローカルで `DATABASE_URL=... npm run db:seed`（本番運用では不要）。
-7. Region は `hnd1`（東京）に固定済み（vercel.json）。Neon も `aws-ap-northeast-1` を推奨。
+7. **Region は DB と同じ場所に置く**（vercel.json `regions`）。現在 Neon が `us-east-1` のため関数は `iad1`。
+   静的シェルは CDN（東京エッジ）から配信されるので、日本からの初期表示は速い。動的部分のみ iad1 往復。
+   → 本番運用前に Neon を `aws-ap-southeast-1`（シンガポール）で作り直し、`regions: ["sin1"]` にするのが次の一手
+   （Neon の Vercel 連携は東京リージョン非対応のため sin1 が最短）。
+8. デプロイ補助: `bash scripts/deploy-vercel.sh` — 環境変数/Neon/Blob の確認・作成、seed、push、ビルドログ取得、
+   スモークテストまで実行し、結果を `.deploy/run.log`・`.deploy/build.log` に保存する。
+
+## 注意: ローカル開発で本番DBを使わない
+
+`vercel integration add` / `vercel env pull` は `.env.local` に本番（Neon）の `DATABASE_URL` を書き込み、
+Next.js はそれを自動で読むため **ローカル開発が本番DBに書き込む状態** になる。
+ローカルは PGlite を使う（`.env.local` に `DATABASE_URL` を置かない）。Neon を使う検証は
+`set -a; . <pulled-env>; set +a` で明示的に一時注入する。
 
 ## 本番前チェックリスト
 

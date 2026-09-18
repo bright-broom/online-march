@@ -1,11 +1,28 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "regions": ["hnd1"],
+  "regions": [
+    "iad1"
+  ],
   "crons": [
-    { "path": "/api/cron/cancel-unpaid", "schedule": "15 15 * * *" },
-    { "path": "/api/cron/ship-reminders", "schedule": "0 23 * * *" },
-    { "path": "/api/cron/sync-tracking", "schedule": "0 21 * * *" },
-    { "path": "/api/cron/review-requests", "schedule": "0 1 * * *" },
-    { "path": "/api/cron/close-payouts", "schedule": "0 16 1 * *" }
+    {
+      "path": "/api/cron/cancel-unpaid",
+      "schedule": "15 15 * * *"
+    },
+    {
+      "path": "/api/cron/ship-reminders",
+      "schedule": "0 23 * * *"
+    },
+    {
+      "path": "/api/cron/sync-tracking",
+      "schedule": "0 21 * * *"
+    },
+    {
+      "path": "/api/cron/review-requests",
+      "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/close-payouts",
+      "schedule": "0 16 1 * *"
+    }
   ]
 }

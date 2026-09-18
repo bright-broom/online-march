@@ -9,7 +9,7 @@
  * This module is import-safe from scripts (no "server-only"); app code imports `@/db`.
  */
 import path from "node:path";
-import { mkdirSync } from "node:fs";
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, unlinkSync, writeSync } from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
 import { Pool, neonConfig } from "@neondatabase/serverless";
 import { drizzle as drizzleNeon, type NeonDatabase } from "drizzle-orm/neon-serverless";
@@ -30,10 +30,57 @@ function createNeon(url: string): Database {
   return drizzleNeon({ client: pool, schema });
 }
 
+const isAlive = (pid: number) => {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (err) {
+    return (err as NodeJS.ErrnoException).code === "EPERM"; // exists but not ours
+  }
+};
+
+/**
+ * Single-writer lock for the file DB. `${dir}.owner` is created atomically (O_EXCL) and holds the
+ * owning PID. A lock whose owner is dead is stale (killed dev server) and is taken over; PGlite's
+ * own leftover `postmaster.pid` is then removed. Losing processes must not open the directory.
+ */
+function acquireFileLock(dir: string): boolean {
+  const ownerFile = `${dir}.owner`;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const fd = openSync(ownerFile, "wx");
+      writeSync(fd, String(process.pid));
+      closeSync(fd);
+      const pglitePid = path.join(dir, "postmaster.pid");
+      if (existsSync(pglitePid)) {
+        unlinkSync(pglitePid);
+        console.info(`[db] pid ${process.pid}: cleared stale PGlite lock`);
+      }
+      process.once("exit", () => {
+        try {
+          if (readFileSync(ownerFile, "utf8") === String(process.pid)) unlinkSync(ownerFile);
+        } catch {}
+      });
+      return true;
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== "EEXIST") throw err;
+      const owner = Number(readFileSync(ownerFile, "utf8"));
+      if (owner === process.pid) return true;
+      if (Number.isFinite(owner) && isAlive(owner)) return false;
+      try {
+        unlinkSync(ownerFile); // stale owner — take over on next attempt
+      } catch {}
+    }
+  }
+  return false;
+}
+
 /** Open PGlite, migrate and seed. Resolves to the ready client. */
 async function openPglite(dir: string | undefined): Promise<PGlite> {
+  if (dir && !acquireFileLock(dir)) throw new Error("PGlite data dir is owned by another live process");
   const client = new PGlite(dir);
   await client.waitReady;
+  if (dir) console.info(`[db] pid ${process.pid}: opened ${dir}`);
   const rawDb = drizzlePglite({ client, schema });
   await migratePglite(rawDb, { migrationsFolder: MIGRATIONS_FOLDER });
   const { seedIfEmpty } = await import("./seed");
@@ -43,15 +90,18 @@ async function openPglite(dir: string | undefined): Promise<PGlite> {
 
 function createPglite(): Database {
   if (!globalForDb.__pglite) {
-    // `next build` spawns several workers → each gets an isolated in-memory copy.
+    // The file DB is single-writer: only the main server process may open it.
+    // `next build` workers and Next's child workers (jest-worker sets JEST_WORKER_ID;
+    // Next sets IS_NEXT_WORKER) get an isolated, seeded in-memory copy instead.
     const isBuild = process.env.NEXT_PHASE === "phase-production-build";
-    const dir = process.env.PGLITE_DIR ?? (isBuild ? "memory://" : ".data/pglite");
+    const isChildWorker = Boolean(process.env.JEST_WORKER_ID || process.env.IS_NEXT_WORKER);
+    const dir = process.env.PGLITE_DIR ?? (isBuild || isChildWorker ? "memory://" : ".data/pglite");
     const inMemory = dir.startsWith("memory://");
     if (!inMemory) mkdirSync(path.dirname(path.resolve(dir)), { recursive: true });
     const ready = openPglite(inMemory ? undefined : dir).catch(async (err) => {
       // The file DB is single-process. Secondary processes (e.g. the dev server's
       // static-params worker) fall back to an isolated in-memory copy instead of failing.
-      console.warn(`[db] PGlite at ${dir} unavailable in this process (${String(err).slice(0, 80)}); using in-memory copy`);
+      console.info(`[db] pid ${process.pid}: ${dir} busy/unavailable (${String(err).slice(0, 80)}) → isolated in-memory copy`);
       return openPglite(undefined);
     });
     globalForDb.__pglite = { ready };

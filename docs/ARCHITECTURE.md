@@ -110,3 +110,5 @@ async function Shell({ children }: { children: React.ReactNode }) {
 | 5 | カートは client store | 匿名で即時・高速。確定はサーバー再計算で改ざん耐性 |
 | 6 | 配送は CSV 連携 + アダプタ | 国内キャリアは小口向け公開APIが乏しい。API契約時は tracking.ts を差替 |
 | 7 | Cache Components | 公開ページは静的シェル + タグ無効化で高速・常に新鮮 |
+| 8 | PGlite は単一書き込みプロセス | `.data/pglite.owner` を O_EXCL で取得したメインプロセスのみがファイルDBを開く。Next の子ワーカー（JEST_WORKER_ID / IS_NEXT_WORKER）とビルドはメモリDB。所有者が死んでいればロックを引き継ぐ（強制終了からの自動復旧）。同時書き込みによる WAL 破損を実際に観測したため |
+| 9 | 関数リージョン = DBリージョン | 1ページで十数クエリ走るため、関数とDBの往復を最小化する方がエッジ近接より効く。静的シェルは CDN から配信 |

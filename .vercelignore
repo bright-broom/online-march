@@ -1,0 +1,12 @@
+# Never upload local-only artifacts or secrets with `vercel deploy`
+.data
+.next
+.scratch
+.deploy
+.agents
+skills-lock.json
+.env*
+!.env.example
+node_modules
+*.log
+.claude
