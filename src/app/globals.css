@@ -1,0 +1,221 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Design tokens — see docs/DESIGN.md.
+ * Palette: 玉ねぎの皮（amber gold）× 瀬戸内の海（indigo）× 生成りの紙（warm paper）.
+ * Never use raw hex in components; use these semantic tokens.
+ */
+:root {
+  --radius: 0.875rem;
+
+  --background: oklch(0.985 0.007 85);
+  --foreground: oklch(0.23 0.02 55);
+  --card: oklch(0.997 0.003 85);
+  --card-foreground: var(--foreground);
+  --popover: var(--card);
+  --popover-foreground: var(--foreground);
+
+  --primary: oklch(0.6 0.13 62);
+  --primary-foreground: oklch(0.99 0.01 85);
+  --secondary: oklch(0.95 0.02 80);
+  --secondary-foreground: oklch(0.3 0.04 55);
+  --muted: oklch(0.96 0.011 80);
+  --muted-foreground: oklch(0.5 0.02 60);
+  --accent: oklch(0.94 0.028 78);
+  --accent-foreground: oklch(0.28 0.04 55);
+  --destructive: oklch(0.58 0.2 25);
+  --border: oklch(0.9 0.014 80);
+  --input: oklch(0.88 0.016 80);
+  --ring: oklch(0.6 0.13 62);
+
+  /* brand extras */
+  --sea: oklch(0.36 0.07 245);
+  --sea-foreground: oklch(0.98 0.01 240);
+  --leaf: oklch(0.58 0.12 145);
+  --onion-red: oklch(0.5 0.16 350);
+  --paper: oklch(0.965 0.018 82);
+  --gold-soft: oklch(0.9 0.06 80);
+
+  --chart-1: oklch(0.66 0.14 62);
+  --chart-2: oklch(0.6 0.12 150);
+  --chart-3: oklch(0.5 0.09 240);
+  --chart-4: oklch(0.55 0.16 350);
+  --chart-5: oklch(0.8 0.08 85);
+
+  --sidebar: oklch(0.975 0.01 82);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: oklch(0.93 0.025 78);
+  --sidebar-accent-foreground: oklch(0.25 0.04 55);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+}
+
+.dark {
+  --background: oklch(0.17 0.008 60);
+  --foreground: oklch(0.95 0.01 80);
+  --card: oklch(0.205 0.01 60);
+  --card-foreground: var(--foreground);
+  --popover: oklch(0.22 0.01 60);
+  --popover-foreground: var(--foreground);
+
+  --primary: oklch(0.76 0.13 70);
+  --primary-foreground: oklch(0.2 0.03 60);
+  --secondary: oklch(0.27 0.015 60);
+  --secondary-foreground: oklch(0.94 0.01 80);
+  --muted: oklch(0.25 0.01 60);
+  --muted-foreground: oklch(0.7 0.02 70);
+  --accent: oklch(0.29 0.02 65);
+  --accent-foreground: oklch(0.95 0.01 80);
+  --destructive: oklch(0.65 0.2 25);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 14%);
+  --ring: oklch(0.76 0.13 70);
+
+  --sea: oklch(0.45 0.08 245);
+  --sea-foreground: oklch(0.98 0.01 240);
+  --leaf: oklch(0.7 0.12 145);
+  --onion-red: oklch(0.65 0.15 350);
+  --paper: oklch(0.21 0.012 65);
+  --gold-soft: oklch(0.35 0.06 75);
+
+  --chart-1: oklch(0.76 0.13 70);
+  --chart-2: oklch(0.7 0.12 150);
+  --chart-3: oklch(0.66 0.1 240);
+  --chart-4: oklch(0.66 0.15 350);
+  --chart-5: oklch(0.85 0.06 85);
+
+  --sidebar: oklch(0.19 0.009 60);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: oklch(0.26 0.015 60);
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+}
+
+@theme inline {
+  --font-sans: var(--font-noto-sans), "Hiragino Sans", "Hiragino Kaku Gothic ProN", system-ui, sans-serif;
+  --font-serif: var(--font-shippori), "Hiragino Mincho ProN", "Yu Mincho", serif;
+  --font-display: var(--font-fraunces), var(--font-shippori), serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sea: var(--sea);
+  --color-sea-foreground: var(--sea-foreground);
+  --color-leaf: var(--leaf);
+  --color-onion-red: var(--onion-red);
+  --color-paper: var(--paper);
+  --color-gold-soft: var(--gold-soft);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 14px);
+
+  --animate-fade-up: fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-marquee: marquee 40s linear infinite;
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "palt" 1;
+    line-height: 1.75;
+  }
+  h1, h2, h3, h4 {
+    @apply text-balance;
+    line-height: 1.35;
+  }
+  ::selection {
+    @apply bg-primary/25;
+  }
+}
+
+@layer components {
+  /* Editorial heading: mincho, tight tracking */
+  .heading-display {
+    @apply font-serif font-semibold tracking-[0.02em];
+  }
+  /* Small caps eyebrow above section titles */
+  .eyebrow {
+    @apply font-display text-xs font-medium uppercase tracking-[0.28em] text-primary;
+  }
+  /* Tabular numbers for money/KPIs */
+  .num {
+    font-variant-numeric: tabular-nums;
+    @apply font-display;
+  }
+  /* Subtle paper grain background for editorial sections */
+  .bg-grain {
+    background-image:
+      radial-gradient(circle at 20% 10%, color-mix(in oklch, var(--gold-soft) 45%, transparent) 0, transparent 45%),
+      radial-gradient(circle at 90% 80%, color-mix(in oklch, var(--gold-soft) 30%, transparent) 0, transparent 40%);
+  }
+  .container-page {
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+}
+
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
+
+@media print {
+  .no-print { display: none !important; }
+  body { background: white; }
+}

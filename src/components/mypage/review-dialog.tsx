@@ -1,0 +1,106 @@
+"use client";
+import { PenLine } from "lucide-react";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useActionState, useState } from "react";
+import { toast } from "sonner";
+import { SubmitButton } from "@/components/common/submit-button";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { createReview } from "@/server/actions/reviews";
+import { StarPicker } from "./star-picker";
+
+type ReviewResult = Awaited<ReturnType<typeof createReview>>;
+
+export function ReviewDialog({
+  productId, farmOrderId, productName, variantLabel, imageUrl, trigger,
+}: {
+  productId: string;
+  farmOrderId: string;
+  productName: string;
+  variantLabel?: string;
+  imageUrl?: string | null;
+  trigger?: React.ReactNode;
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [body, setBody] = useState("");
+  const [state, formAction] = useActionState<ReviewResult | null, FormData>(async (prev, fd) => {
+    const res = await createReview(prev, fd);
+    if (res.ok) {
+      toast.success(res.message ?? "レビューを投稿しました");
+      setOpen(false);
+      router.refresh();
+    } else {
+      toast.error(res.error);
+    }
+    return res;
+  }, null);
+  const fe = state && !state.ok ? state.fieldErrors : undefined;
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        {trigger ?? (
+          <Button size="sm" variant="outline" className="rounded-full">
+            <PenLine />レビューを書く
+          </Button>
+        )}
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>レビューを書く</DialogTitle>
+          <DialogDescription>味や大きさ、料理に使った感想など、次に選ぶ方の参考になることを教えてください。</DialogDescription>
+        </DialogHeader>
+        <div className="bg-muted/40 flex items-center gap-3 rounded-xl p-3">
+          <div className="bg-muted relative size-12 shrink-0 overflow-hidden rounded-lg">
+            {imageUrl && <Image src={imageUrl} alt={productName} fill sizes="48px" className="object-cover" />}
+          </div>
+          <div className="min-w-0 text-sm">
+            <p className="truncate font-medium">{productName}</p>
+            {variantLabel && <p className="text-muted-foreground text-xs">{variantLabel}</p>}
+          </div>
+        </div>
+        <form action={formAction} className="space-y-5">
+          <input type="hidden" name="productId" value={productId} />
+          <input type="hidden" name="farmOrderId" value={farmOrderId} />
+          <FieldGroup className="gap-4">
+            <Field data-invalid={!!fe?.rating}>
+              <FieldLabel>評価</FieldLabel>
+              <StarPicker name="rating" value={rating} onChange={setRating} invalid={!!fe?.rating} />
+              {fe?.rating && <FieldError>{fe.rating[0]}</FieldError>}
+            </Field>
+            <Field data-invalid={!!fe?.title}>
+              <FieldLabel htmlFor={`rv-title-${productId}`}>タイトル（任意）</FieldLabel>
+              <Input id={`rv-title-${productId}`} name="title" maxLength={60} placeholder="甘くてサラダにぴったり" />
+              {fe?.title && <FieldError>{fe.title[0]}</FieldError>}
+            </Field>
+            <Field data-invalid={!!fe?.body}>
+              <FieldLabel htmlFor={`rv-body-${productId}`}>本文</FieldLabel>
+              <Textarea
+                id={`rv-body-${productId}`}
+                name="body"
+                rows={5}
+                maxLength={2000}
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                placeholder="スライスして水にさらさずに食べても辛くなく…"
+                aria-invalid={!!fe?.body || undefined}
+              />
+              <FieldDescription className="text-right">{body.length}/2000（10文字以上）</FieldDescription>
+              {fe?.body && <FieldError>{fe.body[0]}</FieldError>}
+            </Field>
+          </FieldGroup>
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={() => setOpen(false)}>キャンセル</Button>
+            <SubmitButton className="rounded-full" disabled={!rating}>投稿する</SubmitButton>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}

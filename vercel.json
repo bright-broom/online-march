@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": ["hnd1"],
+  "crons": [
+    { "path": "/api/cron/cancel-unpaid", "schedule": "*/30 * * * *" },
+    { "path": "/api/cron/ship-reminders", "schedule": "0 23 * * *" },
+    { "path": "/api/cron/sync-tracking", "schedule": "0 */3 * * *" },
+    { "path": "/api/cron/review-requests", "schedule": "0 1 * * *" },
+    { "path": "/api/cron/close-payouts", "schedule": "0 16 1 * *" }
+  ]
+}
