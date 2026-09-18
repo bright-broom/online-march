@@ -37,17 +37,17 @@
 
 ## 4. Automation（Vercel Cron → `/api/cron/[job]`）
 
-| Job | Schedule (UTC, vercel.json) | 内容 |
-| --- | --- | --- |
-| `cancel-unpaid` | */30 * * * * | 60分未決済の注文をキャンセル・在庫戻し |
-| `ship-reminders` | 0 23 * * *（JST 8:00）| 期限が明日以前の未発送を農家へ通知 |
-| `sync-tracking` | 0 */3 * * * | 配達完了の自動反映 |
-| `review-requests` | 0 1 * * *（JST 10:00）| レビュー依頼 |
-| `close-payouts` | 0 16 1 * * | 月次精算の作成・期日到来分の送金 |
+| Job | Schedule (UTC, vercel.json) | Pro 推奨 | 内容 |
+| --- | --- | --- | --- |
+| `cancel-unpaid` | 15 15 * * *（JST 0:15）| */30 * * * * | 60分未決済の注文をキャンセル・在庫戻し（Stripe は `checkout.session.expired` webhook が主経路）|
+| `ship-reminders` | 0 23 * * *（JST 8:00）| 同左 | 期限が明日以前の未発送を農家へ通知 |
+| `sync-tracking` | 0 21 * * *（JST 6:00）| 0 */3 * * * | 配達完了の自動反映 |
+| `review-requests` | 0 1 * * *（JST 10:00）| 同左 | レビュー依頼 |
+| `close-payouts` | 0 16 1 * *（JST 毎月2日 1:00）| 同左 | 月次精算の作成・期日到来分の送金 |
 
 - すべて冪等。実行ログは `job_runs`、/admin/automation で履歴確認・手動実行。
 - 認証: `Authorization: Bearer $CRON_SECRET`。
-- **Hobby プランは Cron が1日1回まで** → Pro 推奨。Hobby の場合は `cancel-unpaid` を `0 * * * *` 等に変更し Stripe webhook の `checkout.session.expired` を主経路にする。
+- 既定の vercel.json は **Hobby プランでも通る1日1回** のスケジュール。Pro プランでは上表「Pro 推奨」に変更する。
 
 ## 5. キャリア API 連携（将来）
 

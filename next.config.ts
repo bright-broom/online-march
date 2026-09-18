@@ -20,7 +20,6 @@ const nextConfig: NextConfig = {
     localPatterns: [{ pathname: "/uploads/**" }, { pathname: "/**" }],
   },
   serverExternalPackages: ["@electric-sql/pglite"],
-  outputFileTracingExcludes: embeddedDb ? {} : { "*": ["node_modules/@electric-sql/pglite/**"] },
   experimental: {
     serverActions: { bodySizeLimit: "4mb" },
     /** Embedded PGlite is single-process: prerender with one worker when no DATABASE_URL. */
