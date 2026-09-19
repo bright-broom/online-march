@@ -74,6 +74,10 @@ success ページでも session を確認して `markOrderPaid` を呼ぶ（webh
   `stripe_transfers` を再確認し（無効なら `stripeOnboarded=false` にして手動振込待ちへ）、1件の失敗（残高不足など）で他農家を止めない。
   失敗があればジョブを失敗扱いにして /admin/automation に表示し、pending のまま翌日以降の実行で再試行。成功時は農家へ通知。
   Stripe は同じ idempotency key のエラー応答を少なくとも24時間は返し続けるため、再試行が実際に通るのは早くて翌々日の実行。
+- **重複実行（Cron の再配信・今すぐ実行の重なり）**: `close-payouts` は精算の insert と farm_orders の紐付けを1トランザクションで行い、
+  紐付けは `payoutId IS NULL`（相殺は `clawbackPayoutId IS NULL`）の行だけを対象にする。件数が合わなければ先行した実行が
+  確定済みとみなしてロールバック（同じ注文から精算が2件でき、二重送金になるのを防ぐ）。送金後の `paid` 更新も `status='pending'`
+  条件付きで、重なった実行は Stripe から同じ Transfer（同じ idempotency key）を受け取るだけで記録・通知は1回。
 - **Idempotency key**: Checkout Session / クーポン（`orderId`）、返金（`order:` / `farm-order:`）、農家への送金（`payoutId`）。
   リトライや DB 書込失敗後の再実行で二重返金・二重送金にならない。
 - **コンビニ払い等の非同期決済**: 支払い番号発行後は `checkout.session.completed`（payment_status=unpaid）→ 入金で

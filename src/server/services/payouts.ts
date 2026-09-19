@@ -39,7 +39,13 @@ export async function executeDuePayouts(now: Date, deps: PayoutTransferDeps | nu
         continue;
       }
       const t = await deps.transfer({ accountId: f.stripeAccountId, amount: p.amount, payoutId: p.id, description: `${p.periodStart}〜${p.periodEnd} 売上精算` });
-      await db.update(payouts).set({ status: "paid", paidAt: now, stripeTransferId: t.id }).where(eq(payouts.id, p.id));
+      // an overlapping run gets the same transfer back (idempotency key) — only the first one records and notifies
+      const [marked] = await db
+        .update(payouts)
+        .set({ status: "paid", paidAt: now, stripeTransferId: t.id })
+        .where(and(eq(payouts.id, p.id), eq(payouts.status, "pending")))
+        .returning({ id: payouts.id });
+      if (!marked) continue;
       await notify({ userId: f.ownerId, type: "payout", title: "売上のお振込が完了しました", body: `${p.periodEnd.slice(0, 7)}分｜${formatYen(p.amount)}`, href: routes.farmer.payouts });
       transferred++;
     } catch (e) {

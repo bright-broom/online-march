@@ -26,6 +26,9 @@ type Job = { label: string; description: string; schedule: string; run: (now: Da
 
 const DAY = 86_400_000;
 
+/** A concurrent close-payouts run claimed these farm orders first (see close-payouts). */
+class SettledElsewhere extends Error {}
+
 export const jobs = {
   "cancel-unpaid": {
     label: "未入金注文の自動キャンセル",
@@ -167,12 +170,29 @@ export const jobs = {
         if (amount < feeConfig.payout.minimumAmount && feeConfig.payout.carryOver) continue;
         const starts = [...rows.map((r) => toYmd(r.deliveredAt!)), ...clawbacks.map((r) => toYmd(r.refundedAt!))].sort();
         const periodStart = starts[0].slice(0, 8) + "01";
-        const [p] = await db
-          .insert(payouts)
-          .values({ farmId: farm.id, periodStart, periodEnd, grossSales: gross, shippingFees: ship, commission, refundAdjustment, amount, orderCount: rows.length, scheduledFor: payoutDay })
-          .returning();
-        if (rows.length) await db.update(farmOrders).set({ payoutId: p.id }).where(inArray(farmOrders.id, rows.map((r) => r.id)));
-        if (clawbacks.length) await db.update(farmOrders).set({ clawbackPayoutId: p.id }).where(inArray(farmOrders.id, clawbacks.map((r) => r.id)));
+        // Overlapping runs (a re-delivered cron + 今すぐ実行) read the same unsettled orders. Claim them only while still
+        // unclaimed, in the payout's transaction: the run that loses the race rolls back instead of leaving a second
+        // payout for the same orders, which would be transferred twice.
+        const p = await db
+          .transaction(async (tx) => {
+            const [inserted] = await tx
+              .insert(payouts)
+              .values({ farmId: farm.id, periodStart, periodEnd, grossSales: gross, shippingFees: ship, commission, refundAdjustment, amount, orderCount: rows.length, scheduledFor: payoutDay })
+              .returning();
+            const claimed = rows.length
+              ? await tx.update(farmOrders).set({ payoutId: inserted.id }).where(and(inArray(farmOrders.id, rows.map((r) => r.id)), isNull(farmOrders.payoutId))).returning({ id: farmOrders.id })
+              : [];
+            const clawed = clawbacks.length
+              ? await tx.update(farmOrders).set({ clawbackPayoutId: inserted.id }).where(and(inArray(farmOrders.id, clawbacks.map((r) => r.id)), isNull(farmOrders.clawbackPayoutId))).returning({ id: farmOrders.id })
+              : [];
+            if (claimed.length !== rows.length || clawed.length !== clawbacks.length) throw new SettledElsewhere();
+            return inserted;
+          })
+          .catch((e) => {
+            if (e instanceof SettledElsewhere) return null;
+            throw e;
+          });
+        if (!p) continue; // the other run settled this farm
         const owner = await db.query.user.findFirst({ where: eq(user.id, farm.ownerId) });
         await notify({
           userId: farm.ownerId, type: "payout", title: "売上精算が確定しました",

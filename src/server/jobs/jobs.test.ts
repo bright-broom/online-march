@@ -145,3 +145,51 @@ describe("executeDuePayouts", () => {
     expect(again.transferred).toBe(0);
   });
 });
+
+describe("close-payouts: concurrent runs", () => {
+  it("settles each delivered order into exactly one payout when two runs overlap", async () => {
+    const u = (await db.query.user.findFirst({ where: eq(s.user.email, "customer@demo.awaji") }))!;
+    const product = (await db.query.products.findFirst({ where: eq(s.products.slug, "awa-tsurigoya-tarzan"), with: { variants: true } }))!;
+    const now = new Date();
+    const { order } = await createOrder({ userId: u.id, email: u.email, lines: [{ variantId: product.variants[0].id, quantity: 1 }], address, paymentProvider: "demo", now });
+    await markOrderPaid(order.id, { now });
+    const [fo] = await db.select().from(s.farmOrders).where(eq(s.farmOrders.orderId, order.id));
+    await transitionFarmOrder(fo.id, "shipped", { source: "farmer", now, trackingNumber: "412388888888" });
+    await transitionFarmOrder(fo.id, "delivered", { source: "cron", now });
+
+    // a cron retry and a manual "今すぐ実行" landing at the same moment, three months ahead (clear of other tests)
+    const d = new Date();
+    const closeAt = new Date(`${new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 3, 1)).toISOString().slice(0, 7)}-02T10:00:00+09:00`);
+    const results = await Promise.all([runJob("close-payouts", "manual", closeAt), runJob("close-payouts", "manual", closeAt)]);
+    expect(results.every((r) => r.ok), JSON.stringify(results)).toBe(true);
+
+    const settled = (await db.query.farmOrders.findFirst({ where: eq(s.farmOrders.id, fo.id) }))!;
+    expect(settled.payoutId).not.toBeNull();
+    // no orphan payout that also counts this order (it would be transferred a second time)
+    const created = await db.select().from(s.payouts).where(eq(s.payouts.farmId, fo.farmId));
+    const forThisClose = created.filter((p) => p.createdAt.getTime() > now.getTime());
+    expect(forThisClose.map((p) => p.id)).toEqual([settled.payoutId]);
+  });
+});
+
+describe("executeDuePayouts: concurrent runs", () => {
+  it("records a payout once and notifies once when two runs send the same transfer", async () => {
+    const { executeDuePayouts } = await import("@/server/services/payouts");
+    const { toYmd } = await import("@/lib/dates");
+    const now = new Date();
+    const [farm] = await db.select().from(s.farms).where(eq(s.farms.status, "active")).limit(1);
+    await db.update(s.farms).set({ stripeAccountId: "acct_race", stripeOnboarded: true }).where(eq(s.farms.id, farm.id));
+    await db.update(s.payouts).set({ status: "paid" }).where(eq(s.payouts.status, "pending")); // isolate from earlier tests
+    const [p] = await db
+      .insert(s.payouts)
+      .values({ farmId: farm.id, periodStart: "2026-07-01", periodEnd: "2026-07-31", grossSales: 1234, shippingFees: 0, commission: 0, amount: 1234, orderCount: 1, scheduledFor: toYmd(now) })
+      .returning();
+    const deps = { isReady: async () => true, transfer: async () => ({ id: "tr_same" }) }; // Stripe returns the same transfer for the same key
+    const [a, b] = await Promise.all([executeDuePayouts(now, deps), executeDuePayouts(now, deps)]);
+
+    expect(a.transferred + b.transferred).toBe(1);
+    expect((await db.query.payouts.findFirst({ where: eq(s.payouts.id, p.id) }))).toMatchObject({ status: "paid", stripeTransferId: "tr_same" });
+    const notes = await db.select().from(s.notifications).where(eq(s.notifications.userId, farm.ownerId));
+    expect(notes.filter((n) => n.body.startsWith("2026-07分")).length).toBe(1);
+  });
+});
