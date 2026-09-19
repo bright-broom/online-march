@@ -14,7 +14,8 @@
     "db:reset": "node --import tsx scripts/db-seed.ts --reset",
     "db:studio": "drizzle-kit studio",
     "test": "vitest run",
-    "preview:prod": "next build && next start -p 3200"
+    "preview:prod": "next build && next start -p 3200",
+    "deps:verify": "npx -y npm@11.6.2 ci --dry-run --ignore-scripts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8",
@@ -68,6 +69,8 @@
     "vitest": "^5.0.1"
   },
   "engines": {
-    "node": ">=22"
-  }
+    "node": ">=22",
+    "npm": ">=11.6"
+  },
+  "packageManager": "npm@11.6.2"
 }

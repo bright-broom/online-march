@@ -40,7 +40,7 @@ Stripe (Checkout + Connect) / Resend / Vercel Blob / Vercel Cron / zod v4 / zust
 2. **DB アクセスはサーバー層のみ**: `src/server/queries/*`（読取, `"use cache"` + `cacheTag`）と
    `src/server/actions/*`（書込, `"use server"`, zod 検証, 権限チェック, `updateTag`）。
    コンポーネントから `db` を直接 import しない。
-3. **認可は必ずサーバーで**: `requireRole()` / `requireFarmAccess()`（`src/server/auth/guards.ts`）。
+3. **認可は必ずサーバーで**: `requireUser/requireRole/requireFarm`（ページ）・`assertUser/assertRole/assertFarm`（Action）— `src/server/auth/guards.ts`。
 4. **Cache Components 規約**: cookies/headers/searchParams/`Date.now()` を読む部分は `<Suspense>` 内へ。
    詳細 `docs/PERFORMANCE.md`。
 5. **金額は整数（円）**、日時は `timestamptz`、表示は `src/lib/format.ts` 経由。
@@ -59,7 +59,11 @@ npm run build        # DATABASE_URL 未設定時は in-memory PGlite で prerend
 npm run db:generate  # schema.ts 変更後にマイグレーション SQL 生成（必須）
 npm run db:migrate   # DATABASE_URL の DB へ適用
 npm run db:seed      # デモデータ投入
+npm run deps:verify  # 依存を変更したら必須: CI と同じ npm で lockfile を検証
 ```
+
+**依存の変更は npm 11.6.2（package.json#packageManager）で行う。** npm 10 と 11 で optional な wasm 依存の
+lockfile 表現が異なり、CI の `npm ci` が落ちる。変更後は必ず `npm run deps:verify`。
 
 ## Roles
 

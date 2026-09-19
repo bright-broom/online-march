@@ -19,11 +19,15 @@ jobs:
       # Embedded PGlite (in-memory, seeded) — CI never touches the production database.
       PGLITE_DIR: memory://
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
+      # Lockfile is produced by npm 11 (package.json#packageManager); npm 10 resolves optional
+      # wasm deps differently and rejects it, so CI must use the same npm.
+      - name: Use pinned npm
+        run: npm install -g "$(node -p "require('./package.json').packageManager")"
       - run: npm ci
       - name: Typecheck
         run: npm run typecheck
