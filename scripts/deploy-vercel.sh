@@ -16,8 +16,9 @@ exec > >(tee .deploy/run.log) 2>&1
 SCOPE="${1:-brightbroom-projects}"
 PROJECT="awaji-marche"
 REGION="iad1" # must match vercel.json regions and the Neon region (us-east-1)
-BIN="./node_modules/.bin/vercel"
-[ -x "$BIN" ] || npm i -D vercel@latest
+# Deploy tooling lives outside the app's dependency tree (.deploy is git-ignored).
+BIN="./.deploy/tools/node_modules/.bin/vercel"
+[ -x "$BIN" ] || npm i --prefix .deploy/tools --no-save --no-audit --no-fund vercel@latest >/dev/null
 export FORCE_COLOR=0 CI=1
 V() { echo "  \$ vercel $*"; "$BIN" --scope "$SCOPE" --no-color "$@" </dev/null; }
 step() { printf '\n==== %s ====\n' "$*"; }
@@ -71,11 +72,15 @@ echo "  deployment: https://$URL"
 step "6/6 Wait, collect logs, smoke test"
 V inspect "$URL" --wait --timeout 20m > .deploy/inspect.log 2>&1; tail -20 .deploy/inspect.log
 V inspect "$URL" --logs > .deploy/build.log 2>&1; echo "  build log: $(wc -l < .deploy/build.log) lines"; tail -30 .deploy/build.log
-PROD="$(grep -oE 'https://[a-z0-9.-]+\.vercel\.app' .deploy/inspect.log | grep -v "$URL" | head -1)"
+# Public production domain (team-scoped aliases are behind Deployment Protection → 302).
+PROD="${PROD_URL:-https://$PROJECT.vercel.app}"
 echo "  production alias: ${PROD:-unknown}"
 if [ -n "$PROD" ]; then
   for p in / /products /farms /products/awa-tsurigoya-tarzan /login /sitemap.xml /api/cron/ship-reminders; do
-    printf '  %-36s %s\n' "$p" "$(curl -s -o /dev/null -w '%{http_code} %{time_total}s' "$PROD$p")"
+    code="$(curl -s -o /dev/null -w '%{http_code} %{time_total}s' "$PROD$p")"
+    printf '  %-36s %s\n' "$p" "$code"
+    case "$p:${code%% *}" in /api/cron/*:401|*:200) ;; *) SMOKE_FAIL=1 ;; esac
   done
 fi
+[ -n "${SMOKE_FAIL:-}" ] && echo "!! smoke test failed" || echo "  ✓ smoke test passed"
 echo; echo "=== DEPLOY SCRIPT DONE ==="
