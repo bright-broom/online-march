@@ -26,11 +26,11 @@ function LineItem({ item, onNavigate, variant }: { item: CartItem; onNavigate?: 
   const remove = useCart((s) => s.remove);
   const href = routes.product(item.productSlug);
   return (
-    <li className="flex gap-3.5 py-4 sm:gap-4">
+    <li className="flex gap-3 py-4 sm:gap-4">
       <Link
         href={href}
         onClick={onNavigate}
-        className={cn("bg-muted relative shrink-0 overflow-hidden rounded-xl", variant === "page" ? "size-24 sm:size-28" : "size-20")}
+        className={cn("bg-muted relative shrink-0 overflow-hidden rounded-xl", variant === "page" ? "size-20 sm:size-28" : "size-16 sm:size-20")}
       >
         {item.imageUrl && <Image src={item.imageUrl} alt={item.productName} fill sizes="112px" className="object-cover" />}
       </Link>
@@ -51,10 +51,13 @@ function LineItem({ item, onNavigate, variant }: { item: CartItem; onNavigate?: 
         </div>
         <p className="text-muted-foreground text-xs">
           {item.variantLabel}
-          <span className="mx-1.5">·</span>
-          <span className="num">{formatYenJa(item.unitPrice)}</span>
+          <span className="whitespace-nowrap">
+            <span className="mx-1.5">·</span>
+            <span className="num">{formatYenJa(item.unitPrice)}</span>
+          </span>
         </p>
-        <div className="mt-auto flex items-end justify-between gap-2 pt-1.5">
+        {/* Wraps on narrow screens so the line total never overflows the card */}
+        <div className="mt-auto flex flex-wrap items-end justify-between gap-x-3 gap-y-1.5 pt-1.5">
           <div className="flex flex-col gap-1">
             <QuantityStepper
               size="sm"
@@ -65,7 +68,7 @@ function LineItem({ item, onNavigate, variant }: { item: CartItem; onNavigate?: 
             />
             {item.quantity >= item.maxQuantity && <span className="text-muted-foreground text-[11px]">在庫の上限です</span>}
           </div>
-          <Price amount={item.unitPrice * item.quantity} size="sm" showTax={false} />
+          <Price amount={item.unitPrice * item.quantity} size="sm" showTax={false} className="ml-auto shrink-0 whitespace-nowrap" />
         </div>
       </div>
     </li>
@@ -130,12 +133,19 @@ function FarmGroup({
         ))}
       </ul>
       <div className="bg-paper space-y-3 rounded-xl p-3.5 text-xs">
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5">
-          <span className="text-muted-foreground inline-flex items-center gap-1.5">
-            <Truck className="size-3.5" />
-            送料（{carrier.label}・{est.quote.boxSize}サイズ×{est.quote.boxCount}・{formatWeight(est.quote.totalWeightGrams)}）
-          </span>
-          <span className="num font-semibold">{est.quote.isFree ? <span className="text-leaf">無料</span> : formatYenJa(est.quote.fee)}</span>
+        <div className="space-y-0.5">
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-muted-foreground inline-flex items-center gap-1.5">
+              <Truck className="size-3.5 shrink-0" />
+              送料
+            </span>
+            <span className="num shrink-0 font-semibold whitespace-nowrap">
+              {est.quote.isFree ? <span className="text-leaf">無料</span> : formatYenJa(est.quote.fee)}
+            </span>
+          </div>
+          <p className="text-muted-foreground pl-5 text-[11px] leading-snug">
+            {carrier.label}・{est.quote.boxSize}サイズ×{est.quote.boxCount}・{formatWeight(est.quote.totalWeightGrams)}
+          </p>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5">
           <span className="text-muted-foreground inline-flex items-center gap-1.5">
