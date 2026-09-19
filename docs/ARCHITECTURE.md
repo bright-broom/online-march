@@ -97,7 +97,7 @@ async function Shell({ children }: { children: React.ReactNode }) {
 **出荷**: 農家「出荷センター」で 送り状CSV出力 → ラベル発行 → 追跡番号 一括取込 → `transitionFarmOrder(shipped)`
 → 顧客へ発送メール → cron `sync-tracking` が配達完了化 → cron `review-requests`。
 
-**精算**: cron `close-payouts`（毎月1日）が前月の配達完了分を締め payouts 作成 → 15日に Stripe Connect transfer。
+**精算**: cron `close-payouts`（毎日）が月初に前月の配達完了分を締め payouts 作成 → 15日以降の実行で Stripe Connect transfer（`services/payouts.ts`）。
 
 ## 7. 設計判断（ADR 要約）
 

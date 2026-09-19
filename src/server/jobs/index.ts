@@ -13,6 +13,7 @@ import { features } from "@/lib/env";
 import { sendEmail } from "@/server/services/email";
 import { notify } from "@/server/services/notify";
 import { expireUnpaidOrder, markOrderPaid, transitionFarmOrder } from "@/server/services/orders";
+import { executeDuePayouts } from "@/server/services/payouts";
 import { fetchTrackingStatus } from "@/server/services/shipping/tracking";
 
 /**
@@ -138,7 +139,7 @@ export const jobs = {
   "close-payouts": {
     label: "月次精算・振込",
     description: `前月までに配達完了した売上を締めて精算を作成し、振込予定日（毎月${feeConfig.payout.payoutDay}日）に Stripe Connect で送金します`,
-    schedule: "毎月1日 深夜",
+    schedule: "毎日 深夜（締めは月初・送金は振込予定日以降）",
     async run(now) {
       const monthStart = startOfMonthYmd(now);
       const payoutDay = `${monthStart.slice(0, 8)}${String(feeConfig.payout.payoutDay).padStart(2, "0")}`;
@@ -180,21 +181,16 @@ export const jobs = {
         });
         created++;
       }
-      // execute transfers that are due
-      const today = toYmd(now);
-      const due = await db.select({ p: payouts, f: farms }).from(payouts).innerJoin(farms, eq(farms.id, payouts.farmId)).where(and(eq(payouts.status, "pending"), lte(payouts.scheduledFor, today)));
-      let transferred = 0;
-      if (features.stripe) {
-        const { transferToFarm } = await import("@/server/services/payments/stripe");
-        for (const { p, f } of due) {
-          if (!f.stripeAccountId || !f.stripeOnboarded) continue;
-          const t = await transferToFarm({ accountId: f.stripeAccountId, amount: p.amount, payoutId: p.id, description: `${p.periodStart}〜${p.periodEnd} 売上精算` });
-          await db.update(payouts).set({ status: "paid", paidAt: now, stripeTransferId: t.id }).where(eq(payouts.id, p.id));
-          transferred++;
-        }
-      }
+      // execute transfers that are due (runs daily, so the payout day is honoured and failed transfers retry)
+      const stripe = features.stripe ? await import("@/server/services/payments/stripe") : null;
+      const { transferred, awaitingManual, failures } = await executeDuePayouts(
+        now,
+        stripe && { isReady: stripe.fetchPayoutReady, transfer: stripe.transferToFarm },
+      );
       expireTags(tags.analytics);
-      return { created, transferred, awaitingManual: due.length - transferred };
+      // surface failures as a failed run (visible on /admin/automation) after every other farm has been paid
+      if (failures.length) throw new Error(`送金失敗 ${failures.length}件（成功 ${transferred}件・精算作成 ${created}件）: ${failures.join(" / ")}`);
+      return { created, transferred, awaitingManual };
     },
   },
 } satisfies Record<string, Job>;

@@ -105,3 +105,43 @@ describe("close-payouts: refund clawback", () => {
     expect((await db.query.farmOrders.findFirst({ where: eq(s.farmOrders.id, A.fo.id) }))!.clawbackPayoutId).toBe(p.id);
   });
 });
+
+describe("executeDuePayouts", () => {
+  it("isolates a failing transfer, re-checks readiness and pays the others", async () => {
+    const { executeDuePayouts } = await import("@/server/services/payouts");
+    const { toYmd } = await import("@/lib/dates");
+    const now = new Date();
+    const [ok, broken, revoked, manual] = await db.select().from(s.farms).where(eq(s.farms.status, "active")).limit(4);
+    const acct = { [ok.id]: "acct_ok", [broken.id]: "acct_broken", [revoked.id]: "acct_revoked" };
+    for (const f of [ok, broken, revoked]) await db.update(s.farms).set({ stripeAccountId: acct[f.id], stripeOnboarded: true }).where(eq(s.farms.id, f.id));
+    await db.update(s.farms).set({ stripeAccountId: null, stripeOnboarded: false }).where(eq(s.farms.id, manual.id));
+    const due = { periodStart: "2026-08-01", periodEnd: "2026-08-31", grossSales: 1000, shippingFees: 0, commission: 0, amount: 1000, orderCount: 1, scheduledFor: toYmd(now) };
+    const rows = await db.insert(s.payouts).values([ok, broken, revoked, manual].map((f) => ({ ...due, farmId: f.id }))).returning();
+    const byFarm = (id: string) => rows.find((r) => r.farmId === id)!.id;
+
+    const transfer = vi.fn(async (p: { accountId: string }) => {
+      if (p.accountId === "acct_broken") throw new Error("balance_insufficient");
+      return { id: `tr_${p.accountId}` };
+    });
+    const r = await executeDuePayouts(now, { isReady: async (id) => id !== "acct_revoked", transfer });
+
+    expect(r.transferred).toBe(1);
+    expect(r.awaitingManual).toBe(2); // revoked + no account
+    expect(r.failures).toHaveLength(1);
+    expect(r.failures[0]).toContain("balance_insufficient");
+    expect(transfer).toHaveBeenCalledTimes(2); // never called for the revoked account
+    const status = async (id: string) => (await db.query.payouts.findFirst({ where: eq(s.payouts.id, id) }))!;
+    expect(await status(byFarm(ok.id))).toMatchObject({ status: "paid", stripeTransferId: "tr_acct_ok" });
+    expect((await status(byFarm(broken.id))).status).toBe("pending"); // retried on the next daily run
+    expect((await status(byFarm(revoked.id))).status).toBe("pending");
+    expect((await db.query.farms.findFirst({ where: eq(s.farms.id, revoked.id) }))!.stripeOnboarded).toBe(false);
+    const notes = await db.select().from(s.notifications).where(eq(s.notifications.userId, ok.ownerId));
+    expect(notes.some((n) => n.title === "売上のお振込が完了しました")).toBe(true);
+
+    // re-running pays nothing twice
+    transfer.mockClear();
+    const again = await executeDuePayouts(now, { isReady: async (id) => id !== "acct_revoked", transfer });
+    expect(transfer).toHaveBeenCalledTimes(1); // only the still-pending broken one is retried
+    expect(again.transferred).toBe(0);
+  });
+});

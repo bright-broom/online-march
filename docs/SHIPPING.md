@@ -43,7 +43,7 @@
 | `ship-reminders` | 0 23 * * *（JST 8:00）| 同左 | 期限が明日以前の未発送を農家へ通知 |
 | `sync-tracking` | 0 21 * * *（JST 6:00）| 0 */3 * * * | 配達完了の自動反映 |
 | `review-requests` | 0 1 * * *（JST 10:00）| 同左 | レビュー依頼 |
-| `close-payouts` | 0 16 1 * *（JST 毎月2日 1:00）| 同左 | 月次精算の作成・期日到来分の送金 |
+| `close-payouts` | 0 16 * * *（JST 毎日 1:00）| 同左 | 月初に前月分の精算を作成・振込予定日（15日）以降に送金。毎日動くので失敗した送金も翌日以降に再試行 |
 
 - すべて冪等。実行ログは `job_runs`、/admin/automation で履歴確認・手動実行。
 - 認証: `Authorization: Bearer $CRON_SECRET`。

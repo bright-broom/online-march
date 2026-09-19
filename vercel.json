@@ -22,7 +22,7 @@
     },
     {
       "path": "/api/cron/close-payouts",
-      "schedule": "0 16 1 * *"
+      "schedule": "0 16 * * *"
     }
   ]
 }

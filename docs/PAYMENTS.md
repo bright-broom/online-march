@@ -70,6 +70,10 @@ success ページでも session を確認して `markOrderPaid` を呼ぶ（webh
 
 ## 安全性（二重処理・非同期決済）
 
+- **送金（`services/payouts.ts#executeDuePayouts`）**: 期日到来の pending を1件ずつ処理。送金直前に Accounts v2 で
+  `stripe_transfers` を再確認し（無効なら `stripeOnboarded=false` にして手動振込待ちへ）、1件の失敗（残高不足など）で他農家を止めない。
+  失敗があればジョブを失敗扱いにして /admin/automation に表示し、pending のまま翌日以降の実行で再試行。成功時は農家へ通知。
+  Stripe は同じ idempotency key のエラー応答を少なくとも24時間は返し続けるため、再試行が実際に通るのは早くて翌々日の実行。
 - **Idempotency key**: Checkout Session / クーポン（`orderId`）、返金（`order:` / `farm-order:`）、農家への送金（`payoutId`）。
   リトライや DB 書込失敗後の再実行で二重返金・二重送金にならない。
 - **コンビニ払い等の非同期決済**: 支払い番号発行後は `checkout.session.completed`（payment_status=unpaid）→ 入金で
