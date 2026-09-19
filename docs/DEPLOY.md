@@ -26,7 +26,9 @@ npm run dev        # http://localhost:3000
 | `BETTER_AUTH_SECRET` | ✅ | `openssl rand -base64 32` |
 | `BETTER_AUTH_URL` / `NEXT_PUBLIC_SITE_URL` | ✅ | 本番URL（https://…） |
 | `CRON_SECRET` | ✅ | 任意の長い文字列（Vercel Cron が送信） |
-| `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | 本番 | Webhook: `https://<domain>/api/webhooks/stripe`（checkout.session.*, account.updated） |
+| `STRIPE_SECRET_KEY` | 本番 | 未設定ならデモ決済。まずテストキー（sk_test_）で検証 |
+| `STRIPE_WEBHOOK_SECRET` | 本番 | 送信先①「自分のアカウント」: `checkout.session.{completed,async_payment_succeeded,expired,async_payment_failed}` |
+| `STRIPE_CONNECT_WEBHOOK_SECRET` | 本番 | 送信先②「連結アカウント」: `account.updated`。URL はどちらも `https://<domain>/api/webhooks/stripe` |
 | `RESEND_API_KEY` / `EMAIL_FROM` | 本番 | 送信ドメインを Resend で認証 |
 | `BLOB_READ_WRITE_TOKEN` | ✅ | 画像アップロード |
 | `DEMO_MODE` | 任意 | `true` でデモアカウント表示・デモ決済を許可 |

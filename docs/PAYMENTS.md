@@ -30,13 +30,17 @@
 
 `checkout.session.completed` / `async_payment_succeeded` → `markOrderPaid`（冪等）
 `checkout.session.expired` / `async_payment_failed` → `expireUnpaidOrder`
-`account.updated` → `farms.stripeOnboarded`
+`account.updated` → `farms.stripeOnboarded`（= transfers capability が active）
+
+Stripe は送信先ごとに署名シークレットが別。同じ URL に「自分のアカウント」(`STRIPE_WEBHOOK_SECRET`) と
+「連結アカウント」(`STRIPE_CONNECT_WEBHOOK_SECRET`) の2つの送信先を作り、`constructWebhookEvent` が両方で検証する。
 
 success ページでも session を確認して `markOrderPaid` を呼ぶ（webhook 遅延対策、冪等なので二重実行可）。
 
 ## Connect オンボーディング
 
-/farmer/payouts →「振込先を登録」→ `createConnectOnboardingLink`（Express, JP）。
+/farmer/payouts →「振込先を登録」→ `createConnectOnboardingLink`（Express, JP）→ 完了後 `/api/farmer/stripe-return` が
+アカウント状態を即時同期して /farmer/payouts へ戻す（以後の変化は webhook で追従）。
 未登録の農家の精算は `pending` のまま → 運営が /admin/payouts で銀行振込し「振込済み」にする運用も可。
 
 ## 返金・キャンセル

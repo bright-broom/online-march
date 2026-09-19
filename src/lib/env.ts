@@ -15,6 +15,8 @@ const schema = z.object({
   NEXT_PUBLIC_SITE_URL: z.string().url().optional(),
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  /** Signing secret of the "Connected accounts" event destination (account.updated). */
+  STRIPE_CONNECT_WEBHOOK_SECRET: z.string().optional(),
   RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().default("あわじ玉ねぎマルシェ <noreply@example.com>"),
   BLOB_READ_WRITE_TOKEN: z.string().optional(),

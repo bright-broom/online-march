@@ -46,12 +46,16 @@ export default async function AdminSettingsPage() {
     {
       name: "Stripe（決済・Connect）",
       icon: CreditCard,
-      state: features.stripe ? (env.STRIPE_WEBHOOK_SECRET ? "configured" : "warning") : "demo",
+      state: features.stripe ? (env.STRIPE_WEBHOOK_SECRET && env.STRIPE_CONNECT_WEBHOOK_SECRET ? "configured" : "warning") : "demo",
       summary: features.stripe
-        ? env.STRIPE_WEBHOOK_SECRET ? "Checkout と Webhook が有効です" : "Webhook シークレットが未設定です"
+        ? !env.STRIPE_WEBHOOK_SECRET
+          ? "Webhook シークレットが未設定です"
+          : !env.STRIPE_CONNECT_WEBHOOK_SECRET
+            ? "Connect 用 Webhook シークレットが未設定です（農家の振込先登録が反映されません）"
+            : "Checkout・Connect の Webhook が有効です"
         : "デモ決済で動作中（注文確定で即支払い済み）",
-      detail: "Webhook: /api/webhooks/stripe（checkout.session.* / account.updated）",
-      envVars: ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET"],
+      detail: "Webhook: /api/webhooks/stripe（自分のアカウント: checkout.session.* ／ 連結アカウント: account.updated）",
+      envVars: ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "STRIPE_CONNECT_WEBHOOK_SECRET"],
     },
     {
       name: "Resend（メール）",

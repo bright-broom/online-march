@@ -77,6 +77,8 @@ export const routes = {
     reviews: "/farmer/reviews",
     messages: "/farmer/messages",
     payouts: "/farmer/payouts",
+    /** Stripe Connect onboarding return: syncs the account status, then redirects to payouts. */
+    stripeReturn: "/api/farmer/stripe-return",
     shop: "/farmer/shop",
     settings: "/farmer/settings",
   },

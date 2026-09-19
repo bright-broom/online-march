@@ -63,9 +63,31 @@ export async function createCheckoutSession(p: {
   });
 }
 
+/**
+ * Stripe signs each event destination with its own secret: platform events (checkout.session.*)
+ * and Connect events (account.updated of connected accounts) arrive on the same URL, so try both.
+ */
 export function constructWebhookEvent(payload: string, signature: string) {
-  if (!env.STRIPE_WEBHOOK_SECRET) throw new Error("STRIPE_WEBHOOK_SECRET is not set");
-  return getStripe().webhooks.constructEvent(payload, signature, env.STRIPE_WEBHOOK_SECRET);
+  const secrets = [env.STRIPE_WEBHOOK_SECRET, env.STRIPE_CONNECT_WEBHOOK_SECRET].filter((s): s is string => Boolean(s));
+  if (!secrets.length) throw new Error("STRIPE_WEBHOOK_SECRET is not set");
+  let lastError: unknown;
+  for (const secret of secrets) {
+    try {
+      return getStripe().webhooks.constructEvent(payload, signature, secret);
+    } catch (e) {
+      lastError = e;
+    }
+  }
+  throw lastError;
+}
+
+/** A farm can be paid once the transfers capability is active (the account only requests transfers). */
+export function isPayoutReady(account: Stripe.Account) {
+  return account.capabilities?.transfers === "active";
+}
+
+export async function fetchPayoutReady(accountId: string) {
+  return isPayoutReady(await getStripe().accounts.retrieve(accountId));
 }
 
 export async function refundPayment(paymentIntentId: string, amount?: number) {
@@ -90,7 +112,7 @@ export async function createConnectOnboardingLink(p: { accountId?: string | null
     account: accountId,
     type: "account_onboarding",
     refresh_url: `${siteUrl}${routes.farmer.payouts}?stripe=refresh`,
-    return_url: `${siteUrl}${routes.farmer.payouts}?stripe=return`,
+    return_url: `${siteUrl}${routes.farmer.stripeReturn}`,
   });
   return { accountId, url: link.url };
 }

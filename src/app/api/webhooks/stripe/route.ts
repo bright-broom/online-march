@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { farms } from "@/db/schema";
 import { features } from "@/lib/env";
 import { expireUnpaidOrder, markOrderPaid } from "@/server/services/orders";
-import { constructWebhookEvent } from "@/server/services/payments/stripe";
+import { constructWebhookEvent, isPayoutReady } from "@/server/services/payments/stripe";
 
 /** Stripe webhook: checkout completion/expiry and Connect onboarding status. */
 export async function POST(req: Request) {
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     }
     case "account.updated": {
       const a = event.data.object;
-      await db.update(farms).set({ stripeOnboarded: Boolean(a.charges_enabled || a.payouts_enabled) }).where(eq(farms.stripeAccountId, a.id));
+      await db.update(farms).set({ stripeOnboarded: isPayoutReady(a) }).where(eq(farms.stripeAccountId, a.id));
       break;
     }
   }
