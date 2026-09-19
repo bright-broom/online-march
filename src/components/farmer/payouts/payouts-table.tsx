@@ -42,6 +42,7 @@ export function PayoutsTable({ rows }: { rows: FarmPayoutRow[] }) {
     { id: "gross", accessorFn: (r) => r.grossSales, header: "商品売上", cell: ({ row }) => <span className="num whitespace-nowrap">{yen(row.original.grossSales)}</span> },
     { id: "shipping", accessorFn: (r) => r.shippingFees, header: "送料", cell: ({ row }) => <span className="num whitespace-nowrap">{yen(row.original.shippingFees)}</span> },
     { id: "commission", accessorFn: (r) => r.commission, header: "手数料", cell: ({ row }) => <span className="num text-muted-foreground whitespace-nowrap">−{yen(row.original.commission)}</span> },
+    { id: "refundAdjustment", accessorFn: (r) => r.refundAdjustment, header: "返金調整", cell: ({ row }) => row.original.refundAdjustment ? <span className="num text-destructive whitespace-nowrap">−{yen(row.original.refundAdjustment)}</span> : <span className="text-muted-foreground">—</span> },
     { id: "amount", accessorFn: (r) => r.amount, header: "お振込額", cell: ({ row }) => <span className="num font-semibold whitespace-nowrap">{yen(row.original.amount)}</span> },
     { id: "status", accessorFn: (r) => r.status, header: "状態", cell: ({ row }) => <StatusBadge kind="payout" status={row.original.status} /> },
     {
@@ -80,6 +81,9 @@ export function PayoutsTable({ rows }: { rows: FarmPayoutRow[] }) {
                   <div className="flex justify-between"><dt className="text-muted-foreground">商品売上</dt><dd className="num">{yen(open.grossSales)}</dd></div>
                   <div className="flex justify-between"><dt className="text-muted-foreground">送料</dt><dd className="num">{yen(open.shippingFees)}</dd></div>
                   <div className="flex justify-between"><dt className="text-muted-foreground">販売手数料</dt><dd className="num">−{yen(open.commission)}</dd></div>
+                  {open.refundAdjustment > 0 && (
+                    <div className="flex justify-between"><dt className="text-muted-foreground">返金調整（精算済み注文の返金）</dt><dd className="num text-destructive">−{yen(open.refundAdjustment)}</dd></div>
+                  )}
                   <Separator />
                   <div className="flex justify-between font-semibold"><dt>お振込額</dt><dd className="num">{yen(open.amount)}</dd></div>
                 </dl>

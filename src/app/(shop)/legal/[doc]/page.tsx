@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageIntro } from "@/components/shop/page-intro";
-import { guideContent, legalContent } from "@/config/content";
+import { guideContent, legalContent, legalDraft } from "@/config/content";
 import { footerNav, routes } from "@/config/nav";
 import { siteConfig } from "@/config/site";
 import { cn } from "@/lib/utils";
@@ -47,7 +47,7 @@ function Tokushoho() {
       td: (
         <>
           送料（生産者ごと・お届け地域・箱のサイズにより算出。
-          <Link href={`${routes.guide}#rates`} className="text-primary hover:underline">送料表</Link>
+          <Link href={`${routes.guide}#shipping`} className="text-primary hover:underline">送料について</Link>
           ）。コンビニ払いの場合の手数料はお客さま負担となる場合があります。
         </>
       ),
@@ -100,18 +100,30 @@ export default async function LegalPage({ params }: PageProps<"/legal/[doc]">) {
           </ul>
         </nav>
         <article className="min-w-0">
+          {legalDraft && (
+            <p role="note" className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs leading-relaxed text-amber-900 dark:text-amber-200">
+              これは公開前のドラフトです。【要確認】の箇所を含め、運営開始前に内容を確定してください。
+            </p>
+          )}
           {doc === "tokushoho" ? (
             <Tokushoho />
           ) : (
-            <div className="max-w-prose space-y-5 text-[15px] leading-loose">
-              {legalContent[doc].split(/\n{2,}/).map((para, i) => (
-                <p key={i} className="whitespace-pre-line">
-                  {para}
-                </p>
+            <div className="max-w-prose space-y-8 text-[15px] leading-loose">
+              <p>{legalContent[doc].intro}</p>
+              {legalContent[doc].sections.map((sec) => (
+                <section key={sec.heading} className="space-y-2">
+                  <h2 className="heading-display text-lg">{sec.heading}</h2>
+                  {sec.body.map((para, i) => (
+                    <p key={i}>{para}</p>
+                  ))}
+                </section>
               ))}
-              <p className="text-muted-foreground border-t pt-5 text-xs">
-                {siteConfig.company.operator}（{siteConfig.contact.email}）
-              </p>
+              <div className="text-muted-foreground space-y-1 border-t pt-5 text-xs">
+                <p>制定・改定日：{legalContent[doc].updatedAt}</p>
+                <p>
+                  お問い合わせ窓口：{siteConfig.company.operator}（{siteConfig.contact.email}）
+                </p>
+              </div>
             </div>
           )}
         </article>

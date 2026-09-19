@@ -42,4 +42,8 @@ success ページでも session を確認して `markOrderPaid` を呼ぶ（webh
 ## 返金・キャンセル
 
 - 顧客キャンセル（発送前のみ）: 全 farm_orders cancelled → Stripe 全額返金 → orders.refunded。
-- 部分（農家単位）キャンセル: `transitionFarmOrder(cancelled)`。返金は admin が /admin/orders から実行。
+- 部分（農家単位）返金: admin が /admin/orders から実行 → `services/refunds.ts#refundOrder`
+  （配達済み→refunded / 発送前→cancelled＋在庫戻し / 配送中は拒否）。`farm_orders.refundedAt/refundAmount` に記録。
+- 精算締め後の返金は **翌月の精算で自動相殺**（clawback）：`close-payouts` が「精算済み（payoutId あり）かつ返金済み・未相殺」の
+  farm_orders の `payoutAmount` を差し引き、`payouts.refundAdjustment` に記録、`farm_orders.clawbackPayoutId` で二重控除を防ぐ。
+  差引後が最低振込額未満（マイナス含む）なら全額翌月へ繰越。

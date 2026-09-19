@@ -93,7 +93,6 @@ export const announcementSchema = z.object({
 export const idSchema = z.object({ id: z.uuid() });
 
 /** Marker for admin refund notes in shipment_events (farm_orders has no refund column). */
-export const REFUND_NOTE_PREFIX = "返金済み";
 
 /** Admin period switch (overview analytics). */
 export const periodDays = [7, 30, 90] as const;

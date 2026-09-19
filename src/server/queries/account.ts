@@ -105,7 +105,7 @@ export async function getCustomerAnnouncements(limit = 3) {
   return db
     .select({ id: announcements.id, title: announcements.title, body: announcements.body, publishedAt: announcements.publishedAt })
     .from(announcements)
-    .where(and(eq(announcements.isPublished, true), inArray(announcements.audience, ["all", "customer"])))
+    .where(and(eq(announcements.isPublished, true), inArray(announcements.audience, ["all", "customer"]), sql`${announcements.publishedAt} <= now()`))
     .orderBy(desc(announcements.publishedAt))
     .limit(limit);
 }

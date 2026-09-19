@@ -50,7 +50,7 @@ src/
 
 ## 3. 認証・認可
 
-- Better Auth（email+password, DB セッション, cookieCache 5分）。`user.role` = customer | farmer | admin。
+- Better Auth（email+password, DB セッション, **cookieCache 無効** — ロール変更・失効を即時反映。権限を下げた時は全セッション破棄）。`user.role` = customer | farmer | admin。
 - ページ: `requireUser / requireRole / requireFarm`（redirect）。Action: `assertUser / assertRole / assertFarm`（ActionError）。
 - 農家は `farms.ownerId` で 1:1。farmer 画面の全クエリは **必ず farm.id でスコープ**。
 - 出店申請: customer が /join から申請 → farms.status=pending → admin 承認で status=active & user.role=farmer。

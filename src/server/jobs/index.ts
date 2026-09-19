@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, inArray, isNull, lt, lte } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, lt, lte } from "drizzle-orm";
 import { feeConfig } from "@/config/fees";
 import { routes } from "@/config/nav";
 import { shippingPolicy } from "@/config/shipping";
@@ -119,25 +119,36 @@ export const jobs = {
       const activeFarms = await db.select().from(farms).where(eq(farms.status, "active"));
       let created = 0;
       for (const farm of activeFarms) {
+        const cutoff = new Date(`${monthStart}T00:00:00+09:00`);
         const rows = await db
           .select()
           .from(farmOrders)
-          .where(and(eq(farmOrders.farmId, farm.id), eq(farmOrders.status, "delivered"), isNull(farmOrders.payoutId), lt(farmOrders.deliveredAt, new Date(`${monthStart}T00:00:00+09:00`))));
-        if (!rows.length) continue;
+          .where(and(eq(farmOrders.farmId, farm.id), eq(farmOrders.status, "delivered"), isNull(farmOrders.payoutId), lt(farmOrders.deliveredAt, cutoff)));
+        // refunds of farm orders that were already settled in an earlier payout → claw back now
+        const clawbacks = await db
+          .select()
+          .from(farmOrders)
+          .where(and(eq(farmOrders.farmId, farm.id), isNotNull(farmOrders.payoutId), isNotNull(farmOrders.refundedAt), isNull(farmOrders.clawbackPayoutId), lt(farmOrders.refundedAt, cutoff)));
+        if (!rows.length && !clawbacks.length) continue;
         const gross = rows.reduce((a, r) => a + r.subtotal, 0);
         const ship = rows.reduce((a, r) => a + r.shippingFee, 0);
         const commission = rows.reduce((a, r) => a + r.commissionAmount, 0);
-        const amount = gross + ship - commission;
+        const refundAdjustment = clawbacks.reduce((a, r) => a + r.payoutAmount, 0);
+        const amount = gross + ship - commission - refundAdjustment;
+        // below minimum (or negative after clawbacks) → everything carries over to next month
         if (amount < feeConfig.payout.minimumAmount && feeConfig.payout.carryOver) continue;
-        const periodStart = rows.map((r) => toYmd(r.deliveredAt!)).sort()[0].slice(0, 8) + "01";
+        const starts = [...rows.map((r) => toYmd(r.deliveredAt!)), ...clawbacks.map((r) => toYmd(r.refundedAt!))].sort();
+        const periodStart = starts[0].slice(0, 8) + "01";
         const [p] = await db
           .insert(payouts)
-          .values({ farmId: farm.id, periodStart, periodEnd, grossSales: gross, shippingFees: ship, commission, amount, orderCount: rows.length, scheduledFor: payoutDay })
+          .values({ farmId: farm.id, periodStart, periodEnd, grossSales: gross, shippingFees: ship, commission, refundAdjustment, amount, orderCount: rows.length, scheduledFor: payoutDay })
           .returning();
-        await db.update(farmOrders).set({ payoutId: p.id }).where(inArray(farmOrders.id, rows.map((r) => r.id)));
+        if (rows.length) await db.update(farmOrders).set({ payoutId: p.id }).where(inArray(farmOrders.id, rows.map((r) => r.id)));
+        if (clawbacks.length) await db.update(farmOrders).set({ clawbackPayoutId: p.id }).where(inArray(farmOrders.id, clawbacks.map((r) => r.id)));
         const owner = await db.query.user.findFirst({ where: eq(user.id, farm.ownerId) });
         await notify({
-          userId: farm.ownerId, type: "payout", title: "売上精算が確定しました", body: `${periodEnd.slice(0, 7)}分`, href: routes.farmer.payouts,
+          userId: farm.ownerId, type: "payout", title: "売上精算が確定しました",
+          body: `${periodEnd.slice(0, 7)}分${refundAdjustment ? `（返金調整 −${refundAdjustment.toLocaleString()}円を含む）` : ""}`, href: routes.farmer.payouts,
           email: owner ? emailTemplates.payoutScheduled({ to: owner.email, farmName: farm.name, amount, scheduledFor: payoutDay, period: periodEnd.slice(0, 7) }) : undefined,
         });
         created++;

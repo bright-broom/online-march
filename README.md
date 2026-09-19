@@ -29,6 +29,11 @@ DB は自動（組込み Postgres = PGlite）。デモアカウント（パス�
 Next.js 16 (App Router, Cache Components/PPR) · React 19 · TypeScript · Tailwind CSS v4 · shadcn/ui · lucide-react ·
 Recharts · Drizzle ORM · Neon Postgres / PGlite · Better Auth · Stripe Checkout + Connect · Resend · Vercel Blob · Vercel Cron · zod · zustand · nuqs · Vitest
 
+## CI / 本番
+
+- GitHub Actions（`.github/workflows/ci.yml`）: typecheck・lint・test・migration 整合・本番ビルド
+- 本番: https://awaji-marche.vercel.app （main への push で自動デプロイ）
+
 ## Docs
 
 開発ガイドは [`AGENTS.md`](AGENTS.md) から。設計詳細は [`docs/`](docs)（ARCHITECTURE / DESIGN / DATA_MODEL / SHIPPING / PAYMENTS / PERFORMANCE / CONVENTIONS / DEPLOY）。
@@ -39,6 +44,6 @@ Recharts · Drizzle ORM · Neon Postgres / PGlite · Better Auth · Stripe Check
 | --- | --- |
 | `npm run dev` | 開発サーバー |
 | `npm run build` | migrate（DATABASE_URL時）+ 本番ビルド |
-| `npm test` | Vitest（純関数 + 注文ライフサイクル統合テスト） |
+| `npm test` | Vitest（純関数 + 注文ライフサイクル・返金・自動化ジョブの統合テスト） |
 | `npm run typecheck` / `lint` | 型・Lint |
 | `npm run db:generate` / `db:migrate` / `db:seed` / `db:reset` | DB |

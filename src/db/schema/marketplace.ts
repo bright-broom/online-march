@@ -53,6 +53,7 @@ export const shipmentEventType = pgEnum("shipment_event_type", [
   "delivered",
   "exception",
   "note",
+  "refund",
 ]);
 export const payoutStatus = pgEnum("payout_status", ["pending", "processing", "paid"]);
 export const couponType = pgEnum("coupon_type", ["percent", "fixed"]);
@@ -286,11 +287,16 @@ export const farmOrders = pgTable(
     shippedAt: timestamp("shipped_at", { withTimezone: true }),
     deliveredAt: timestamp("delivered_at", { withTimezone: true }),
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    /** set when money was returned to the customer for this farm order */
+    refundedAt: timestamp("refunded_at", { withTimezone: true }),
+    refundAmount: integer("refund_amount"),
     labelPrintedAt: timestamp("label_printed_at", { withTimezone: true }),
     reminderSentAt: timestamp("reminder_sent_at", { withTimezone: true }),
     reviewRequestedAt: timestamp("review_requested_at", { withTimezone: true }),
     farmerNote: text("farmer_note").notNull().default(""),
     payoutId: uuid("payout_id"),
+    /** payout that deducted this farm order's refund (set only when refunded after being settled) */
+    clawbackPayoutId: uuid("clawback_payout_id"),
     createdAt,
     updatedAt,
   },
@@ -422,6 +428,8 @@ export const payouts = pgTable(
     grossSales: integer("gross_sales").notNull(),
     shippingFees: integer("shipping_fees").notNull(),
     commission: integer("commission").notNull(),
+    /** refunds of already-settled farm orders, deducted from this payout (>= 0) */
+    refundAdjustment: integer("refund_adjustment").notNull().default(0),
     amount: integer("amount").notNull(),
     orderCount: integer("order_count").notNull(),
     status: payoutStatus("status").notNull().default("pending"),

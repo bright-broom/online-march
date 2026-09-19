@@ -73,6 +73,7 @@ export const shipmentEventMeta: Record<ShipmentEventType, { label: string; icon:
   delivered: { label: "配達完了", icon: "PackageCheck" },
   exception: { label: "配送トラブル", icon: "TriangleAlert" },
   note: { label: "メモ", icon: "MessageSquare" },
+  refund: { label: "返金", icon: "Wallet" },
 };
 
 /** Tailwind classes per tone — consumed only by components/common/status-badge.tsx */

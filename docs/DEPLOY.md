@@ -40,6 +40,15 @@ npm run dev        # http://localhost:3000
 8. デプロイ補助: `bash scripts/deploy-vercel.sh` — 環境変数/Neon/Blob の確認・作成、seed、push、ビルドログ取得、
    スモークテストまで実行し、結果を `.deploy/run.log`・`.deploy/build.log` に保存する。
 
+## Runbook: DB をシンガポールへ移す（本番データ投入前に推奨）
+
+日本からの動的レスポンスを約半分にする。Neon の Vercel 連携は東京非対応のため sin1 が最短。
+1. `vercel integration add neon --name awaji-marche-db-sg -m region=sin1 --prefix SG_`（SG_DATABASE_URL が追加される）
+2. `DATABASE_URL=<SG_DATABASE_URL> npm run db:seed`（migrate + seed。実データがある場合は pg_dump/pg_restore で移送）
+3. Dashboard → Settings → Environment Variables で `DATABASE_URL` を SG の値に差し替え（Production/Preview）
+4. `vercel.json` の `regions` を `["sin1"]`、Blob も `--region sin1` で作り直す場合は同様に差し替え
+5. push → デプロイ → `bash scripts/deploy-vercel.sh` のスモークテストで確認 → 旧 Neon を削除
+
 ## 注意: ローカル開発で本番DBを使わない
 
 `vercel integration add` / `vercel env pull` は `.env.local` に本番（Neon）の `DATABASE_URL` を書き込み、

@@ -42,6 +42,7 @@ export function PayoutsTable({ rows }: { rows: AdminPayoutRow[] }) {
     { accessorKey: "grossSales", header: "商品代金", cell: ({ getValue }) => <span className="num text-xs">{formatYen(Number(getValue()))}</span> },
     { accessorKey: "shippingFees", header: "送料", cell: ({ getValue }) => <span className="num text-xs">{formatYen(Number(getValue()))}</span> },
     { accessorKey: "commission", header: "手数料", cell: ({ getValue }) => <span className="num text-primary text-xs">−{formatYen(Number(getValue()))}</span> },
+    { accessorKey: "refundAdjustment", header: "返金調整", cell: ({ getValue }) => (Number(getValue()) ? <span className="num text-destructive text-xs">−{formatYen(Number(getValue()))}</span> : <span className="text-muted-foreground text-xs">—</span>) },
     { accessorKey: "amount", header: "振込額", cell: ({ getValue }) => <Price amount={Number(getValue())} size="sm" showTax={false} /> },
     {
       id: "scheduledFor",
@@ -98,6 +99,7 @@ function PayoutSheet({ payout: p, onOpenChange }: { payout: AdminPayoutRow | nul
                 <Stat label="商品代金" value={formatYen(p.grossSales)} />
                 <Stat label="送料" value={formatYen(p.shippingFees)} />
                 <Stat label="販売手数料" value={`−${formatYen(p.commission)}`} />
+                {p.refundAdjustment > 0 && <Stat label="返金調整" value={`−${formatYen(p.refundAdjustment)}`} />}
                 <Stat label="振込額" value={formatYen(p.amount)} strong />
               </div>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">

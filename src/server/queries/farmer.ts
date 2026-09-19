@@ -5,6 +5,7 @@ import { catalogLimits } from "@/config/catalog";
 import { shippingZones, type ShippingZoneKey } from "@/config/shipping";
 import { db } from "@/db";
 import {
+  announcements,
   farmOrders,
   messages,
   orderItems,
@@ -613,4 +614,18 @@ export async function getUnsettledSummary(farmId: string, now: Date) {
     .orderBy(asc(payouts.scheduledFor))
     .limit(1);
   return { thisMonth: { gross: num(thisMonth.gross), payout: num(thisMonth.payout), orders: thisMonth.orders }, paidTotal: num(paidTotal.amount), next: next ?? null };
+}
+
+/** Published announcements for farmers (audience all | farmer), newest first. Shared, so cached. */
+export async function getFarmerAnnouncements(limit = 3) {
+  "use cache";
+  cacheLife("catalog");
+  cacheTag(tags.announcements);
+  const rows = await db
+    .select({ id: announcements.id, title: announcements.title, body: announcements.body, audience: announcements.audience, publishedAt: announcements.publishedAt })
+    .from(announcements)
+    .where(and(eq(announcements.isPublished, true), inArray(announcements.audience, ["all", "farmer"]), sql`${announcements.publishedAt} <= now()`))
+    .orderBy(desc(announcements.publishedAt))
+    .limit(limit);
+  return rows.map((r) => ({ ...r, publishedAt: r.publishedAt.toISOString() }));
 }

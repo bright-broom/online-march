@@ -53,3 +53,55 @@ describe("automation jobs", () => {
     expect(runs.length).toBeGreaterThanOrEqual(5);
   });
 });
+
+describe("close-payouts: refund clawback", () => {
+  const monthsAhead = (n: number) => {
+    const d = new Date();
+    const ym = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + n, 1));
+    return `${ym.toISOString().slice(0, 7)}`;
+  };
+  const at = (ym: string, day: number) => new Date(`${ym}-${String(day).padStart(2, "0")}T10:00:00+09:00`);
+
+  it("deducts a refund of an already-settled order from the next payout", async () => {
+    const { refundOrder } = await import("@/server/services/refunds");
+    const u = (await db.query.user.findFirst({ where: eq(s.user.email, "customer@demo.awaji") }))!;
+    const soup = (await db.query.products.findFirst({ where: eq(s.products.slug, "fukura-onion-soup"), with: { variants: true } }))!;
+    const [small, large] = soup.variants.sort((a, b) => a.price - b.price);
+    const deliver = async (variantId: string, qty: number, deliveredAt: Date) => {
+      const now = new Date();
+      const { order } = await createOrder({ userId: u.id, email: u.email, lines: [{ variantId, quantity: qty }], address, paymentProvider: "demo", now });
+      await markOrderPaid(order.id, { now });
+      const [fo] = await db.select().from(s.farmOrders).where(eq(s.farmOrders.orderId, order.id));
+      await transitionFarmOrder(fo.id, "shipped", { source: "farmer", now, trackingNumber: "412399999999" });
+      await transitionFarmOrder(fo.id, "delivered", { source: "cron", now });
+      await db.update(s.farmOrders).set({ deliveredAt }).where(eq(s.farmOrders.id, fo.id));
+      return { order, fo: (await db.query.farmOrders.findFirst({ where: eq(s.farmOrders.id, fo.id) }))! };
+    };
+
+    // 1) A is delivered now and settled at the next month's close
+    const A = await deliver(small.id, 1, new Date());
+    expect((await runJob("close-payouts", "manual", at(monthsAhead(1), 2))).ok).toBe(true);
+    const settledA = (await db.query.farmOrders.findFirst({ where: eq(s.farmOrders.id, A.fo.id) }))!;
+    expect(settledA.payoutId).not.toBeNull();
+
+    // 2) A is refunded after settlement; B is delivered next month
+    await refundOrder({ orderId: A.order.id });
+    const B = await deliver(large.id, 2, at(monthsAhead(1), 5));
+
+    // 3) the following close deducts A's payout amount from B's payout
+    expect((await runJob("close-payouts", "manual", at(monthsAhead(2), 2))).ok).toBe(true);
+    const a2 = (await db.query.farmOrders.findFirst({ where: eq(s.farmOrders.id, A.fo.id) }))!;
+    const b2 = (await db.query.farmOrders.findFirst({ where: eq(s.farmOrders.id, B.fo.id) }))!;
+    expect(a2.clawbackPayoutId).not.toBeNull();
+    expect(a2.clawbackPayoutId).toBe(b2.payoutId);
+    const p = (await db.query.payouts.findFirst({ where: eq(s.payouts.id, b2.payoutId!) }))!;
+    expect(p.refundAdjustment).toBe(A.fo.payoutAmount);
+    expect(p.amount).toBe(B.fo.payoutAmount - A.fo.payoutAmount);
+
+    // idempotent: re-running the same close does not deduct twice
+    expect((await runJob("close-payouts", "manual", at(monthsAhead(2), 2))).ok).toBe(true);
+    const payoutsForB = await db.select().from(s.payouts).where(eq(s.payouts.id, b2.payoutId!));
+    expect(payoutsForB).toHaveLength(1);
+    expect((await db.query.farmOrders.findFirst({ where: eq(s.farmOrders.id, A.fo.id) }))!.clawbackPayoutId).toBe(p.id);
+  });
+});

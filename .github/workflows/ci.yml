@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: typecheck · lint · test · build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: 1
+      # Embedded PGlite (in-memory, seeded) — CI never touches the production database.
+      PGLITE_DIR: memory://
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint -- --max-warnings 0
+      - name: Unit & integration tests
+        run: npm test
+      - name: Migrations are in sync with the schema
+        run: |
+          npx drizzle-kit generate --name ci-check
+          if [ -n "$(git status --porcelain drizzle)" ]; then
+            echo "::error::src/db/schema changed without a migration. Run 'npm run db:generate' and commit drizzle/."
+            git status --porcelain drizzle; exit 1
+          fi
+      - name: Production build
+        run: npx next build

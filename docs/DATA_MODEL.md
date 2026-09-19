@@ -30,6 +30,8 @@ platform_settings (key/value)               job_runs (automation log)
 | `order_items` | 購入時点の名称・価格スナップショット |
 | `shipment_events` | 追跡タイムライン（source: system/farmer/cron/carrier） |
 | `payouts` | 月次精算。`scheduledFor`=翌月15日 |
+| `payouts.refundAdjustment` / `farm_orders.clawbackPayoutId` | 精算済み注文の返金を翌月精算で相殺した額と、相殺した精算の参照（二重控除防止） |
+| `farm_orders.refundedAt/refundAmount` | 返金の事実（金額・日時）。返金は `services/refunds.ts#refundOrder` のみ。タイムラインに `refund` イベント |
 
 ## 状態機械
 

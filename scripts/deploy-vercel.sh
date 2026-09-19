@@ -56,8 +56,8 @@ rm -f .deploy/.env.production
 
 step "5/6 Ship: git push (Vercel Git integration deploys main)"
 BEFORE="$(latest_url)"
-git add -A && git commit -q -m "fix: single-writer PGlite lock, functions colocated with Neon (iad1), vercelignore, diagnosable deploy script" \
-  -m "Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>" && echo "  committed $(git log --oneline -1)"
+MSG="${DEPLOY_MESSAGE:-chore: deploy $(date +%Y-%m-%d)}"
+git add -A && git commit -q -m "$MSG" -m "Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>" && echo "  committed $(git log --oneline -1)"
 git push -q origin main && echo "  pushed"
 URL=""
 for i in $(seq 1 12); do sleep 10; URL="$(latest_url)"; [ -n "$URL" ] && [ "$URL" != "$BEFORE" ] && break; URL=""; done

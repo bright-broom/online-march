@@ -8,6 +8,20 @@
       "when": 1789759756596,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789771295060,
+      "tag": "0001_refund_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789784448936,
+      "tag": "0002_payout_refund_clawback",
+      "breakpoints": true
     }
   ]
 }

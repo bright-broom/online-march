@@ -11,7 +11,6 @@ import { carriers, deliveryTimeSlots, type DeliveryTimeSlot } from "@/config/shi
 import { shipmentEventMeta } from "@/config/status";
 import { formatDate, formatDateTime, formatPostalCode, formatWeight, formatYen } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { REFUND_NOTE_PREFIX } from "@/lib/validators/admin";
 import type { AdminOrderDetail } from "@/server/queries/admin";
 import { eventSourceLabels, paymentProviderMeta } from "../labels";
 import { DetailList, PanelCard } from "../primitives";
@@ -19,9 +18,8 @@ import { FarmOrderControls } from "./farm-order-controls";
 
 type FarmOrderDetail = AdminOrderDetail["farmOrders"][number];
 
-export const isFarmOrderRefunded = (fo: FarmOrderDetail) =>
-  fo.status === "refunded" || fo.events.some((e) => e.source === "admin" && e.message.startsWith(REFUND_NOTE_PREFIX));
-export const farmOrderRefundAmount = (fo: FarmOrderDetail) => Math.max(0, fo.subtotal + fo.shippingFee - fo.discount);
+export const isFarmOrderRefunded = (fo: FarmOrderDetail) => fo.status === "refunded" || fo.refundedAt != null;
+export const farmOrderRefundAmount = (fo: FarmOrderDetail) => fo.refundAmount ?? Math.max(0, fo.subtotal + fo.shippingFee - fo.discount);
 
 export function OrderDetailView({ order, canRefund }: { order: AdminOrderDetail; canRefund: boolean }) {
   const a = order.shippingAddress;
@@ -181,7 +179,7 @@ function FarmOrderCard({ orderId, fo, canRefund }: { orderId: string; fo: FarmOr
             <ol className="relative space-y-3 border-l pl-5">
               {fo.events.map((e) => {
                 const meta = shipmentEventMeta[e.type];
-                const isRefund = e.source === "admin" && e.message.startsWith(REFUND_NOTE_PREFIX);
+                const isRefund = e.type === "refund";
                 return (
                   <li key={e.id} className="relative">
                     <span

@@ -35,7 +35,9 @@ export const auth = betterAuth({
   session: {
     expiresIn: 60 * 60 * 24 * 30,
     updateAge: 60 * 60 * 24,
-    cookieCache: { enabled: true, maxAge: 5 * 60 },
+    // Authorization must reflect role changes / revocations immediately, so every request
+    // validates the session against the DB (1 indexed lookup; functions are colocated with the DB).
+    cookieCache: { enabled: false },
   },
   plugins: [nextCookies()],
 });
