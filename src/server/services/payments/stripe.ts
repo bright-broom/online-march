@@ -1,11 +1,12 @@
 import "server-only";
 import Stripe from "stripe";
+import { feeConfig } from "@/config/fees";
 import { routes } from "@/config/nav";
 import { siteConfig } from "@/config/site";
 import { env, features, siteUrl } from "@/lib/env";
 
 /**
- * Stripe adapter. Model: "separate charges and transfers" (Stripe Connect Express).
+ * Stripe adapter. Model: "separate charges and transfers" (Stripe Connect, Accounts v2 recipients with the Express Dashboard).
  *  - Customer pays the platform once per checkout (transfer_group = order code).
  *  - Monthly payout job transfers each farm's net amount to its connected account.
  * Without STRIPE_SECRET_KEY, callers use the demo payment path (features.stripe === false).
@@ -113,13 +114,26 @@ export function constructWebhookEvent(payload: string, signature: string) {
   throw lastError;
 }
 
-/** A farm can be paid once the transfers capability is active (the account only requests transfers). */
-export function isPayoutReady(account: Stripe.Account) {
-  return account.capabilities?.transfers === "active";
+/**
+ * Accounts v2 thin events (v2.core.account[...]) come from a separate "Your account" event destination
+ * with its own secret. They carry only the account id, so callers re-fetch the account.
+ * Returns the connected account the event is about, or null for any other event.
+ */
+export function parseAccountEventNotification(payload: string, signature: string) {
+  if (!env.STRIPE_ACCOUNTS_WEBHOOK_SECRET) throw new Error("STRIPE_ACCOUNTS_WEBHOOK_SECRET is not set");
+  const n = getStripe().parseEventNotification(payload, signature, env.STRIPE_ACCOUNTS_WEBHOOK_SECRET);
+  const related = "related_object" in n ? n.related_object : null;
+  return { type: n.type, accountId: related?.type === "v2.core.account" ? related.id : null };
 }
 
+/** A farm can be paid once the recipient configuration's stripe_transfers capability is active. */
+export function isPayoutReady(account: Stripe.V2.Core.Account) {
+  return account.configuration?.recipient?.capabilities?.stripe_balance?.stripe_transfers?.status === "active";
+}
+
+/** Works for accounts created with Accounts v1 too (same acct_ id). */
 export async function fetchPayoutReady(accountId: string) {
-  return isPayoutReady(await getStripe().accounts.retrieve(accountId));
+  return isPayoutReady(await getStripe().v2.core.accounts.retrieve(accountId, { include: ["configuration.recipient"] }));
 }
 
 /** `key` identifies the business operation (e.g. order / farm order) so a retried request never refunds twice. */
@@ -127,25 +141,41 @@ export async function refundPayment(paymentIntentId: string, amount: number | un
   return getStripe().refunds.create({ payment_intent: paymentIntentId, amount }, { idempotencyKey: `refund:${key}` });
 }
 
-/** Connect onboarding for a farm (Express account). */
-export async function createConnectOnboardingLink(p: { accountId?: string | null; email: string; farmName: string }) {
+/**
+ * Connect onboarding for a farm (Accounts v2). The farm is a recipient: it only receives transfers from the
+ * platform balance, has the Express Dashboard, and the platform pays Stripe fees and owns negative balances.
+ * Once onboarded, the link opens the account-update flow instead (bank account / identity changes).
+ */
+export async function createConnectOnboardingLink(p: { farmId: string; accountId?: string | null; onboarded: boolean; email: string; farmName: string }) {
   const s = getStripe();
   const accountId =
     p.accountId ??
     (
-      await s.accounts.create({
-        type: "express",
-        country: "JP",
-        email: p.email,
-        business_profile: { name: p.farmName, mcc: "5499", product_description: "淡路島産玉ねぎの産地直送販売" },
-        capabilities: { transfers: { requested: true } },
-      })
+      await s.v2.core.accounts.create(
+        {
+          contact_email: p.email,
+          display_name: p.farmName,
+          dashboard: "express",
+          identity: { country: "jp" },
+          defaults: {
+            currency: "jpy",
+            locales: ["ja"],
+            profile: { product_description: feeConfig.connect.productDescription },
+            responsibilities: { fees_collector: "application", losses_collector: "application" },
+          },
+          configuration: { recipient: { capabilities: { stripe_balance: { stripe_transfers: { requested: true } } } } },
+        },
+        { idempotencyKey: `connect-account:${p.farmId}` }, // a double-click must not create two accounts
+      )
     ).id;
-  const link = await s.accountLinks.create({
-    account: accountId,
-    type: "account_onboarding",
+  const flow = {
+    configurations: ["recipient" as const],
     refresh_url: `${siteUrl}${routes.farmer.payouts}?stripe=refresh`,
     return_url: `${siteUrl}${routes.farmer.stripeReturn}`,
+  };
+  const link = await s.v2.core.accountLinks.create({
+    account: accountId,
+    use_case: p.accountId && p.onboarded ? { type: "account_update", account_update: flow } : { type: "account_onboarding", account_onboarding: flow },
   });
   return { accountId, url: link.url };
 }

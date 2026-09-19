@@ -49,7 +49,13 @@ export async function startStripeOnboarding(): Promise<ActionResult> {
     const { user, farm } = await assertFarm();
     if (!features.stripe) throw new ActionError("現在はオンライン振込先登録を利用できません。運営からの銀行振込でお支払いします");
     const { createConnectOnboardingLink } = await import("@/server/services/payments/stripe");
-    const link = await createConnectOnboardingLink({ accountId: farm.stripeAccountId, email: user.email, farmName: farm.name });
+    const link = await createConnectOnboardingLink({
+      farmId: farm.id,
+      accountId: farm.stripeAccountId,
+      onboarded: farm.stripeOnboarded,
+      email: user.email,
+      farmName: farm.name,
+    });
     if (link.accountId !== farm.stripeAccountId) {
       await db.update(farms).set({ stripeAccountId: link.accountId }).where(eq(farms.id, farm.id));
     }

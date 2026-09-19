@@ -30,17 +30,32 @@
 
 `checkout.session.completed` / `async_payment_succeeded` → `markOrderPaid`（冪等）
 `checkout.session.expired` / `async_payment_failed` → `expireUnpaidOrder`
-`account.updated` → `farms.stripeOnboarded`（= transfers capability が active）
+`account.updated` → `syncFarmPayoutReady`（v1 イベント。v2 アカウントでも送られる。状態は Accounts v2 で取り直す）
 
 Stripe は送信先ごとに署名シークレットが別。同じ URL に「自分のアカウント」(`STRIPE_WEBHOOK_SECRET`) と
 「連結アカウント」(`STRIPE_CONNECT_WEBHOOK_SECRET`) の2つの送信先を作り、`constructWebhookEvent` が両方で検証する。
+
+### Accounts v2 イベント（/api/webhooks/stripe/accounts）
+
+3つ目の送信先「自分のアカウント」・ペイロード **thin**（`STRIPE_ACCOUNTS_WEBHOOK_SECRET`）で
+`v2.core.account[configuration.recipient].capability_status_updated` / `v2.core.account[requirements].updated` を受け、
+`parseAccountEventNotification` → `syncFarmPayoutReady`。thin イベントはアカウント ID だけなので必ず取り直す。
+シークレット未設定なら 404（`account.updated` だけでも追従はできる）。
 
 success ページでも session を確認して `markOrderPaid` を呼ぶ（webhook 遅延対策、冪等なので二重実行可）。
 
 ## Connect オンボーディング
 
-/farmer/payouts →「振込先を登録」→ `createConnectOnboardingLink`（Express, JP）→ 完了後 `/api/farmer/stripe-return` が
+/farmer/payouts →「振込先を登録」→ `createConnectOnboardingLink` → 完了後 `/api/farmer/stripe-return` が
 アカウント状態を即時同期して /farmer/payouts へ戻す（以後の変化は webhook で追従）。
+
+- **Accounts v2**（`/v2/core/accounts`）で作成。v1 の `accounts.create({ type: "express" })` は新規連携では Stripe が拒否する。
+  - `configuration.recipient` で `stripe_balance.stripe_transfers` のみ要求（merchant / card_payments は不要）
+  - `dashboard: "express"`、`defaults.responsibilities` は fees / losses とも `application`（プラットフォーム負担）
+  - `identity.country: "jp"`、`defaults.currency: "jpy"`、作成は `connect-account:<farmId>` で冪等
+- 送金可否 = `configuration.recipient.capabilities.stripe_balance.stripe_transfers.status === "active"`（`isPayoutReady`）。
+  v1 の `capabilities.transfers` / `payouts_enabled` は使わない。v1 で作ったアカウントも同じ acct_ ID で v2 取得できる。
+- リンクは v2 Account Links。未完了は `account_onboarding`、登録済みは「登録内容を確認・変更」で `account_update`。
 未登録の農家の精算は `pending` のまま → 運営が /admin/payouts で銀行振込し「振込済み」にする運用も可。
 
 ## 返金・キャンセル

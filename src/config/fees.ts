@@ -12,6 +12,10 @@ export const feeConfig = {
     /** 繰越: 最低額未満は翌月へ */
     carryOver: true,
   },
+  /** Stripe Connect 連結アカウント（農家）の事業説明。本人確認フォームに事前入力される */
+  connect: {
+    productDescription: "淡路島産玉ねぎの産地直送販売",
+  },
   /** 表示用: 他社比較（LP・出店案内で使用） */
   comparison: [
     { name: "あわじ玉ねぎマルシェ", rate: "10%", highlight: true },

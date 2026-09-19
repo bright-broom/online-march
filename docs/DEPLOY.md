@@ -29,6 +29,7 @@ npm run dev        # http://localhost:3000
 | `STRIPE_SECRET_KEY` | 本番 | 未設定ならデモ決済。まずテストキー（sk_test_）で検証 |
 | `STRIPE_WEBHOOK_SECRET` | 本番 | 送信先①「自分のアカウント」: `checkout.session.{completed,async_payment_succeeded,expired,async_payment_failed}` |
 | `STRIPE_CONNECT_WEBHOOK_SECRET` | 本番 | 送信先②「連結アカウント」: `account.updated`。URL はどちらも `https://<domain>/api/webhooks/stripe` |
+| `STRIPE_ACCOUNTS_WEBHOOK_SECRET` | 推奨 | 送信先③「自分のアカウント」・ペイロード thin: `v2.core.account[configuration.recipient].capability_status_updated`, `v2.core.account[requirements].updated`。URL `https://<domain>/api/webhooks/stripe/accounts` |
 | `RESEND_API_KEY` / `EMAIL_FROM` | 本番 | 送信ドメインを Resend で認証 |
 | `BLOB_READ_WRITE_TOKEN` | ✅ | 画像アップロード |
 | `DEMO_MODE` | 任意 | `true` でデモアカウント表示・デモ決済を許可 |

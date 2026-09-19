@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { farms } from "@/db/schema";
 import { features } from "@/lib/env";
 import { expireUnpaidOrder, markOrderPaid } from "@/server/services/orders";
-import { constructWebhookEvent, isPayoutReady } from "@/server/services/payments/stripe";
+import { syncFarmPayoutReady } from "@/server/services/payments/connect";
+import { constructWebhookEvent } from "@/server/services/payments/stripe";
 
 /** Stripe webhook: checkout completion/expiry and Connect onboarding status. */
 export async function POST(req: Request) {
@@ -35,8 +33,8 @@ export async function POST(req: Request) {
       break;
     }
     case "account.updated": {
-      const a = event.data.object;
-      await db.update(farms).set({ stripeOnboarded: isPayoutReady(a) }).where(eq(farms.stripeAccountId, a.id));
+      // v1 snapshot event (still sent for v2 accounts): re-read readiness through Accounts v2
+      await syncFarmPayoutReady(event.data.object.id);
       break;
     }
   }
