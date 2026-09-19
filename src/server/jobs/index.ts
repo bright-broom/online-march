@@ -12,7 +12,7 @@ import { emailTemplates } from "@/server/services/email/templates";
 import { features } from "@/lib/env";
 import { sendEmail } from "@/server/services/email";
 import { notify } from "@/server/services/notify";
-import { expireUnpaidOrder, transitionFarmOrder } from "@/server/services/orders";
+import { expireUnpaidOrder, markOrderPaid, transitionFarmOrder } from "@/server/services/orders";
 import { fetchTrackingStatus } from "@/server/services/shipping/tracking";
 
 /**
@@ -28,13 +28,40 @@ const DAY = 86_400_000;
 export const jobs = {
   "cancel-unpaid": {
     label: "未入金注文の自動キャンセル",
-    description: `決済が${shippingPolicy.pendingPaymentTtlMinutes}分以内に完了しない注文をキャンセルし在庫を戻します`,
+    description: `決済が${shippingPolicy.pendingPaymentTtlMinutes}分以内に完了しない注文をキャンセルし在庫を戻します（コンビニ払いの入金待ちは最大${shippingPolicy.asyncPaymentTtlDays}日待機）`,
     schedule: "30分ごと",
     async run(now) {
       const cutoff = new Date(now.getTime() - shippingPolicy.pendingPaymentTtlMinutes * 60_000);
-      const stale = await db.select({ id: orders.id }).from(orders).where(and(eq(orders.status, "pending_payment"), lt(orders.createdAt, cutoff)));
-      for (const o of stale) await expireUnpaidOrder(o.id, now);
-      return { cancelled: stale.length };
+      const asyncCutoff = now.getTime() - shippingPolicy.asyncPaymentTtlDays * DAY;
+      const stale = await db
+        .select({ id: orders.id, sessionId: orders.stripeSessionId, createdAt: orders.createdAt })
+        .from(orders)
+        .where(and(eq(orders.status, "pending_payment"), lt(orders.createdAt, cutoff)));
+      let cancelled = 0, recovered = 0, awaiting = 0, failed = 0;
+      for (const o of stale) {
+        try {
+          // Ask Stripe before cancelling: the session may be paid (missed webhook) or awaiting a konbini payment.
+          if (features.stripe && o.sessionId) {
+            const { resolveStaleCheckout } = await import("@/server/services/payments/stripe");
+            const r = await resolveStaleCheckout(o.sessionId);
+            if (r.kind === "paid") {
+              await markOrderPaid(o.id, { paymentIntentId: r.paymentIntentId, sessionId: o.sessionId, now });
+              recovered++;
+              continue;
+            }
+            if (r.kind === "awaiting_async" && o.createdAt.getTime() > asyncCutoff) {
+              awaiting++;
+              continue;
+            }
+          }
+          await expireUnpaidOrder(o.id, now);
+          cancelled++;
+        } catch (e) {
+          console.error("[cancel-unpaid]", o.id, e);
+          failed++;
+        }
+      }
+      return { cancelled, recovered, awaiting, failed };
     },
   },
 

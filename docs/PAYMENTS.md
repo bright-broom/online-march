@@ -51,3 +51,18 @@ success ページでも session を確認して `markOrderPaid` を呼ぶ（webh
 - 精算締め後の返金は **翌月の精算で自動相殺**（clawback）：`close-payouts` が「精算済み（payoutId あり）かつ返金済み・未相殺」の
   farm_orders の `payoutAmount` を差し引き、`payouts.refundAdjustment` に記録、`farm_orders.clawbackPayoutId` で二重控除を防ぐ。
   差引後が最低振込額未満（マイナス含む）なら全額翌月へ繰越。
+
+## 安全性（二重処理・非同期決済）
+
+- **Idempotency key**: Checkout Session / クーポン（`orderId`）、返金（`order:` / `farm-order:`）、農家への送金（`payoutId`）。
+  リトライや DB 書込失敗後の再実行で二重返金・二重送金にならない。
+- **コンビニ払い等の非同期決済**: 支払い番号発行後は `checkout.session.completed`（payment_status=unpaid）→ 入金で
+  `async_payment_succeeded`。`cancel-unpaid` は TTL 経過注文を即キャンセルせず `resolveStaleCheckout` で Stripe に確認する:
+  open → Session を expire してからキャンセル（期限後に払えないように）／ paid → webhook 取りこぼしとして `markOrderPaid` で回復／
+  入金待ち → `shippingPolicy.asyncPaymentTtlDays`（7日）まで待機。
+
+## 税（消費税）と Stripe Tax
+
+売買契約は購入者と各生産者の間で成立し（利用規約 第3条）、運営は代金の収納代行。価格はすべて **税込（内税）** で農家が設定する。
+商品の消費税の納税義務者は各生産者（多くは免税事業者）であり、運営が売り手として税を計算・上乗せする Stripe Tax（`automatic_tax`）は
+このモデルでは使わない。運営が納める消費税は手数料収入（農家向け役務）分のみ。

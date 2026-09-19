@@ -50,7 +50,7 @@ export async function refundOrder(data: { orderId: string; farmOrderId?: string 
     if (!features.stripe) throw new ActionError("Stripe が未設定のため返金できません。環境変数を確認してください");
     const { refundPayment } = await import("@/server/services/payments/stripe");
     // whole order: omit amount → Stripe refunds the remaining balance
-    await refundPayment(order.stripePaymentIntentId!, data.farmOrderId ? amount : undefined);
+    await refundPayment(order.stripePaymentIntentId!, data.farmOrderId ? amount : undefined, data.farmOrderId ? `farm-order:${data.farmOrderId}` : `order:${order.id}`);
   }
 
   const now = new Date();

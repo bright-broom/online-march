@@ -461,7 +461,7 @@ export async function cancelOrderByCustomer(orderId: string, userId: string, now
   }
   if (order.status === "paid" && order.paymentProvider === "stripe" && order.stripePaymentIntentId) {
     const { refundPayment } = await import("./payments/stripe");
-    await refundPayment(order.stripePaymentIntentId);
+    await refundPayment(order.stripePaymentIntentId, undefined, `order:${order.id}`);
     await db.update(orders).set({ status: "refunded" }).where(eq(orders.id, orderId));
   }
 }

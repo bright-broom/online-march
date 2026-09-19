@@ -45,22 +45,54 @@ export async function createCheckoutSession(p: {
   }
   let discounts: Stripe.Checkout.SessionCreateParams.Discount[] | undefined;
   if (p.discountTotal > 0) {
-    const coupon = await s.coupons.create({ amount_off: p.discountTotal, currency: "jpy", duration: "once", name: "クーポン割引" });
+    const coupon = await s.coupons.create(
+      { amount_off: p.discountTotal, currency: "jpy", duration: "once", max_redemptions: 1, name: "クーポン割引" },
+      { idempotencyKey: `checkout-coupon:${p.orderId}` },
+    );
     discounts = [{ coupon: coupon.id }];
   }
-  return s.checkout.sessions.create({
-    mode: "payment",
-    customer_email: p.email,
-    line_items: lineItems,
-    discounts,
-    locale: "ja",
-    client_reference_id: p.orderId,
-    metadata: { orderId: p.orderId, orderCode: p.orderCode },
-    payment_intent_data: { transfer_group: p.orderCode, metadata: { orderId: p.orderId } },
-    success_url: `${siteUrl}${routes.checkoutSuccess}?order=${p.orderId}&session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${siteUrl}${routes.cart}?canceled=1`,
-    expires_at: Math.floor(Date.now() / 1000) + 60 * 60,
-  });
+  return s.checkout.sessions.create(
+    {
+      mode: "payment",
+      customer_email: p.email,
+      line_items: lineItems,
+      discounts,
+      locale: "ja",
+      client_reference_id: p.orderId,
+      metadata: { orderId: p.orderId, orderCode: p.orderCode },
+      payment_intent_data: { transfer_group: p.orderCode, metadata: { orderId: p.orderId } },
+      success_url: `${siteUrl}${routes.checkoutSuccess}?order=${p.orderId}&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${siteUrl}${routes.cart}?canceled=1`,
+      expires_at: Math.floor(Date.now() / 1000) + 60 * 60,
+    },
+    { idempotencyKey: `checkout-session:${p.orderId}` },
+  );
+}
+
+export type StaleCheckoutOutcome =
+  | { kind: "paid"; paymentIntentId: string | null }
+  /** Voucher issued (コンビニ払い等) — money not received yet; the async_payment_* webhook settles it. */
+  | { kind: "awaiting_async" }
+  | { kind: "expired" };
+
+/**
+ * Decide the fate of an order whose checkout TTL passed. Open sessions are expired first so the
+ * customer cannot pay after we cancel; a session that was paid but whose webhook we missed is recovered.
+ */
+export async function resolveStaleCheckout(sessionId: string): Promise<StaleCheckoutOutcome> {
+  const s = getStripe();
+  let session = await s.checkout.sessions.retrieve(sessionId);
+  if (session.status === "open") {
+    try {
+      session = await s.checkout.sessions.expire(sessionId);
+    } catch {
+      session = await s.checkout.sessions.retrieve(sessionId); // completed in the meantime
+    }
+  }
+  if (session.status !== "complete") return { kind: "expired" };
+  if (session.payment_status === "unpaid") return { kind: "awaiting_async" };
+  const pi = session.payment_intent;
+  return { kind: "paid", paymentIntentId: typeof pi === "string" ? pi : (pi?.id ?? null) };
 }
 
 /**
@@ -90,8 +122,9 @@ export async function fetchPayoutReady(accountId: string) {
   return isPayoutReady(await getStripe().accounts.retrieve(accountId));
 }
 
-export async function refundPayment(paymentIntentId: string, amount?: number) {
-  return getStripe().refunds.create({ payment_intent: paymentIntentId, amount });
+/** `key` identifies the business operation (e.g. order / farm order) so a retried request never refunds twice. */
+export async function refundPayment(paymentIntentId: string, amount: number | undefined, key: string) {
+  return getStripe().refunds.create({ payment_intent: paymentIntentId, amount }, { idempotencyKey: `refund:${key}` });
 }
 
 /** Connect onboarding for a farm (Express account). */
@@ -124,5 +157,5 @@ export async function transferToFarm(p: { accountId: string; amount: number; pay
     destination: p.accountId,
     description: p.description,
     metadata: { payoutId: p.payoutId },
-  });
+  }, { idempotencyKey: `payout-transfer:${p.payoutId}` }); // a retry after a failed DB write must not pay twice
 }

@@ -142,6 +142,8 @@ export const shippingPolicy = {
   desiredDateWindowDays: 21,
   /** 未入金注文の自動キャンセル（分） */
   pendingPaymentTtlMinutes: 60,
+  /** コンビニ払い等（支払い番号発行済み・入金待ち）を待つ上限（日）。Stripe の既定期限3日＋余裕 */
+  asyncPaymentTtlDays: 7,
   /** 出荷期限の前日にリマインド */
   shipByReminderHoursBefore: 24,
   /** 追跡API非対応時: 出荷後 N 日で自動「配達完了」 */
