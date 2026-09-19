@@ -146,7 +146,7 @@ export function JoinForm({ defaultRepresentative }: { defaultRepresentative: str
               <SelectTrigger id="prefecture" className="h-11 w-full" aria-invalid={!!fe?.prefecture?.length}>
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent position="popper" className="max-h-72">
+              <SelectContent className="max-h-[min(20rem,var(--radix-select-content-available-height))]">
                 {prefectures.map((p) => (
                   <SelectItem key={p} value={p}>
                     {p}

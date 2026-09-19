@@ -61,8 +61,11 @@ function SelectTrigger({
 function SelectContent({
   className,
   children,
-  position = "item-aligned",
-  align = "center",
+  // Project default: "popper" (opens below the trigger, height clamped to the viewport, scrolls).
+  // "item-aligned" overlays the trigger and re-positions per selected item, which behaves poorly on
+  // phones with long lists (47 prefectures) and conflicts with max-h-* overrides. See docs/DESIGN.md §5.
+  position = "popper",
+  align = "start",
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Content>) {
   return (

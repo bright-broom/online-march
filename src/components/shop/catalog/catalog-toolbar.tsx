@@ -89,7 +89,7 @@ export function CatalogToolbar({ total, facets }: { total: number; facets: Catal
             <SelectTrigger aria-label="並び替え" className="bg-background h-10 rounded-full px-4">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent align="end" position="popper">
+            <SelectContent align="end">
               {(Object.keys(productSortOptions) as ProductSort[]).map((k) => (
                 <SelectItem key={k} value={k}>
                   {productSortOptions[k].label}

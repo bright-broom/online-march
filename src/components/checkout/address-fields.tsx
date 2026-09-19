@@ -65,7 +65,7 @@ export function AddressFields({
             <SelectTrigger id={id("prefecture")} className="w-full" aria-invalid={!!errors.prefecture || undefined}>
               <SelectValue placeholder="選択してください" />
             </SelectTrigger>
-            <SelectContent className="max-h-72">
+            <SelectContent className="max-h-[min(20rem,var(--radix-select-content-available-height))]">
               {prefectures.map((p) => (
                 <SelectItem key={p} value={p}>{p}</SelectItem>
               ))}

@@ -45,10 +45,11 @@
 
 - プリミティブは **shadcn/ui のみ**（`src/components/ui`）。アイコンは **lucide-react のみ**。
 - 状態表示は `<StatusBadge kind status />`、空状態は `<EmptyState />`、金額 `<Price />`、評価 `<RatingStars />`。
+- プルダウン（Select）は既定 `position="popper"`（トリガー直下に開き、画面内に収まる高さでスクロール）。長いリストは `max-h-[min(20rem,var(--radix-select-content-available-height))]`。`item-aligned` はスマホで位置が飛ぶため使わない。
 - グラフは `@/components/charts` から（lazy）。系列色は `ChartColor` トークン名で指定。
 - フォーム: shadcn `Field*` 系 + Server Action + `useActionState`、送信は `<SubmitButton>`、結果は `sonner` の toast。
 - 画像: `next/image`（`sizes` 必須）。ファーストビューのみ `priority`/`preload`、他は既定の lazy。
-- モーション: `animate-fade-up`、hover で画像 `scale-[1.03]`（`duration-700`）。`motion` ライブラリは Hero 等の限定用途。
+- モーション: CSS のみ（`animate-fade-up`、hover で画像 `scale-[1.03]` `duration-700`）。JS アニメーションライブラリは入れない。
   `prefers-reduced-motion` を尊重（`motion-safe:` 接頭辞）。
 
 ## 6. Voice & Tone（文言）

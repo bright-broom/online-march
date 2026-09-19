@@ -19,7 +19,7 @@ export function PrefectureSelect({ className, id }: { className?: string; id?: s
         <MapPin className="text-primary size-3.5" />
         <SelectValue />
       </SelectTrigger>
-      <SelectContent position="popper" className="max-h-80">
+      <SelectContent className="max-h-[min(20rem,var(--radix-select-content-available-height))]">
         {Object.entries(shippingZones).map(([key, zone]) => (
           <SelectGroup key={key}>
             <SelectLabel>{zone.label}</SelectLabel>
