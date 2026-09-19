@@ -144,7 +144,7 @@ export async function refundPayment(paymentIntentId: string, amount: number | un
 /**
  * Connect onboarding for a farm (Accounts v2). The farm is a recipient: it only receives transfers from the
  * platform balance, has the Express Dashboard, and the platform pays Stripe fees and owns negative balances.
- * Once onboarded, the link opens the account-update flow instead (bank account / identity changes).
+ * Once onboarded, the link opens the farm's Express Dashboard instead (bank account / identity changes, payouts).
  */
 export async function createConnectOnboardingLink(p: { farmId: string; accountId?: string | null; onboarded: boolean; email: string; farmName: string }) {
   const s = getStripe();
@@ -168,14 +168,18 @@ export async function createConnectOnboardingLink(p: { farmId: string; accountId
         { idempotencyKey: `connect-account:${p.farmId}` }, // a double-click must not create two accounts
       )
     ).id;
-  const flow = {
-    configurations: ["recipient" as const],
-    refresh_url: `${siteUrl}${routes.farmer.payouts}?stripe=refresh`,
-    return_url: `${siteUrl}${routes.farmer.stripeReturn}`,
-  };
+  // Express accounts cannot use account_update links: once onboarded, bank / identity changes happen in the Express Dashboard.
+  if (p.accountId && p.onboarded) return { accountId, url: (await s.accounts.createLoginLink(accountId)).url };
   const link = await s.v2.core.accountLinks.create({
     account: accountId,
-    use_case: p.accountId && p.onboarded ? { type: "account_update", account_update: flow } : { type: "account_onboarding", account_onboarding: flow },
+    use_case: {
+      type: "account_onboarding",
+      account_onboarding: {
+        configurations: ["recipient"],
+        refresh_url: `${siteUrl}${routes.farmer.payouts}?stripe=refresh`,
+        return_url: `${siteUrl}${routes.farmer.stripeReturn}`,
+      },
+    },
   });
   return { accountId, url: link.url };
 }

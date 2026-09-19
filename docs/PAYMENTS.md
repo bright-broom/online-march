@@ -55,7 +55,8 @@ success ページでも session を確認して `markOrderPaid` を呼ぶ（webh
   - `identity.country: "jp"`、`defaults.currency: "jpy"`、作成は `connect-account:<farmId>` で冪等
 - 送金可否 = `configuration.recipient.capabilities.stripe_balance.stripe_transfers.status === "active"`（`isPayoutReady`）。
   v1 の `capabilities.transfers` / `payouts_enabled` は使わない。v1 で作ったアカウントも同じ acct_ ID で v2 取得できる。
-- リンクは v2 Account Links。未完了は `account_onboarding`、登録済みは「登録内容を確認・変更」で `account_update`。
+- 未完了は v2 Account Links（`account_onboarding`）。登録済みの「登録内容を確認・変更」は Express ダッシュボードの
+  ログインリンク（`accounts.createLoginLink`）。Express アカウントには `account_update` リンクを作れない。
 未登録の農家の精算は `pending` のまま → 運営が /admin/payouts で銀行振込し「振込済み」にする運用も可。
 
 ## 返金・キャンセル
