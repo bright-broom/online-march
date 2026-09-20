@@ -6,7 +6,7 @@ import { nextCookies } from "better-auth/next-js";
 import { isDemoEmail } from "@/config/demo";
 import { siteConfig } from "@/config/site";
 import { db } from "@/db";
-import { account, session, user, verification } from "@/db/schema";
+import { account, rateLimit, session, user, verification } from "@/db/schema";
 import { env, features, siteUrl } from "@/lib/env";
 
 const vercelOrigins = [process.env.VERCEL_URL, process.env.VERCEL_BRANCH_URL, process.env.VERCEL_PROJECT_PRODUCTION_URL]
@@ -26,7 +26,25 @@ export const auth = betterAuth({
     const devOrigin = isDev && origin && LOCAL_ORIGIN.test(origin) ? [origin] : [];
     return [siteUrl, ...vercelOrigins, ...devOrigin];
   },
-  database: drizzleAdapter(db, { provider: "pg", schema: { user, session, account, verification } }),
+  database: drizzleAdapter(db, { provider: "pg", schema: { user, session, account, verification, rateLimit } }),
+  /**
+   * Brute-force protection. The default memory store is useless on Vercel (every function instance keeps its own
+   * map), so counters live in Postgres. Limits are per IP+path: generous for normal browsing, tight on the
+   * endpoints that guess credentials.
+   */
+  rateLimit: {
+    enabled: true,
+    storage: "database",
+    modelName: "rateLimit",
+    window: 60,
+    max: 120,
+    customRules: {
+      "/sign-in/email": { window: 300, max: 10 },
+      "/sign-up/email": { window: 3600, max: 5 },
+      "/forget-password": { window: 3600, max: 5 },
+      "/reset-password": { window: 3600, max: 5 },
+    },
+  },
   emailAndPassword: { enabled: true, minPasswordLength: 8, autoSignIn: true },
   user: {
     additionalFields: {

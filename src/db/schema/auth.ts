@@ -1,6 +1,6 @@
 // Better Auth core tables. Field names must match Better Auth expectations.
 // Extra user fields (role, phone) are declared in src/server/auth/auth.ts `additionalFields`.
-import { boolean, index, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { bigint, boolean, index, integer, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
 export const userRole = pgEnum("user_role", ["customer", "farmer", "admin"]);
 
@@ -70,6 +70,21 @@ export const verification = pgTable(
     ...timestamps,
   },
   (t) => [index("verification_identifier_idx").on(t.identifier)],
+);
+
+/**
+ * Better Auth rate-limit counters. Serverless functions do not share memory, so the limiter needs a store
+ * every instance can see; field names are fixed by Better Auth ("key", "count", "lastRequest").
+ */
+export const rateLimit = pgTable(
+  "rate_limit",
+  {
+    id: text("id").primaryKey(),
+    key: text("key").notNull(),
+    count: integer("count").notNull().default(0),
+    lastRequest: bigint("last_request", { mode: "number" }).notNull(),
+  },
+  (t) => [index("rate_limit_key_idx").on(t.key)],
 );
 
 export type User = typeof user.$inferSelect;

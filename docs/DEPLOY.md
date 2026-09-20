@@ -91,7 +91,21 @@ Neon の Vercel 連携ではリージョンを選べないことがある。そ�
 連結 = `account.updated` / v2 = `v2.core.account[configuration.recipient].capability_status_updated`,
 `v2.core.account[requirements].updated`。**環境変数を入れたら再デプロイする**（反映は再デプロイ時）。
 
-### 2. デモを閉じる
+### 2. ログイン試行の制限（実装済み・確認事項）
+
+Better Auth のレートリミットを `rate_limit` テーブル（Postgres）で有効化済み。サーバーレスはインスタンスごとに
+メモリが分かれるため、DB ストレージでないと意味がない。既定は IP+パスごと。
+
+| エンドポイント | 制限 |
+| --- | --- |
+| `/sign-in/email` | 5分で10回 |
+| `/sign-up/email` / `/forget-password` / `/reset-password` | 1時間で5回 |
+| その他の auth API | 1分で120回 |
+
+超過すると 429（`X-Retry-After` 秒）。カウンターは `rate_limit` に入るので、公開前にマイグレーション
+（`0004_rate_limit`）が本番に当たっていることを確認する。
+
+### 3. デモを閉じる
 
 - `DEMO_MODE=false`（ログイン画面のデモアカウント表示が消える）。
 - デモアカウントは `@demo.awaji` ドメイン。`DEMO_MODE=false` なら**サーバー側でログインを拒否**する
@@ -99,7 +113,7 @@ Neon の Vercel 連携ではリージョンを選べないことがある。そ�
 - 本番運用では seed を流さず空の DB で始めるのが基本。デモデータ入りの DB をそのまま使う場合は
   `@demo.awaji` のユーザーと farms/orders を削除する。
 
-### 3. その他
+### 4. その他
 
 - [ ] `config/site.ts` の運営者情報・特商法表記を実データに（代表者名・問い合わせ先・電話番号）
 - [ ] `config/content.ts` legal の規約・プライバシーポリシーを正式版に
