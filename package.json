@@ -15,7 +15,8 @@
     "db:studio": "drizzle-kit studio",
     "test": "vitest run",
     "preview:prod": "next build && next start -p 3200",
-    "deps:verify": "npx -y npm@11.6.2 ci --dry-run --ignore-scripts"
+    "deps:verify": "npx -y npm@11.6.2 ci --dry-run --ignore-scripts",
+    "db:restore": "node --import tsx scripts/db-restore.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8",

@@ -43,6 +43,25 @@ npm run dev        # http://localhost:3000
 8. デプロイ補助: `bash scripts/deploy-vercel.sh` — 環境変数/Neon/Blob の確認・作成、seed、push、ビルドログ取得、
    スモークテストまで実行し、結果を `.deploy/run.log`・`.deploy/build.log` に保存する。
 
+## Runbook: バックアップからの復元
+
+`backup-db`（docs/SHIPPING.md §4）が非公開 Blob に置いた dump を書き戻す。**全テーブルを置き換える破壊的操作**。
+
+```bash
+# 1. 影響範囲の確認（--yes なしは表示だけ）
+DATABASE_URL=… npm run db:restore -- --blob latest
+# 2. 本番を止めてから実行（/admin/settings のメンテナンスモード）
+DATABASE_URL=… npm run db:restore -- --blob latest --yes
+# ローカルに落とした dump から戻す場合
+DATABASE_URL=… npm run db:restore -- --file ./backup.json.gz --yes
+```
+
+- 復元は1トランザクション。途中で失敗したら**何も変わらない**（壊れた dump で現状を失わない）。
+- 行は外部キーの依存順に入る。順序はスキーマから毎回導出するので、テーブルを足しても手を入れる必要はない。
+- **年に1回は避難訓練をする**。Neon のブランチに対して実施すれば本番に触れずに確認できる:
+  `neon branches create --name restore-drill` → そのブランチへ復元 → 件数と代表行を本番と突き合わせ → `neon branches delete restore-drill`。
+  2026-09-20 実施: 22テーブル・3,440行・配列列・jsonb 列まで一致を確認。
+
 ## Runbook: DB のリージョン移設（実施済み・再実施の手順）
 
 Neon の Vercel 連携ではリージョンを選べないことがある。その場合は Neon コンソールで作る。
