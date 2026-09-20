@@ -59,6 +59,8 @@ npm run dev        # http://localhost:3000
 - **開発では CSP を付けない**。React の開発ビルドは `eval` を使い、計測スクリプトも外部から読むため。
 - 外部ドメインを増やすとき（決済の埋め込み、フォント、計測）は `csp` の該当ディレクティブに追記し、
   `src/lib/__tests__/security-headers.test.ts` を更新する。
+- **Vercel Web Analytics / Speed Insights は現在プロジェクト側で無効**（本番でスクリプトが読み込まれていない）。
+  有効化したあとブラウザのコンソールに CSP 違反が出た場合は、`script-src` に `https://va.vercel-scripts.com` を追加する。
 
 ## Runbook: バックアップからの復元
 
