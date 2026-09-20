@@ -65,3 +65,13 @@ export async function updateProduct(_prev: unknown, formData: FormData): Promise
 
 - 純関数（lib/shipping, lib/dates, fees）はユニットテスト対象（vitest 推奨）。
 - services は PGlite(memory://) で統合テスト可能（`seed()` を使う）。
+
+## 認可（ガード + 所有者チェック）
+
+`assertUser/assertRole/assertFarm` は **誰が呼んだか** しか決めない。ID を受け取るアクションは、その行が呼び出し元の
+ものであることを **クエリの where で** 確かめる（`eq(products.farmId, farm.id)` / `eq(orders.userId, me.id)` など）。
+入力に含まれる**他テーブルの ID**（`farmOrderId` のような参照）も、今は画面に出していなくても検証する。
+
+回帰テストは `src/server/actions/__tests__/authorization.test.ts`。セッションだけを差し替えて実アクションを呼び、
+他人の商品・注文・住所・レビュー・メッセージを対象にして「失敗すること」と「データが変わらないこと」を確認する。
+アクションを追加したら、ここにも1ケース足す。

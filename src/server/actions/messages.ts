@@ -36,7 +36,20 @@ export async function sendMessage(input: { farmId: string; customerId?: string; 
     } else {
       throw new ActionError("このスレッドには送信できません");
     }
-    const [row] = await db.insert(messages).values({ farmId: farm.id, customerId, senderId: me.id, farmOrderId: data.farmOrderId, body: data.body }).returning({ id: messages.id });
+    // The attached order must belong to this thread (this farm + this customer); an id from anywhere else
+    // would later surface somebody else's order in whichever view renders the reference.
+    let farmOrderId: string | undefined;
+    if (data.farmOrderId) {
+      const [ownThread] = await db
+        .select({ id: farmOrders.id })
+        .from(farmOrders)
+        .innerJoin(orders, eq(orders.id, farmOrders.orderId))
+        .where(and(eq(farmOrders.id, data.farmOrderId), eq(farmOrders.farmId, farm.id), eq(orders.userId, customerId)))
+        .limit(1);
+      if (!ownThread) throw new ActionError("この注文にひもづくメッセージは送信できません");
+      farmOrderId = ownThread.id;
+    }
+    const [row] = await db.insert(messages).values({ farmId: farm.id, customerId, senderId: me.id, farmOrderId, body: data.body }).returning({ id: messages.id });
     const toFarmer = me.id === customerId;
     await notify({
       userId: toFarmer ? farm.ownerId : customerId,
