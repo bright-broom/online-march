@@ -1,6 +1,6 @@
 import "server-only";
-import { like, sql } from "drizzle-orm";
-import { demoEmailDomain } from "@/config/demo";
+import { sql } from "drizzle-orm";
+import { demoEmailDomain, demoEmailDomains } from "@/config/demo";
 import { siteConfig } from "@/config/site";
 import { db } from "@/db";
 import { user } from "@/db/schema";
@@ -25,7 +25,7 @@ export async function getGoLiveChecks(): Promise<GoLiveCheck[]> {
   const [demo] = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(user)
-    .where(like(user.email, `%@${demoEmailDomain}`));
+    .where(sql`lower(split_part(${user.email}, '@', 2)) = any(${sql.param(demoEmailDomains.map(String))})`);
   const demoAccounts = demo?.n ?? 0;
   const placeholders = [
     siteConfig.company.representative.includes("要設定") && "代表者名",

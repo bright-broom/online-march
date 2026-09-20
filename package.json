@@ -16,7 +16,9 @@
     "test": "vitest run",
     "preview:prod": "next build && next start -p 3200",
     "deps:verify": "npx -y npm@11.6.2 ci --dry-run --ignore-scripts",
-    "db:restore": "node --import tsx scripts/db-restore.ts"
+    "db:restore": "node --import tsx scripts/db-restore.ts",
+    "demo:purge": "node --import tsx scripts/demo-purge.ts",
+    "admin:promote": "node --import tsx scripts/admin-promote.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8",

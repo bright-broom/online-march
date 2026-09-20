@@ -1,8 +1,16 @@
 /** Demo accounts created by the seed. Shown on /login only when features.demo is true. */
 export const demoPassword = "awaji-demo-2026";
-/** Seeded accounts all live on this domain, so they can be spotted (and blocked) without a list lookup. */
+/**
+ * Domains that can only ever hold seeded accounts: the demo logins plus the RFC 2606 documentation
+ * domains the seeded customers use. Nobody real can receive mail at these, so they are safe to block
+ * after go-live and safe to delete when the demo data is purged.
+ */
 export const demoEmailDomain = "demo.awaji";
-export const isDemoEmail = (email: string) => email.trim().toLowerCase().endsWith(`@${demoEmailDomain}`);
+export const demoEmailDomains = [demoEmailDomain, "example.jp", "example.com", "example.org", "example.net"] as const;
+export const isDemoEmail = (email: string) => {
+  const at = email.trim().toLowerCase().lastIndexOf("@");
+  return at !== -1 && demoEmailDomains.some((d) => email.trim().toLowerCase().slice(at + 1) === d);
+};
 
 export const demoAccounts = [
   { role: "customer", email: "customer@demo.awaji", name: "山田 花子", label: "購入者" },

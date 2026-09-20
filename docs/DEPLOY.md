@@ -127,11 +127,24 @@ Better Auth のレートリミットを `rate_limit` テーブル（Postgres）�
 
 ### 3. デモを閉じる
 
-- `DEMO_MODE=false`（ログイン画面のデモアカウント表示が消える）。
-- デモアカウントは `@demo.awaji` ドメイン。`DEMO_MODE=false` なら**サーバー側でログインを拒否**する
-  （`server/auth/auth.ts` の before フック。パスワードがリポジトリにあるため UI を隠すだけでは不十分）。
-- 本番運用では seed を流さず空の DB で始めるのが基本。デモデータ入りの DB をそのまま使う場合は
-  `@demo.awaji` のユーザーと farms/orders を削除する。
+1. `DEMO_MODE=false`（ログイン画面のデモアカウント表示が消える）。
+2. デモ／説明用ドメイン（`@demo.awaji` と RFC 2606 の `example.jp` など。`src/config/demo.ts`）のアカウントは
+   **サーバー側でログインを拒否**する（`server/auth/auth.ts` の before フック。パスワードがリポジトリにあるため
+   画面を隠すだけでは不十分）。
+3. デモデータを消す。実データが入ったあとに実行しないよう、デモ以外のアカウントが1件でもあれば中止する:
+
+```bash
+DATABASE_URL=… npm run demo:purge          # 何を消すか表示するだけ
+DATABASE_URL=… npm run demo:purge -- --yes # 実行（--force でデモ以外があっても強行）
+```
+
+4. 最初の運営アカウントを作る。サイトで新規登録したあと、役割だけを付与する（パスワードは扱わない）:
+
+```bash
+DATABASE_URL=… npm run admin:promote -- --email owner@example.jp
+```
+
+5. 運営画面 /admin/settings の「本番公開チェック」が「準備完了」になることを確認。
 
 ### 4. その他
 
