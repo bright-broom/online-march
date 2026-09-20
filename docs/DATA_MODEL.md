@@ -30,6 +30,7 @@ platform_settings (key/value)               job_runs (automation log)
 | `order_items` | 購入時点の名称・価格スナップショット |
 | `shipment_events` | 追跡タイムライン（source: system/farmer/cron/carrier） |
 | `payouts` | 月次精算。`scheduledFor`=翌月15日 |
+| 在庫（`product_variants.stock`） | 予約は**条件付き更新**（`stock >= 数量` の行だけを減らす）で注文トランザクション内。同時注文は Postgres の行ロックで直列化され、売り越し・在庫マイナスは起きない。キャンセル・返金で戻す。回帰テスト `services/__tests__/stock-race.test.ts` |
 | `payouts.transferError` / `transferAttemptedAt` | 自動送金が通らなかった理由と試行時刻（送金成功で null に戻す）。/admin/payouts に表示 |
 | `payouts.refundAdjustment` / `farm_orders.clawbackPayoutId` | 精算済み注文の返金を翌月精算で相殺した額と、相殺した精算の参照（二重控除防止） |
 | `farm_orders.refundedAt/refundAmount` | 返金の事実（金額・日時）。返金は `services/refunds.ts#refundOrder` のみ。タイムラインに `refund` イベント |
