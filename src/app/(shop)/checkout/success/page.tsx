@@ -7,6 +7,7 @@ import { SuccessEffects } from "@/components/checkout/success-effects";
 import { EmptyState } from "@/components/common/empty-state";
 import { Price } from "@/components/common/price";
 import { StatusBadge } from "@/components/common/status-badge";
+import { PaymentPendingCard } from "@/components/mypage/payment-pending-card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
@@ -53,6 +54,8 @@ async function SuccessContent({ searchParams }: { searchParams: PageProps<"/chec
   }
 
   const pending = order.status === "pending_payment";
+  // コンビニ払い等は「確認中」ではなく「これから払う」状態。案内を出し分ける
+  const awaitingPayment = pending && Boolean(order.paymentMethod);
   const slot = order.deliveryTimeSlot as DeliveryTimeSlot | null;
 
   return (
@@ -64,10 +67,16 @@ async function SuccessContent({ searchParams }: { searchParams: PageProps<"/chec
         </span>
         <p className="eyebrow">Thank you</p>
         <h1 className="heading-display text-3xl sm:text-4xl">
-          {pending ? "お支払いを確認しています" : "ご注文ありがとうございます"}
+          {awaitingPayment ? "お支払い番号を発行しました" : pending ? "お支払いを確認しています" : "ご注文ありがとうございます"}
         </h1>
         <p className="text-muted-foreground mx-auto max-w-prose text-sm leading-relaxed">
-          {pending ? (
+          {awaitingPayment ? (
+            <>
+              お支払いが確認できしだい、生産者が準備を始めます。
+              <br className="hidden sm:inline" />
+              お支払い方法のご案内を <span className="text-foreground font-medium">{order.email}</span> にお送りしました。
+            </>
+          ) : pending ? (
             <span className="inline-flex items-center gap-2"><Spinner />決済の完了を確認中です。このままお待ちください。</span>
           ) : (
             <>
@@ -88,6 +97,10 @@ async function SuccessContent({ searchParams }: { searchParams: PageProps<"/chec
           </span>
         </div>
       </header>
+
+      {awaitingPayment && (
+        <PaymentPendingCard method={order.paymentMethod} voucherUrl={order.paymentVoucherUrl} dueAt={order.paymentDueAt} total={order.total} />
+      )}
 
       <section className="space-y-3">
         <h2 className="heading-display text-lg">お届けの予定</h2>

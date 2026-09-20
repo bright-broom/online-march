@@ -29,6 +29,7 @@ import {
 } from "@/db/schema";
 import { tags } from "@/lib/cache-tags";
 import { toYmd, type YMD } from "@/lib/dates";
+import { formatDateTime } from "@/lib/format";
 import { orderCode } from "@/lib/ids";
 import { quoteShipment, scheduleDelivery, type DeliverySchedule, type ShipmentQuote } from "@/lib/shipping";
 import { ActionError } from "@/server/actions/_utils";
@@ -325,11 +326,23 @@ export async function createOrder(input: CreateOrderInput) {
 /* ───────────────────────── Payment ───────────────────────── */
 
 /** Idempotent: pending_payment → paid. Triggers notifications & counters. */
-export async function markOrderPaid(orderId: string, p: { paymentIntentId?: string | null; sessionId?: string | null; now: Date }) {
+export async function markOrderPaid(
+  orderId: string,
+  p: { paymentIntentId?: string | null; sessionId?: string | null; method?: string | null; now: Date },
+) {
   const result = await db.transaction(async (tx) => {
     const [order] = await tx
       .update(orders)
-      .set({ status: "paid", paidAt: p.now, stripePaymentIntentId: p.paymentIntentId ?? null, stripeSessionId: p.sessionId ?? undefined })
+      .set({
+        status: "paid",
+        paidAt: p.now,
+        stripePaymentIntentId: p.paymentIntentId ?? null,
+        stripeSessionId: p.sessionId ?? undefined,
+        paymentMethod: p.method ?? undefined,
+        // the payment slip is spent — stop offering it on the order page
+        paymentVoucherUrl: null,
+        paymentDueAt: null,
+      })
       .where(and(eq(orders.id, orderId), eq(orders.status, "pending_payment")))
       .returning();
     if (!order) return null;
@@ -378,6 +391,43 @@ export async function markOrderPaid(orderId: string, p: { paymentIntentId?: stri
     });
   }
   expireTags(tags.products, tags.analytics, ...fos.map((f) => tags.farmAnalytics(f.farmId)), ...items.map((i) => i.productId && tags.product(i.productId)));
+  return order;
+}
+
+/**
+ * コンビニ払い等で支払い番号だけ発行された状態。注文は pending_payment のまま入金を待つ。
+ * お客さまは番号を失くすと払えないので、番号ページと期限を注文に残し、メールでも送る。
+ * Webhook は再送されるため、記録できた1回だけ通知する。
+ */
+export async function recordAwaitingPayment(
+  orderId: string,
+  p: { paymentIntentId?: string | null; sessionId?: string | null; method: string | null; voucherUrl: string | null; dueAt: Date | null; now: Date },
+) {
+  const [order] = await db
+    .update(orders)
+    .set({
+      paymentMethod: p.method,
+      paymentVoucherUrl: p.voucherUrl,
+      paymentDueAt: p.dueAt,
+      stripePaymentIntentId: p.paymentIntentId ?? undefined,
+      stripeSessionId: p.sessionId ?? undefined,
+    })
+    .where(and(eq(orders.id, orderId), eq(orders.status, "pending_payment"), isNull(orders.paymentMethod)))
+    .returning();
+  if (!order) return null;
+
+  const customer = await db.query.user.findFirst({ where: eq(user.id, order.userId) });
+  await notify({
+    userId: order.userId,
+    type: "order",
+    title: "お支払い番号を発行しました",
+    body: `注文番号 ${order.code}｜お支払い期限 ${order.paymentDueAt ? formatDateTime(order.paymentDueAt) : "-"}`,
+    href: routes.mypage.order(order.id),
+    email: emailTemplates.paymentPending({
+      to: order.email, name: customer?.name ?? "お客", orderId: order.id, code: order.code,
+      total: order.total, method: p.method, voucherUrl: p.voucherUrl, dueAt: p.dueAt,
+    }),
+  });
   return order;
 }
 

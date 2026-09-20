@@ -117,7 +117,11 @@ Neon の Vercel 連携ではリージョンを選べないことがある。そ�
    手数料負担=プラットフォーム）。テスト環境の設定は本番に引き継がれない。
 3. 本番の **API キー**（`sk_live_…`）を `STRIPE_SECRET_KEY` に設定。
 4. 本番で **Webhook の送信先を3つ**作る（テスト環境と同じ構成）。URL・イベント・環境変数は下表。
-5. 本番の **Payment methods** でカード以外（コンビニ払い等）を使うなら有効化。
+5. 本番の [**決済手段**](https://dashboard.stripe.com/settings/payment_methods) で使うものを有効化する
+   （**PayPay** / コンビニ払い / Apple Pay / Google Pay など）。アプリ側は `payment_method_types` を
+   固定していないので、ここで ON にすれば次の決済から Checkout に出る（デプロイ不要）。
+   テスト環境（サンドボックス）でも同じページで有効化して、`4242…` のカードと合わせて動作確認できる。
+   PayPay はテスト環境では「PayPay のテスト画面」で支払い成功/失敗を選べる。
 6. Accounts v1 support は有効化しない（アプリは Accounts v2 で連結アカウントを作る。docs/PAYMENTS.md）。
 
 | 送信先 | イベントの送信元 | ペイロード | URL | 環境変数 |

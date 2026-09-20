@@ -1,6 +1,7 @@
 import "server-only";
 import Stripe from "stripe";
 import { feeConfig } from "@/config/fees";
+import { paymentConfig } from "@/config/payments";
 import { routes } from "@/config/nav";
 import { siteConfig } from "@/config/site";
 import { env, features, siteUrl } from "@/lib/env";
@@ -62,9 +63,13 @@ export async function createCheckoutSession(p: {
       client_reference_id: p.orderId,
       metadata: { orderId: p.orderId, orderCode: p.orderCode },
       payment_intent_data: { transfer_group: p.orderCode, metadata: { orderId: p.orderId } },
+      // payment_method_types は送らない: Stripe ダッシュボードで有効にした決済手段（カード / Apple Pay /
+      // Google Pay / PayPay / コンビニ払い …）が自動で出る。ここで固定すると、未有効化の手段を送った時点で
+      // Checkout 作成そのものが失敗し、全員が決済できなくなる。
+      payment_method_options: { konbini: { expires_after_days: paymentConfig.konbini.expiresAfterDays } },
       success_url: `${siteUrl}${routes.checkoutSuccess}?order=${p.orderId}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${siteUrl}${routes.cart}?canceled=1`,
-      expires_at: Math.floor(Date.now() / 1000) + 60 * 60,
+      expires_at: Math.floor(Date.now() / 1000) + paymentConfig.sessionTtlMinutes * 60,
     },
     { idempotencyKey: `checkout-session:${p.orderId}` },
   );
@@ -73,7 +78,7 @@ export async function createCheckoutSession(p: {
 export type StaleCheckoutOutcome =
   | { kind: "paid"; paymentIntentId: string | null }
   /** Voucher issued (コンビニ払い等) — money not received yet; the async_payment_* webhook settles it. */
-  | { kind: "awaiting_async" }
+  | { kind: "awaiting_async"; paymentIntentId: string | null }
   | { kind: "expired" };
 
 /**
@@ -90,10 +95,51 @@ export async function resolveStaleCheckout(sessionId: string): Promise<StaleChec
       session = await s.checkout.sessions.retrieve(sessionId); // completed in the meantime
     }
   }
-  if (session.status !== "complete") return { kind: "expired" };
-  if (session.payment_status === "unpaid") return { kind: "awaiting_async" };
   const pi = session.payment_intent;
-  return { kind: "paid", paymentIntentId: typeof pi === "string" ? pi : (pi?.id ?? null) };
+  const paymentIntentId = typeof pi === "string" ? pi : (pi?.id ?? null);
+  if (session.status !== "complete") return { kind: "expired" };
+  if (session.payment_status === "unpaid") return { kind: "awaiting_async", paymentIntentId };
+  return { kind: "paid", paymentIntentId };
+}
+
+export type PaymentDetails = {
+  /** Stripe payment method type: card / paypay / konbini … */
+  method: string | null;
+  /** コンビニ払いの支払い番号ページ（Stripe ホスト）。他の手段では null */
+  voucherUrl: string | null;
+  /** 支払い番号の有効期限 */
+  dueAt: Date | null;
+};
+
+/**
+ * Which method the customer actually used, and — for コンビニ払い — where their payment slip lives.
+ * The Checkout Session only lists what was *offered*, so the answer comes from the PaymentIntent.
+ */
+export async function fetchPaymentDetails(paymentIntentId: string): Promise<PaymentDetails> {
+  const pi = await getStripe().paymentIntents.retrieve(paymentIntentId, { expand: ["latest_charge", "payment_method"] });
+  const charge = pi.latest_charge as Stripe.Charge | null;
+  const pm = typeof pi.payment_method === "object" ? pi.payment_method : null;
+  const konbini = pi.next_action?.konbini_display_details;
+  return {
+    method: charge?.payment_method_details?.type ?? pm?.type ?? pi.payment_method_types[0] ?? null,
+    voucherUrl: konbini?.hosted_voucher_url ?? null,
+    dueAt: konbini?.expires_at ? new Date(konbini.expires_at * 1000) : null,
+  };
+}
+
+/**
+ * Give up on a payment we are still waiting for (コンビニ払いの入金待ちを打ち切るとき)。
+ * Cancelling the PaymentIntent invalidates the payment slip — without it the customer could still pay
+ * at the register after we cancelled the order and put the stock back.
+ */
+export async function cancelPaymentIntent(paymentIntentId: string) {
+  try {
+    await getStripe().paymentIntents.cancel(paymentIntentId);
+  } catch (e) {
+    // already succeeded / already cancelled — the caller re-reads the order state either way
+    if (e instanceof Stripe.errors.StripeInvalidRequestError) return;
+    throw e;
+  }
 }
 
 /**

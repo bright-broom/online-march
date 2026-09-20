@@ -32,11 +32,44 @@
 | 条件 | 挙動 |
 | --- | --- |
 | `STRIPE_SECRET_KEY` なし | デモ決済: 注文確定ボタンで即 `markOrderPaid`（provider=demo） |
-| あり | Stripe Checkout（カード / Apple Pay / Google Pay / コンビニ等は Dashboard の Payment methods で有効化）|
+| あり | Stripe Checkout（表示される決済手段は Dashboard の設定しだい。下記「決済手段」参照）|
+
+## 決済手段
+
+設定: `src/config/payments.ts`（案内する手段のラベルと性質。FAQ・決済ページ・領収書はここから生成）
+
+Checkout セッションでは **`payment_method_types` を送らない**（dynamic payment methods）。
+実際に表示されるのは [Stripe ダッシュボード → 決済手段](https://dashboard.stripe.com/settings/payment_methods) で
+有効にしたものだけ。コードで固定しないのは、未有効化の手段を指定すると **Checkout の作成自体が 400 で落ち、
+全員が決済できなくなる**ため。手段を増やす手順はダッシュボードで ON にするだけ（デプロイ不要）。
+
+| 手段 | 性質 | 備考 |
+| --- | --- | --- |
+| カード（Visa/Mastercard/JCB/AMEX/Diners） | 即時確定 | Apple Pay / Google Pay / Link もここに含まれる |
+| PayPay | 即時確定（アプリへ遷移） | JP・JPY のみ。最低 50円・最大 100万円。返金は全額/一部とも可（購入後365日） |
+| コンビニ払い | **後日入金** | 支払い番号を発行 → 入金で確定。`payment_method_options.konbini.expires_after_days` で期限を指定 |
+
+### 後日入金（コンビニ払い）の扱い
+
+1. `checkout.session.completed` は来るが `payment_status = "unpaid"` → `recordAwaitingPayment`。
+   注文は `pending_payment` のまま **在庫だけ押さえ**、支払い番号ページ（`orders.payment_voucher_url`）と
+   期限（`payment_due_at`）を保存し、メールとマイページで案内する。生産者にはまだ通知しない。
+2. 入金 → `checkout.session.async_payment_succeeded` → `markOrderPaid`（手段も記録、支払い番号は消す）。
+3. 期限切れ → `async_payment_failed` または `cancel-unpaid` ジョブ → 注文キャンセル・在庫と
+   クーポンを戻す。**打ち切る前に PaymentIntent を cancel する**（支払い番号が生きたままだと、
+   キャンセル後にレジで入金されてしまう）。そのため `konbini.expiresAfterDays` は
+   `shippingPolicy.asyncPaymentTtlDays` より短くする（config 読み込み時に検証）。
+
+回帰テスト `services/__tests__/deferred-payment.test.ts`（Webhook の署名検証込み）、
+`jobs/cancel-unpaid-stripe.test.ts`（打ち切り時の PaymentIntent cancel）。
+
+使われた手段は `orders.payment_method`（Stripe の payment method type）に保存し、
+マイページ・領収書・運営の注文詳細に表示する。
 
 ## Webhook（/api/webhooks/stripe）
 
-`checkout.session.completed` / `async_payment_succeeded` → `markOrderPaid`（冪等）
+`checkout.session.completed` / `async_payment_succeeded` → 入金済みなら `markOrderPaid`（冪等）、
+未入金（コンビニ払いの番号発行）なら `recordAwaitingPayment`
 `checkout.session.expired` / `async_payment_failed` → `expireUnpaidOrder`
 `account.updated` → `syncFarmPayoutReady`（v1 イベント。v2 アカウントでも送られる。状態は Accounts v2 で取り直す）
 

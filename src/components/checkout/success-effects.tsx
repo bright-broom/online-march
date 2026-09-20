@@ -24,6 +24,8 @@ export function SuccessEffects({ orderId, sessionId, pending }: { orderId: strin
         router.refresh();
         return;
       }
+      // コンビニ払い等は入金がまだでも、Webhook が支払い番号を記録しているので取り込む
+      if (attempts === 1) router.refresh();
       if (!res.ok) {
         toast.error(res.error);
         return;

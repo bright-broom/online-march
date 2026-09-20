@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/cache", () => ({ revalidateTag: vi.fn(), updateTag: vi.fn(), cacheTag: vi.fn(), cacheLife: vi.fn() }));
 vi.mock("next/navigation", () => ({ unstable_rethrow: vi.fn(), redirect: vi.fn() }));
@@ -8,7 +8,9 @@ vi.mock("@/lib/env", async (orig) => {
   return { ...m, features: { ...m.features, stripe: true } };
 });
 const resolveStaleCheckout = vi.fn();
-vi.mock("@/server/services/payments/stripe", () => ({ resolveStaleCheckout }));
+const cancelPaymentIntent = vi.fn(async () => {});
+const fetchPaymentDetails = vi.fn(async () => ({ method: "konbini", voucherUrl: null, dueAt: null }));
+vi.mock("@/server/services/payments/stripe", () => ({ resolveStaleCheckout, cancelPaymentIntent, fetchPaymentDetails }));
 
 const { db } = await import("@/db/client");
 const s = await import("@/db/schema");
@@ -31,28 +33,38 @@ describe("cancel-unpaid with Stripe sessions", () => {
     await db.update(s.orders).set({ createdAt: new Date(Date.now() - ageMs), stripeSessionId: `cs_test_${order.id}` }).where(eq(s.orders.id, order.id));
     return order.id;
   }
+  beforeEach(() => {
+    cancelPaymentIntent.mockClear();
+  });
+
   const statusOf = async (id: string) => (await db.query.orders.findFirst({ where: eq(s.orders.id, id) }))!.status;
 
   it("recovers a paid session whose webhook was missed", async () => {
     const id = await staleOrder(2 * 3600_000);
     resolveStaleCheckout.mockResolvedValueOnce({ kind: "paid", paymentIntentId: "pi_test_1" });
+    fetchPaymentDetails.mockResolvedValueOnce({ method: "paypay", voucherUrl: null, dueAt: null });
     await runJob("cancel-unpaid", "manual");
-    expect(await statusOf(id)).toBe("paid");
+    const order = (await db.query.orders.findFirst({ where: eq(s.orders.id, id) }))!;
+    expect(order.status).toBe("paid");
+    expect(order.paymentMethod).toBe("paypay"); // which method paid it, for support and receipts
   });
 
   it("keeps a konbini order awaiting payment within the grace period", async () => {
     const id = await staleOrder(2 * 3600_000);
-    resolveStaleCheckout.mockResolvedValueOnce({ kind: "awaiting_async" });
+    resolveStaleCheckout.mockResolvedValueOnce({ kind: "awaiting_async", paymentIntentId: "pi_wait" });
     await runJob("cancel-unpaid", "manual");
     expect(await statusOf(id)).toBe("pending_payment");
+    expect(cancelPaymentIntent).not.toHaveBeenCalled(); // the slip must stay payable
   });
 
   it("cancels a konbini order after the grace period, and expired sessions", async () => {
     const old = await staleOrder(8 * 86_400_000);
     const expired = await staleOrder(2 * 3600_000);
-    resolveStaleCheckout.mockImplementation(async (sid: string) => (sid.endsWith(old) ? { kind: "awaiting_async" } : { kind: "expired" }));
+    resolveStaleCheckout.mockImplementation(async (sid: string) => (sid.endsWith(old) ? { kind: "awaiting_async", paymentIntentId: "pi_giveup" } : { kind: "expired" }));
     await runJob("cancel-unpaid", "manual");
     expect(await statusOf(old)).toBe("cancelled");
     expect(await statusOf(expired)).toBe("cancelled");
+    // the payment slip dies with the order — otherwise the customer could still pay at the register
+    expect(cancelPaymentIntent).toHaveBeenCalledWith("pi_giveup");
   });
 });

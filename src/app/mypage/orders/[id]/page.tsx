@@ -8,11 +8,13 @@ import { StatusBadge } from "@/components/common/status-badge";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { CancelOrderButton } from "@/components/mypage/cancel-order-button";
 import { FarmOrderSection } from "@/components/mypage/farm-order-section";
+import { PaymentPendingCard } from "@/components/mypage/payment-pending-card";
 import { ReorderButton } from "@/components/mypage/reorder-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { routes } from "@/config/nav";
+import { paymentMethodLabel } from "@/config/payments";
 import { deliveryTimeSlots, type DeliveryTimeSlot } from "@/config/shipping";
 import { fromYmd } from "@/lib/dates";
 import { formatDate, formatDateTime } from "@/lib/format";
@@ -22,6 +24,9 @@ import { getOrderDetail } from "@/server/queries/account";
 export const metadata: Metadata = { title: "注文詳細" };
 
 const providerLabel: Record<string, string> = { stripe: "クレジットカード等（Stripe）", demo: "デモ決済" };
+/** 実際に使われた手段が分かっていればそれを、まだなら決済代行の名前を出す */
+const paymentLabelOf = (o: { paymentMethod: string | null; paymentProvider: string }) =>
+  paymentMethodLabel(o.paymentMethod) ?? providerLabel[o.paymentProvider] ?? o.paymentProvider;
 
 export default async function OrderDetailPage({ params }: PageProps<"/mypage/orders/[id]">) {
   const { id } = await params;
@@ -63,6 +68,9 @@ export default async function OrderDetailPage({ params }: PageProps<"/mypage/ord
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="space-y-6">
+          {order.status === "pending_payment" && order.paymentMethod && (
+            <PaymentPendingCard method={order.paymentMethod} voucherUrl={order.paymentVoucherUrl} dueAt={order.paymentDueAt} total={order.total} />
+          )}
           {order.farmOrders.map((fo) => (
             <FarmOrderSection key={fo.id} fo={fo} />
           ))}
@@ -113,7 +121,7 @@ export default async function OrderDetailPage({ params }: PageProps<"/mypage/ord
                 <div className="flex items-baseline justify-between"><dt className="font-medium">合計</dt><dd><Price amount={order.total} size="lg" /></dd></div>
               </dl>
               <div className="text-muted-foreground mt-4 space-y-1 text-xs">
-                <p>お支払い方法：{providerLabel[order.paymentProvider] ?? order.paymentProvider}</p>
+                <p>お支払い方法：{paymentLabelOf(order)}</p>
                 {order.paidAt && <p>お支払い日時：{formatDateTime(order.paidAt)}</p>}
                 {order.cancelledAt && <p>キャンセル日時：{formatDateTime(order.cancelledAt)}</p>}
               </div>

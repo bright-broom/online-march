@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/common/empty-state";
 import { ReceiptView } from "@/components/mypage/receipt-view";
 import { Button } from "@/components/ui/button";
 import { routes } from "@/config/nav";
+import { paymentMethodLabel } from "@/config/payments";
 import { requireRole } from "@/server/auth/guards";
 import { getOrderSummary, getProfile } from "@/server/queries/account";
 
@@ -34,7 +35,7 @@ export default async function ReceiptPage({ params }: PageProps<"/mypage/orders/
             subtotal: order.subtotal,
             shippingTotal: order.shippingTotal,
             discountTotal: order.discountTotal,
-            paymentLabel: providerLabel[order.paymentProvider] ?? order.paymentProvider,
+            paymentLabel: paymentMethodLabel(order.paymentMethod) ?? providerLabel[order.paymentProvider] ?? order.paymentProvider,
             defaultName: profile?.name ?? user.name,
           }}
         />

@@ -3,7 +3,8 @@ import { routes } from "@/config/nav";
 import { carriers, deliveryTimeSlots, type DeliveryTimeSlot } from "@/config/shipping";
 import type { Carrier } from "@/db/schema";
 import { siteUrl } from "@/lib/env";
-import { formatDate, formatYen } from "@/lib/format";
+import { paymentMethodLabel } from "@/config/payments";
+import { formatDate, formatDateTime, formatYen } from "@/lib/format";
 import type { EmailMessage } from ".";
 
 const url = (path: string) => new URL(path, siteUrl).toString();
@@ -41,6 +42,27 @@ export const emailTemplates = {
         { type: "p", text: `${p.farmName} さま\n新しいご注文が入りました。` },
         { type: "table", rows: [["受注番号", p.code], ["内容", p.itemsSummary], ["商品代金", formatYen(p.subtotal)], ["出荷期限", p.shipByDate ? formatDate(p.shipByDate) : "-"]] },
         { type: "button", label: "受注を確認する", href: url(routes.farmer.order(p.farmOrderId)) },
+      ],
+    };
+  },
+
+  /** コンビニ払い等: 支払い番号が発行され、入金を待っている状態 */
+  paymentPending(p: { to: string; name: string; orderId: string; code: string; total: number; method: string | null; voucherUrl: string | null; dueAt: Date | null }): EmailMessage {
+    const method = paymentMethodLabel(p.method) ?? "お支払い";
+    return {
+      to: p.to,
+      subject: `【お支払い方法のご案内】注文番号 ${p.code}`,
+      blocks: [
+        { type: "p", text: `${p.name} 様\nご注文ありがとうございます。${method}のお手続きが完了すると、生産者が準備を始めます。` },
+        { type: "table", rows: [
+          ["注文番号", p.code],
+          ["お支払い方法", method],
+          ["お支払い金額", formatYen(p.total)],
+          ["お支払い期限", p.dueAt ? formatDateTime(p.dueAt) : "-"],
+        ] },
+        { type: "note", text: "期限までにお支払いがない場合、ご注文は自動的にキャンセルとなります。" },
+        ...(p.voucherUrl ? [{ type: "button" as const, label: "お支払い番号を表示する", href: p.voucherUrl }] : []),
+        { type: "button", label: "注文状況を確認する", href: url(routes.mypage.order(p.orderId)) },
       ],
     };
   },

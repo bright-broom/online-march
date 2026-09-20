@@ -248,6 +248,12 @@ export const orders = pgTable(
     desiredDeliveryDate: date("desired_delivery_date"),
     deliveryTimeSlot: text("delivery_time_slot"),
     paymentProvider: text("payment_provider").notNull().default("demo"),
+    /** 実際に使われた決済手段（Stripe の payment method type: card / paypay / konbini …）。決済が確定するまで null */
+    paymentMethod: text("payment_method"),
+    /** コンビニ払い等の支払い番号ページ（Stripe ホスト）。入金待ちの間だけ意味を持つ */
+    paymentVoucherUrl: text("payment_voucher_url"),
+    /** 支払い番号の有効期限。過ぎると入金できない */
+    paymentDueAt: timestamp("payment_due_at", { withTimezone: true }),
     stripeSessionId: text("stripe_session_id"),
     stripePaymentIntentId: text("stripe_payment_intent_id"),
     paidAt: timestamp("paid_at", { withTimezone: true }),

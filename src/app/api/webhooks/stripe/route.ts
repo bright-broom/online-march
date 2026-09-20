@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { features } from "@/lib/env";
-import { expireUnpaidOrder, markOrderPaid } from "@/server/services/orders";
+import { expireUnpaidOrder, markOrderPaid, recordAwaitingPayment } from "@/server/services/orders";
 import { syncFarmPayoutReady } from "@/server/services/payments/connect";
-import { constructWebhookEvent } from "@/server/services/payments/stripe";
+import { constructWebhookEvent, fetchPaymentDetails } from "@/server/services/payments/stripe";
 
 /** Stripe webhook: checkout completion/expiry and Connect onboarding status. */
 export async function POST(req: Request) {
@@ -21,8 +21,18 @@ export async function POST(req: Request) {
     case "checkout.session.async_payment_succeeded": {
       const s = event.data.object;
       const orderId = s.metadata?.orderId;
-      if (orderId && s.payment_status === "paid") {
-        await markOrderPaid(orderId, { paymentIntentId: typeof s.payment_intent === "string" ? s.payment_intent : s.payment_intent?.id, sessionId: s.id, now });
+      if (!orderId) break;
+      const paymentIntentId = typeof s.payment_intent === "string" ? s.payment_intent : s.payment_intent?.id;
+      // Which method was used (and, for コンビニ払い, where the payment slip is) only lives on the PaymentIntent.
+      const details = paymentIntentId ? await fetchPaymentDetails(paymentIntentId) : null;
+      if (s.payment_status === "paid") {
+        await markOrderPaid(orderId, { paymentIntentId, sessionId: s.id, method: details?.method, now });
+      } else {
+        // コンビニ払い等: 支払い番号が出ただけ。入金は async_payment_succeeded で確定する
+        await recordAwaitingPayment(orderId, {
+          paymentIntentId, sessionId: s.id,
+          method: details?.method ?? null, voucherUrl: details?.voucherUrl ?? null, dueAt: details?.dueAt ?? null, now,
+        });
       }
       break;
     }

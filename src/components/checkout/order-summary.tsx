@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
+import { listedPaymentMethodLabels } from "@/config/payments";
 import { cn } from "@/lib/utils";
 import type { CheckoutQuote } from "@/server/actions/checkout";
 
@@ -82,7 +83,7 @@ export function OrderSummary({
       <p className="text-muted-foreground flex items-start gap-1.5 text-xs leading-relaxed">
         <ShieldCheck className="mt-0.5 size-3.5 shrink-0" />
         {paymentMode === "stripe"
-          ? "カード情報は Stripe の安全な決済ページで入力します。当サイトには保存されません。"
+          ? `${listedPaymentMethodLabels.join("・")}に対応。お支払い情報は Stripe の安全な決済ページで入力し、当サイトには保存されません。`
           : "ご注文確定後、確認メールとマイページで内容をご確認いただけます。"}
       </p>
     </div>

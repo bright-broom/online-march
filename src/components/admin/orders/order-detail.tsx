@@ -7,6 +7,7 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { Separator } from "@/components/ui/separator";
 import { bpsToPercent } from "@/config/fees";
 import { routes } from "@/config/nav";
+import { paymentMethodLabel } from "@/config/payments";
 import { carriers, deliveryTimeSlots, type DeliveryTimeSlot } from "@/config/shipping";
 import { shipmentEventMeta } from "@/config/status";
 import { formatDate, formatDateTime, formatPostalCode, formatWeight, formatYen } from "@/lib/format";
@@ -74,6 +75,10 @@ export function OrderDetailView({ order, canRefund }: { order: AdminOrderDetail;
           <DetailList
             rows={[
               ["決済方法", <ToneBadge key="p" tone={provider.tone}>{provider.label}</ToneBadge>],
+              ...(order.paymentMethod ? ([["決済手段", paymentMethodLabel(order.paymentMethod)!]] as [string, string][]) : []),
+              ...(order.status === "pending_payment" && order.paymentDueAt
+                ? ([["お支払い期限", formatDateTime(order.paymentDueAt)]] as [string, string][])
+                : []),
               ["状態", <StatusBadge key="s" kind="order" status={order.status} />],
               ["支払日時", formatDateTime(order.paidAt)],
               ["PaymentIntent", order.stripePaymentIntentId ? <code key="pi" className="bg-muted rounded px-1.5 py-0.5 text-[11px] break-all">{order.stripePaymentIntentId}</code> : "—"],

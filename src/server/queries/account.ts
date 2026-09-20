@@ -257,7 +257,7 @@ export async function getOrderSummary(userId: string, orderId: string) {
     columns: {
       id: true, code: true, status: true, email: true, subtotal: true, shippingTotal: true, discountTotal: true, total: true,
       couponCode: true, paymentProvider: true, paidAt: true, createdAt: true, desiredDeliveryDate: true, deliveryTimeSlot: true,
-      shippingAddress: true,
+      shippingAddress: true, paymentMethod: true, paymentVoucherUrl: true, paymentDueAt: true,
     },
     with: {
       farmOrders: {

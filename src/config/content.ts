@@ -3,6 +3,7 @@
  * Tone: 飾らない・あたたかい・誠実（docs/DESIGN.md §Voice）
  */
 import type { ImageKey } from "./images";
+import { listedPaymentMethodLabels } from "./payments";
 
 export const homeContent = {
   hero: {
@@ -141,7 +142,7 @@ export const guideContent = {
     {
       id: "payment",
       title: "お支払い方法",
-      body: "クレジットカード、Apple Pay、Google Pay、コンビニ払いに対応しています（Stripe による安全な決済）。",
+      body: `${listedPaymentMethodLabels.join("、")}に対応しています（Stripe による安全な決済）。コンビニ払いは支払い番号の発行後、期限までにお支払いください。`,
     },
     {
       id: "shipping",

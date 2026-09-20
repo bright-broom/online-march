@@ -50,16 +50,22 @@ export const jobs = {
         try {
           // Ask Stripe before cancelling: the session may be paid (missed webhook) or awaiting a konbini payment.
           if (features.stripe && o.sessionId) {
-            const { resolveStaleCheckout } = await import("@/server/services/payments/stripe");
+            const { cancelPaymentIntent, fetchPaymentDetails, resolveStaleCheckout } = await import("@/server/services/payments/stripe");
             const r = await resolveStaleCheckout(o.sessionId);
             if (r.kind === "paid") {
-              await markOrderPaid(o.id, { paymentIntentId: r.paymentIntentId, sessionId: o.sessionId, now });
+              const details = r.paymentIntentId ? await fetchPaymentDetails(r.paymentIntentId) : null;
+              await markOrderPaid(o.id, { paymentIntentId: r.paymentIntentId, sessionId: o.sessionId, method: details?.method, now });
               recovered++;
               continue;
             }
-            if (r.kind === "awaiting_async" && o.createdAt.getTime() > asyncCutoff) {
-              awaiting++;
-              continue;
+            if (r.kind === "awaiting_async") {
+              if (o.createdAt.getTime() > asyncCutoff) {
+                awaiting++;
+                continue;
+              }
+              // Waited long enough for コンビニ払い. Kill the PaymentIntent *before* releasing the stock:
+              // a live payment slip could still be paid at the register after we cancelled the order.
+              if (r.paymentIntentId) await cancelPaymentIntent(r.paymentIntentId);
             }
           }
           await expireUnpaidOrder(o.id, now);
