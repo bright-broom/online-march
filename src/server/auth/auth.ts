@@ -1,11 +1,13 @@
 import "server-only";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { APIError, createAuthMiddleware } from "better-auth/api";
 import { nextCookies } from "better-auth/next-js";
+import { isDemoEmail } from "@/config/demo";
 import { siteConfig } from "@/config/site";
 import { db } from "@/db";
 import { account, session, user, verification } from "@/db/schema";
-import { env, siteUrl } from "@/lib/env";
+import { env, features, siteUrl } from "@/lib/env";
 
 const vercelOrigins = [process.env.VERCEL_URL, process.env.VERCEL_BRANCH_URL, process.env.VERCEL_PROJECT_PRODUCTION_URL]
   .filter(Boolean)
@@ -38,6 +40,20 @@ export const auth = betterAuth({
     // Authorization must reflect role changes / revocations immediately, so every request
     // validates the session against the DB (1 indexed lookup; functions are colocated with the DB).
     cookieCache: { enabled: false },
+  },
+  hooks: {
+    /**
+     * The seeded demo accounts share a password that ships in the repo, so hiding the buttons on /login is not
+     * enough: once demo mode is off (go-live), they must not be able to sign in at all, even if the rows are
+     * still in the database.
+     */
+    before: createAuthMiddleware(async (ctx) => {
+      if (features.demo) return;
+      const email = typeof ctx.body?.email === "string" ? ctx.body.email : "";
+      if (email && isDemoEmail(email)) {
+        throw new APIError("UNAUTHORIZED", { message: "このアカウントは無効です" });
+      }
+    }),
   },
   plugins: [nextCookies()],
 });

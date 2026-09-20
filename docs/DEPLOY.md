@@ -61,10 +61,55 @@ Next.js はそれを自動で読むため **ローカル開発が本番DBに書�
 
 ## 本番前チェックリスト
 
-- [ ] `config/site.ts` の運営者情報・特商法表記を実データに
+運営画面 **/admin/settings →「本番公開チェック」** が env とデータから自動判定する（`server/queries/go-live.ts`）。
+「要対応」が 0 件になるまで公開しない。以下は画面に出る項目の補足と、画面では判定できない作業。
+
+### 1. Stripe を本番（live）に切り替える
+
+1. Stripe ダッシュボードで**アカウントを有効化**（事業情報・代表者・銀行口座の審査）。
+2. **Connect のプラットフォームプロフィール**を本番でも入力（ビジネスモデル=マーケットプレイス、損失負担=プラットフォーム、
+   手数料負担=プラットフォーム）。テスト環境の設定は本番に引き継がれない。
+3. 本番の **API キー**（`sk_live_…`）を `STRIPE_SECRET_KEY` に設定。
+4. 本番で **Webhook の送信先を3つ**作る（テスト環境と同じ構成）。URL・イベント・環境変数は下表。
+5. 本番の **Payment methods** でカード以外（コンビニ払い等）を使うなら有効化。
+6. Accounts v1 support は有効化しない（アプリは Accounts v2 で連結アカウントを作る。docs/PAYMENTS.md）。
+
+| 送信先 | イベントの送信元 | ペイロード | URL | 環境変数 |
+| --- | --- | --- | --- | --- |
+| 決済 | 自分のアカウント | スナップショット | `/api/webhooks/stripe` | `STRIPE_WEBHOOK_SECRET` |
+| 連結アカウント | 連結アカウント | スナップショット | `/api/webhooks/stripe` | `STRIPE_CONNECT_WEBHOOK_SECRET` |
+| Accounts v2 | 自分のアカウント | thin（軽量） | `/api/webhooks/stripe/accounts` | `STRIPE_ACCOUNTS_WEBHOOK_SECRET` |
+
+イベント: 決済 = `checkout.session.{completed,async_payment_succeeded,expired,async_payment_failed}` /
+連結 = `account.updated` / v2 = `v2.core.account[configuration.recipient].capability_status_updated`,
+`v2.core.account[requirements].updated`。**環境変数を入れたら再デプロイする**（反映は再デプロイ時）。
+
+### 2. デモを閉じる
+
+- `DEMO_MODE=false`（ログイン画面のデモアカウント表示が消える）。
+- デモアカウントは `@demo.awaji` ドメイン。`DEMO_MODE=false` なら**サーバー側でログインを拒否**する
+  （`server/auth/auth.ts` の before フック。パスワードがリポジトリにあるため UI を隠すだけでは不十分）。
+- 本番運用では seed を流さず空の DB で始めるのが基本。デモデータ入りの DB をそのまま使う場合は
+  `@demo.awaji` のユーザーと farms/orders を削除する。
+
+### 3. その他
+
+- [ ] `config/site.ts` の運営者情報・特商法表記を実データに（代表者名・問い合わせ先・電話番号）
 - [ ] `config/content.ts` legal の規約・プライバシーポリシーを正式版に
 - [ ] `config/shipping.ts` の運賃表を契約運賃に
-- [ ] Stripe: 本番キー、Connect 有効化、Payment methods 設定
-- [ ] Resend: ドメイン認証、`EMAIL_FROM`
+- [ ] Resend: ドメイン認証、`EMAIL_FROM` を認証済みアドレスに
+- [ ] `BETTER_AUTH_SECRET`（`openssl rand -base64 32`）と `CRON_SECRET` を本番用の値に
 - [ ] Cron: Pro プラン or スケジュール調整（docs/SHIPPING.md §4）
-- [ ] デモアカウント削除 / `DEMO_MODE` 無効
+
+## Neon のリージョン移設（公開前に一度だけ）
+
+現在の Neon は `us-east-1`、Vercel 関数は `iad1`。日本からは1往復ぶん（100ms 前後）遅い。公開前に移す手順:
+
+1. Neon で `aws-ap-northeast-1`（東京）または `ap-southeast-1` に**新しいプロジェクト**を作る。
+2. `vercel.json` の `regions` を `["hnd1"]`（東京）に変更。**関数と DB のリージョンは必ず揃える**。
+3. データを移す。デモデータなら移さず `npm run db:migrate && npm run db:seed` で作り直すのが速い。
+   実データがあるときは `pg_dump`/`pg_restore`（メンテナンスモードを ON にしてから）。
+4. Vercel の `DATABASE_URL`（と Neon 連携が作る `POSTGRES_*`）を新プロジェクトの値に差し替えて再デプロイ。
+5. /admin/settings で接続状況、/admin/automation で Cron の手動実行を確認。
+
+移設はダウンタイムを伴うため、注文が動いていない時間帯に行い、メンテナンスモード（/admin/settings）を使う。

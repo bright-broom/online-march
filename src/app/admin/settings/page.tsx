@@ -1,4 +1,4 @@
-import { BookOpen, CalendarClock, CreditCard, Database, ExternalLink, ImageUp, Mail, ShieldCheck } from "lucide-react";
+import { BookOpen, CalendarClock, CircleAlert, CircleCheck, CreditCard, Database, ExternalLink, ImageUp, Mail, ShieldCheck, TriangleAlert } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
@@ -14,6 +14,7 @@ import { env, features, siteUrl } from "@/lib/env";
 import { formatYen } from "@/lib/format";
 import { requireRole } from "@/server/auth/guards";
 import { getAdminFarms } from "@/server/queries/admin";
+import { getGoLiveChecks } from "@/server/queries/go-live";
 import { readSettingsUncached } from "@/server/queries/settings";
 
 export const metadata: Metadata = { title: "プラットフォーム設定" };
@@ -37,7 +38,8 @@ const external = [
 export default async function AdminSettingsPage() {
   await requireRole("admin", routes.admin.settings);
   await connection();
-  const [settings, farms] = await Promise.all([readSettingsUncached(), getAdminFarms(new Date())]);
+  const [settings, farms, goLive] = await Promise.all([readSettingsUncached(), getAdminFarms(new Date()), getGoLiveChecks()]);
+  const blockers = goLive.filter((c) => c.state === "blocker").length;
   const overrides = farms.filter((f) => f.commissionRateBps != null).length;
   const prod = env.NODE_ENV === "production";
 
@@ -131,6 +133,27 @@ export default async function AdminSettingsPage() {
           </PanelCard>
         </div>
         <div className="space-y-6 xl:col-span-2">
+          <PanelCard
+            title="本番公開チェック"
+            description="実際のお客様から決済を受け付ける前に必要な設定です。"
+            action={blockers ? <ToneBadge tone="warning">要対応 {blockers}件</ToneBadge> : <ToneBadge tone="success">準備完了</ToneBadge>}
+          >
+            <ul className="space-y-3">
+              {goLive.map((c) => {
+                const Icon = c.state === "ready" ? CircleCheck : c.state === "blocker" ? CircleAlert : TriangleAlert;
+                const tone = c.state === "ready" ? "text-leaf" : c.state === "blocker" ? "text-destructive" : "text-amber-600 dark:text-amber-500";
+                return (
+                  <li key={c.key} className="flex items-start gap-2.5 text-sm">
+                    <Icon className={`mt-0.5 size-4 shrink-0 ${tone}`} />
+                    <div>
+                      <p className="font-medium">{c.label}</p>
+                      <p className="text-muted-foreground text-xs leading-relaxed">{c.detail}</p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </PanelCard>
           <PanelCard title="外部サービスの接続状況" description="キー未設定のサービスはデモモードで動作します。値は表示しません。">
             <IntegrationStatus items={integrations} />
           </PanelCard>
