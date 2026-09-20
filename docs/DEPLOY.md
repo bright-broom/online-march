@@ -59,6 +59,12 @@ Neon の Vercel 連携ではリージョンを選べないことがある。そ�
    - `vercel.json` の `regions` を新リージョンに変更して push（デプロイで反映）
 7. 確認: トップ/商品一覧、ログイン、生産者の売上・精算（Stripe 連携の表示）、/admin/settings。
 8. 旧 Neon プロジェクトは確認後に削除（無料プランはプロジェクト数に上限）。
+9. 画像保存（Vercel Blob）も同じリージョンへ: `vercel blob create-store <name> --access public --region sin1 --environment production`。
+   同名は不可、`BLOB_READ_WRITE_TOKEN` が既にあると接続が 409 になるため、**先にダッシュボードで旧ストアの
+   Remove Project Connection** → 新ストアを Connect to Project（Prefix は BLOB のまま）→ 再デプロイ。
+   ストアの削除・切断は CLI がエージェントに対して拒否するので、ダッシュボードで人が行う。
+   デモ画像は外部 URL 参照のため移送不要。実運用では旧ストアのファイルを新ストアへコピーし、
+   DB 内の URL（`product_images.url` など）も新ホスト名へ置換する。
 
 ## 本番前チェックリスト
 
