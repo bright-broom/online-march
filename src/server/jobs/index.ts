@@ -155,7 +155,7 @@ export const jobs = {
       const { runBackup, blobBackupDeps } = await import("@/server/services/backup");
       const r = await runBackup(now, await blobBackupDeps());
       if ("skipped" in r) return { skipped: r.skipped };
-      return { tables: r.tables, rows: r.rows, bytes: r.bytes, deleted: r.deleted };
+      return { tables: r.tables, rows: r.rows, bytes: r.bytes, deleted: r.deleted, verified: r.verified };
     },
   },
 

@@ -1,4 +1,4 @@
-import { gunzipSync } from "node:zlib";
+import { gunzipSync, gzipSync } from "node:zlib";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("next/cache", () => ({ revalidateTag: vi.fn(), updateTag: vi.fn(), cacheTag: vi.fn(), cacheLife: vi.fn() }));
@@ -6,9 +6,13 @@ vi.mock("next/cache", () => ({ revalidateTag: vi.fn(), updateTag: vi.fn(), cache
 const { opsConfig } = await import("@/config/ops");
 
 const deps = (existing: { url: string; pathname: string; uploadedAt: Date }[] = []) => {
-  const put = vi.fn(async (path: string, _body: Buffer, _token: string) => ({ url: `https://private.blob/${path}` }));
+  const stored = new Map<string, Buffer>();
+  const put = vi.fn(async (path: string, body: Buffer, _token: string) => {
+    stored.set(path, body);
+    return { url: `https://private.blob/${path}` };
+  });
   const del = vi.fn(async (_urls: string[], _token: string) => {});
-  return { put, del, list: vi.fn(async () => existing), uploaded: () => put.mock.calls[0], deleted: () => del.mock.calls[0]?.[0] };
+  return { put, del, stored, download: vi.fn(async (path: string) => stored.get(path)!), list: vi.fn(async () => existing), uploaded: () => put.mock.calls[0], deleted: () => del.mock.calls[0]?.[0] };
 };
 
 describe("database backup", () => {
@@ -49,6 +53,19 @@ describe("database backup", () => {
     expect(dump.tables.farms[0]).toHaveProperty("name");
 
     expect(d.deleted()).toEqual(["https://private.blob/old.json.gz"]); // the recent one survives
+    expect(r.verified).toBe(1);
+    vi.unstubAllEnvs();
+  });
+
+  it("fails the run when the stored dump cannot be read back", async () => {
+    vi.stubEnv("BACKUP_BLOB_READ_WRITE_TOKEN", "blob_backup_token");
+    vi.resetModules();
+    const { runBackup: fresh } = await import("../backup");
+    const d = deps();
+    const truncated = { ...d, download: vi.fn(async () => gzipSync(Buffer.from(JSON.stringify({ takenAt: "other", tables: {} })))) };
+
+    await expect(fresh(new Date(), truncated)).rejects.toThrow("読み戻せませんでした");
+    expect(d.deleted()).toBeUndefined(); // nothing is pruned when the new dump is not trustworthy
     vi.unstubAllEnvs();
   });
 });
