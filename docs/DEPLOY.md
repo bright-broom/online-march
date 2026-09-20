@@ -43,6 +43,23 @@ npm run dev        # http://localhost:3000
 8. デプロイ補助: `bash scripts/deploy-vercel.sh` — 環境変数/Neon/Blob の確認・作成、seed、push、ビルドログ取得、
    スモークテストまで実行し、結果を `.deploy/run.log`・`.deploy/build.log` に保存する。
 
+## セキュリティヘッダー / CSP
+
+`next.config.ts` の `securityHeaders` が全レスポンスに付く。HSTS は Vercel 側が付与する。
+
+| ヘッダー | 値 |
+| --- | --- |
+| `Content-Security-Policy` | **本番のみ**。`default-src 'self'` を土台に、画像は Unsplash と Blob、`frame-ancestors`/`object-src` は none、`form-action`/`base-uri` は self |
+| `X-Frame-Options` | `DENY`（`frame-ancestors` の旧ブラウザ向け） |
+| `X-Content-Type-Options` / `Referrer-Policy` / `Permissions-Policy` | nosniff / strict-origin-when-cross-origin / カメラ・マイク・位置情報を無効 |
+
+- **nonce は使わない**。リクエストごとに nonce を振ると全ページが事前生成から外れて遅くなる（cacheComponents）。
+  そのため `script-src` は `'self' 'unsafe-inline'`。インラインは許すが**外部スクリプトの読み込みは不可**で、
+  `connect-src 'self'` により持ち出し先も塞ぐ。
+- **開発では CSP を付けない**。React の開発ビルドは `eval` を使い、計測スクリプトも外部から読むため。
+- 外部ドメインを増やすとき（決済の埋め込み、フォント、計測）は `csp` の該当ディレクティブに追記し、
+  `src/lib/__tests__/security-headers.test.ts` を更新する。
+
 ## Runbook: バックアップからの復元
 
 `backup-db`（docs/SHIPPING.md §4）が非公開 Blob に置いた dump を書き戻す。**全テーブルを置き換える破壊的操作**。
