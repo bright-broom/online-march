@@ -22,6 +22,10 @@
   なったときだけ戻す（`releaseCoupon`、0 未満にはならない）。返金では戻さない（取引自体は成立したため）。
   回帰テスト `services/__tests__/coupon-limit.test.ts`。
 - Stripe 決済手数料（約3.6%）はプラットフォームの手数料10%から負担する想定。
+- **ゴールデンルート回帰テスト** `services/__tests__/golden-route.test.ts`:
+  注文 → Stripe 署名付き webhook → 出荷 → 配達 → 月次締め → Connect 送金 を一本で通す。
+  各段の個別テストは通るのに「つなぎ目」だけ壊れる事故（精算が farm_orders を claim しない、
+  送金後に payout が paid にならない等）を検知する。本番では 2026-09-20 にテストカードで通し確認済み。
 
 ## モード
 
