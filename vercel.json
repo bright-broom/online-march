@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "regions": [
-    "iad1"
+    "sin1"
   ],
   "crons": [
     {

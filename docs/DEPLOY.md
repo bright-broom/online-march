@@ -103,7 +103,8 @@ Next.js はそれを自動で読むため **ローカル開発が本番DBに書�
 
 ## Neon のリージョン移設（公開前に一度だけ）
 
-現在の Neon は `us-east-1`、Vercel 関数は `iad1`。日本からは1往復ぶん（100ms 前後）遅い。公開前に移す手順:
+Neon は Tokyo を提供していないため **Singapore (`ap-southeast-1`) + Vercel `sin1`** に置く（日本から往復 70〜90ms。
+米国東部だと 200ms 前後）。移設の手順:
 
 1. Neon で `aws-ap-northeast-1`（東京）または `ap-southeast-1` に**新しいプロジェクト**を作る。
 2. `vercel.json` の `regions` を `["hnd1"]`（東京）に変更。**関数と DB のリージョンは必ず揃える**。

@@ -19,6 +19,8 @@
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8",
+    "@neon/config": "^1.7.2",
+    "@neon/env": "^1.4.3",
     "@neondatabase/serverless": "^1.1.0",
     "@tanstack/react-table": "^8.21.3",
     "@types/pg": "^8.23.1",
