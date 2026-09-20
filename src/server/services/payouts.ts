@@ -2,10 +2,11 @@ import "server-only";
 import { and, eq, lte } from "drizzle-orm";
 import { routes } from "@/config/nav";
 import { db } from "@/db";
-import { farms, payouts, user } from "@/db/schema";
+import { farms, payouts } from "@/db/schema";
 import { toYmd } from "@/lib/dates";
 import { formatYen } from "@/lib/format";
 import { notify } from "./notify";
+import { alertAdmins } from "./ops-alerts";
 
 export type PayoutTransferDeps = {
   /** Re-checks the connected account right before moving money (capabilities can be revoked after onboarding). */
@@ -68,7 +69,7 @@ export async function executeDuePayouts(now: Date, deps: PayoutTransferDeps | nu
       failures.push(`${f.name}: ${message}`);
     }
   }
-  if (failures.length || unfunded.length) await alertAdmins(failures, unfunded);
+  if (failures.length || unfunded.length) await alertOperators(failures, unfunded);
   return { transferred, awaitingManual, failures, unfunded };
 }
 
@@ -76,11 +77,7 @@ async function recordFailure(payoutId: string, message: string, now: Date) {
   await db.update(payouts).set({ transferError: message, transferAttemptedAt: now }).where(and(eq(payouts.id, payoutId), eq(payouts.status, "pending")));
 }
 
-/** The operator only opens /admin/automation when something looks wrong, so push the failure to them. */
-async function alertAdmins(failures: string[], unfunded: string[]) {
-  const admins = await db.select({ id: user.id }).from(user).where(eq(user.role, "admin"));
+async function alertOperators(failures: string[], unfunded: string[]) {
   const body = [unfunded.length ? `残高不足 ${unfunded.length}件（${unfunded.join("・")}）` : "", failures.length ? `エラー ${failures.length}件` : ""].filter(Boolean).join(" / ");
-  for (const a of admins) {
-    await notify({ userId: a.id, type: "payout", title: "送金できなかった精算があります", body, href: routes.admin.payouts });
-  }
+  await alertAdmins({ title: "送金できなかった精算があります", body, href: routes.admin.payouts });
 }

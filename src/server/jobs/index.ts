@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, inArray, isNotNull, isNull, lt, lte } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, lt, lte } from "drizzle-orm";
 import { feeConfig } from "@/config/fees";
 import { routes } from "@/config/nav";
 import { shippingPolicy } from "@/config/shipping";
@@ -13,6 +13,7 @@ import { features } from "@/lib/env";
 import { sendEmail } from "@/server/services/email";
 import { notify } from "@/server/services/notify";
 import { expireUnpaidOrder, markOrderPaid, transitionFarmOrder } from "@/server/services/orders";
+import { alertAdmins } from "@/server/services/ops-alerts";
 import { executeDuePayouts } from "@/server/services/payouts";
 import { fetchTrackingStatus } from "@/server/services/shipping/tracking";
 
@@ -22,7 +23,8 @@ import { fetchTrackingStatus } from "@/server/services/shipping/tracking";
  * See docs/SHIPPING.md §Automation.
  */
 type JobResult = Record<string, number | string>;
-type Job = { label: string; description: string; schedule: string; run: (now: Date) => Promise<JobResult> };
+/** `maxAgeHours`: how long a job may go without a successful run before the operator is alerted. */
+type Job = { label: string; description: string; schedule: string; maxAgeHours: number; run: (now: Date) => Promise<JobResult> };
 
 const DAY = 86_400_000;
 
@@ -34,6 +36,7 @@ export const jobs = {
     label: "未入金注文の自動キャンセル",
     description: `決済が${shippingPolicy.pendingPaymentTtlMinutes}分以内に完了しない注文をキャンセルし在庫を戻します（コンビニ払いの入金待ちは最大${shippingPolicy.asyncPaymentTtlDays}日待機）`,
     schedule: "30分ごと",
+    maxAgeHours: 30,
     async run(now) {
       const cutoff = new Date(now.getTime() - shippingPolicy.pendingPaymentTtlMinutes * 60_000);
       const asyncCutoff = now.getTime() - shippingPolicy.asyncPaymentTtlDays * DAY;
@@ -73,6 +76,7 @@ export const jobs = {
     label: "出荷期限リマインド",
     description: "出荷期限が明日以前の未発送注文を生産者にメールとアプリ通知でお知らせします",
     schedule: "毎朝8時",
+    maxAgeHours: 30,
     async run(now) {
       const tomorrow = addDays(toYmd(now), 1);
       const due = await db
@@ -102,6 +106,7 @@ export const jobs = {
     label: "配送状況の同期",
     description: `発送済みの荷物の配達状況を確認し、完了を自動反映します（API非対応時は発送${shippingPolicy.autoDeliveredAfterDays}日後に自動完了）`,
     schedule: "3時間ごと",
+    maxAgeHours: 30,
     async run(now) {
       const shipped = await db.select().from(farmOrders).where(eq(farmOrders.status, "shipped"));
       let delivered = 0;
@@ -121,6 +126,7 @@ export const jobs = {
     label: "レビュー依頼メール",
     description: `配達完了から${shippingPolicy.reviewRequestAfterDays}日後に、お客様へレビューのお願いを送ります`,
     schedule: "毎日10時",
+    maxAgeHours: 30,
     async run(now) {
       const cutoff = new Date(now.getTime() - shippingPolicy.reviewRequestAfterDays * DAY);
       const due = await db.query.farmOrders.findMany({
@@ -143,6 +149,7 @@ export const jobs = {
     label: "月次精算・振込",
     description: `前月までに配達完了した売上を締めて精算を作成し、振込予定日（毎月${feeConfig.payout.payoutDay}日）に Stripe Connect で送金します`,
     schedule: "毎日 深夜（締めは月初・送金は振込予定日以降）",
+    maxAgeHours: 30,
     async run(now) {
       const monthStart = startOfMonthYmd(now);
       const payoutDay = `${monthStart.slice(0, 8)}${String(feeConfig.payout.payoutDay).padStart(2, "0")}`;
@@ -222,17 +229,50 @@ export const jobs = {
 export type JobName = keyof typeof jobs;
 export const isJobName = (n: string): n is JobName => n in jobs;
 
+/**
+ * Alerts when a job has not succeeded within its `maxAgeHours` — a cron that silently stopped (wrong
+ * CRON_SECRET, disabled schedule, a deploy that dropped vercel.json) looks exactly like "nothing to do".
+ * Runs after every job, so any job that still fires reports on the ones that no longer do.
+ */
+export async function alertOnStaleJobs(now = new Date()) {
+  const lastSuccess = new Map<string, Date>();
+  const rows = await db
+    .select({ job: jobRuns.job, startedAt: jobRuns.startedAt })
+    .from(jobRuns)
+    .where(eq(jobRuns.status, "success"))
+    .orderBy(desc(jobRuns.startedAt))
+    .limit(200);
+  for (const r of rows) if (!lastSuccess.has(r.job)) lastSuccess.set(r.job, r.startedAt);
+  const stale = (Object.keys(jobs) as JobName[]).filter((name) => {
+    const last = lastSuccess.get(name);
+    return !last || now.getTime() - last.getTime() > jobs[name].maxAgeHours * 3_600_000;
+  });
+  if (!stale.length) return [];
+  await alertAdmins({
+    title: "自動処理が動いていません",
+    body: stale.map((n) => `${jobs[n].label}（${lastSuccess.get(n) ? `最終成功 ${toYmd(lastSuccess.get(n)!)}` : "実行記録なし"}）`).join("・"),
+    href: routes.admin.automation,
+  });
+  return stale;
+}
+
 /** Run a job and record it in job_runs. */
 export async function runJob(name: JobName, trigger: "cron" | "manual", now = new Date()) {
   const startedAt = new Date();
   try {
     const summary = await jobs[name].run(now);
     await db.insert(jobRuns).values({ job: name, status: "success", trigger, summary, startedAt });
+    await alertOnStaleJobs(now).catch((e) => console.error("[jobs] stale check failed", e));
     return { ok: true as const, summary };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[job:${name}]`, err);
     await db.insert(jobRuns).values({ job: name, status: "error", trigger, summary: { error: message }, startedAt });
+    await alertAdmins({
+      title: `自動処理が失敗しました：${jobs[name].label}`,
+      body: message.slice(0, 300),
+      href: routes.admin.automation,
+    }).catch((e) => console.error("[jobs] alert failed", e));
     return { ok: false as const, error: message };
   }
 }

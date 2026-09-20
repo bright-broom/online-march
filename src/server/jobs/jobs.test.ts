@@ -232,3 +232,46 @@ describe("executeDuePayouts: platform balance", () => {
     expect(await db.query.payouts.findFirst({ where: eq(s.payouts.id, big.id) })).toMatchObject({ status: "paid", stripeTransferId: "tr_big", transferError: null });
   });
 });
+
+describe("operational alerts", () => {
+  const adminId = async () => (await db.query.user.findFirst({ where: eq(s.user.email, "admin@demo.awaji") }))!.id;
+  const adminNotes = async (title: string) =>
+    (await db.select().from(s.notifications).where(eq(s.notifications.userId, await adminId()))).filter((n) => n.title.startsWith(title));
+
+  it("tells admins when a job fails, once per problem", async () => {
+    const { runJob, jobs } = await import("./index");
+    const before = (await adminNotes("自動処理が失敗しました")).length;
+    vi.spyOn(jobs["sync-tracking"], "run").mockRejectedValue(new Error("tracking API down"));
+
+    expect((await runJob("sync-tracking", "cron")).ok).toBe(false);
+    const after = await adminNotes("自動処理が失敗しました");
+    expect(after.length).toBe(before + 1);
+    expect(after.at(-1)!.body).toContain("tracking API down");
+
+    // the same failure on the next run does not add a second notification
+    await runJob("sync-tracking", "cron");
+    expect((await adminNotes("自動処理が失敗しました")).length).toBe(before + 1);
+    vi.restoreAllMocks();
+  });
+
+  it("alerts when a cron stopped running and stays quiet once it recovers", async () => {
+    const { alertOnStaleJobs } = await import("./index");
+    await db.delete(s.jobRuns);
+    const before = (await adminNotes("自動処理が動いていません")).length;
+
+    const stale = await alertOnStaleJobs(new Date());
+    expect(stale).toContain("close-payouts"); // no successful run at all
+    const notes = await adminNotes("自動処理が動いていません");
+    expect(notes.length).toBe(before + 1);
+    expect(notes.at(-1)!.body).toContain("実行記録なし");
+
+    // every job succeeded just now → nothing stale
+    const now = new Date();
+    await db.insert(s.jobRuns).values((["cancel-unpaid", "ship-reminders", "sync-tracking", "review-requests", "close-payouts"] as const).map((job) => ({ job, status: "success" as const, trigger: "cron" as const, summary: {}, startedAt: now })));
+    expect(await alertOnStaleJobs(now)).toEqual([]);
+
+    // a job whose last success is older than its maxAgeHours is reported again
+    await db.update(s.jobRuns).set({ startedAt: new Date(now.getTime() - 40 * 3600_000) }).where(eq(s.jobRuns.job, "cancel-unpaid"));
+    expect(await alertOnStaleJobs(now)).toEqual(["cancel-unpaid"]);
+  });
+});
