@@ -7,7 +7,8 @@
 #   4. migrate + seed   5. git push → Vercel Git deployment (fallback: CLI deploy)
 #   6. wait, collect build logs, smoke-test production
 #
-# Usage: bash scripts/deploy-vercel.sh [scope]
+# Usage: bash scripts/deploy-vercel.sh [scope]        full run (creates missing resources, seeds, pushes, deploys)
+#        CHECK_ONLY=1 bash scripts/deploy-vercel.sh   read-only: diagnose + report what is missing, change nothing
 set -uo pipefail
 cd "$(dirname "$0")/.."
 mkdir -p .deploy
@@ -15,7 +16,7 @@ exec > >(tee .deploy/run.log) 2>&1
 
 SCOPE="${1:-brightbroom-projects}"
 PROJECT="awaji-marche"
-REGION="iad1" # must match vercel.json regions and the Neon region (us-east-1)
+REGION="sin1" # must match vercel.json regions and the Neon region (ap-southeast-1 / Singapore)
 # Deploy tooling lives outside the app's dependency tree (.deploy is git-ignored).
 BIN="./.deploy/tools/node_modules/.bin/vercel"
 [ -x "$BIN" ] || npm i --prefix .deploy/tools --no-save --no-audit --no-fund vercel@latest >/dev/null
@@ -36,23 +37,32 @@ if [ -n "$PREV" ]; then with_timeout 60 V inspect "$PREV" --logs > .deploy/prev-
 step "1/6 Environment"
 ENV_LIST="$(V env ls production 2>&1)"; echo "$ENV_LIST" | grep -E '^\s+[A-Z_]+' | awk '{print "  "$1}' | sort -u
 has_env() { grep -q "$1" <<<"$ENV_LIST"; }
-if has_env DATABASE_URL; then echo "  ✓ DATABASE_URL"; else V integration add neon --name awaji-marche-db -m region="$REGION"; fi
+# Never auto-provision the database: `vercel integration add neon` creates it immediately in a region we cannot
+# pin, and the app must sit in the same region as its functions. See docs/DEPLOY.md §Runbook.
+if has_env DATABASE_URL; then echo "  ✓ DATABASE_URL"
+else echo "  ✗ DATABASE_URL is not set — create the Neon project (region $REGION) and add it: docs/DEPLOY.md §Runbook"; exit 1; fi
 
 step "2/6 Image storage (Vercel Blob)"
 if has_env BLOB_READ_WRITE_TOKEN; then echo "  ✓ BLOB_READ_WRITE_TOKEN"
+elif [ -n "${CHECK_ONLY:-}" ]; then echo "  ✗ BLOB_READ_WRITE_TOKEN is not set (check only — nothing created)"
 else V blob create-store awaji-marche-images --access public --region "$REGION" --yes || echo "!! Blob create failed"; fi
 
 step "3/6 Secrets & flags"
 add_env() { if has_env "$1"; then echo "  ✓ $1"; return; fi
+  if [ -n "${CHECK_ONLY:-}" ]; then echo "  ✗ $1 is not set (check only — nothing created)"; return; fi
   for e in production preview development; do printf '%s' "$2" | "$BIN" --scope "$SCOPE" env add "$1" "$e" >/dev/null 2>&1 && echo "  + $1 → $e"; done; }
 add_env BETTER_AUTH_SECRET "$(openssl rand -base64 32)"
 add_env CRON_SECRET "$(openssl rand -hex 24)"
 add_env DEMO_MODE "true"
 
+if [ -n "${CHECK_ONLY:-}" ]; then step "check only — stopping before migrate/seed/deploy"; exit 0; fi
+
 step "4/6 Migrate + seed (no-op when data exists)"
 V env pull .deploy/.env.production --environment=production --yes >/dev/null 2>&1
 set -a; . ./.deploy/.env.production; set +a
-[ -n "${DATABASE_URL:-}" ] && npm run -s db:seed || echo "!! DATABASE_URL missing"
+# DATABASE_URL is stored as a Vercel Secret, which `env pull` cannot read — seeding then happens on the
+# deployment itself (build runs db:migrate) or locally with .deploy/env.sg. Not an error.
+[ -n "${DATABASE_URL:-}" ] && npm run -s db:seed || echo "  (skip seed: DATABASE_URL not readable from env pull — Secret type)"
 rm -f .deploy/.env.production
 
 step "5/6 Ship: git push (Vercel Git integration deploys main)"
