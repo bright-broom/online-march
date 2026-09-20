@@ -17,6 +17,10 @@
 - 手数料率: `farms.commissionRateBps ?? platform_settings.commissionRateBps ?? feeConfig.default`（admin で変更可）。
   注文時点の率を `farm_orders.commissionRateBps` に固定保存（後から率を変えても過去注文は不変）。
 - クーポンは **プラットフォーム負担**。`farm_orders.discount` は表示用配分で、農家の payout は減らない。
+- **利用回数は注文作成時に確保**（在庫と同じ条件付き更新: `used_count < max_uses` の行だけ +1）。支払い時には数えない。
+  同時チェックアウトでも上限を超えず、未払い注文を並べて上限を回避することもできない。注文全体がキャンセル/期限切れに
+  なったときだけ戻す（`releaseCoupon`、0 未満にはならない）。返金では戻さない（取引自体は成立したため）。
+  回帰テスト `services/__tests__/coupon-limit.test.ts`。
 - Stripe 決済手数料（約3.6%）はプラットフォームの手数料10%から負担する想定。
 
 ## モード

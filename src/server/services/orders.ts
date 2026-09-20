@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, gte, inArray, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { REMOVED_VARIANT_SORT } from "@/config/catalog";
 import { calcCommission } from "@/config/fees";
 import { routes } from "@/config/nav";
@@ -249,6 +249,17 @@ export async function createOrder(input: CreateOrderInput) {
       }
     }
 
+    // Reserve the coupon use here, not at payment: the limit has to hold against simultaneous checkouts and
+    // against a shopper who parks several unpaid orders on the last use. Released again if the order is cancelled.
+    if (quote.coupon) {
+      const [reserved] = await tx
+        .update(coupons)
+        .set({ usedCount: sql`${coupons.usedCount} + 1` })
+        .where(and(eq(coupons.code, quote.coupon.code), or(isNull(coupons.maxUses), lt(coupons.usedCount, coupons.maxUses))))
+        .returning({ id: coupons.id });
+      if (!reserved) throw new ActionError("クーポンの利用上限に達しました");
+    }
+
     const code = orderCode(input.now);
     const [order] = await tx
       .insert(orders)
@@ -334,7 +345,6 @@ export async function markOrderPaid(orderId: string, p: { paymentIntentId?: stri
     for (const it of items) {
       if (it.productId) await tx.update(products).set({ soldCount: sql`${products.soldCount} + ${it.quantity}` }).where(eq(products.id, it.productId));
     }
-    if (order.couponCode) await tx.update(coupons).set({ usedCount: sql`${coupons.usedCount} + 1` }).where(eq(coupons.code, order.couponCode));
     return { order, fos, items };
   });
   if (!result) return null;
@@ -424,7 +434,13 @@ export async function transitionFarmOrder(farmOrderId: string, to: FarmOrderStat
       }
       const siblings = await tx.select({ status: farmOrders.status }).from(farmOrders).where(eq(farmOrders.orderId, fo.orderId));
       if (siblings.every((s) => s.status === "cancelled" || s.status === "refunded")) {
-        await tx.update(orders).set({ status: "cancelled", cancelledAt: opts.now }).where(eq(orders.id, fo.orderId));
+        // conditional so the release below runs exactly once, whichever farm order flips the order
+        const [flipped] = await tx
+          .update(orders)
+          .set({ status: "cancelled", cancelledAt: opts.now })
+          .where(and(eq(orders.id, fo.orderId), ne(orders.status, "cancelled")))
+          .returning({ couponCode: orders.couponCode });
+        if (flipped?.couponCode) await releaseCoupon(tx, flipped.couponCode);
       }
     }
     return row;
@@ -466,11 +482,24 @@ export async function cancelOrderByCustomer(orderId: string, userId: string, now
   }
 }
 
+/** Gives a reserved coupon use back. Never below zero, so a double call cannot mint extra uses. */
+async function releaseCoupon(exec: Pick<Database, "update">, code: string) {
+  await exec
+    .update(coupons)
+    .set({ usedCount: sql`greatest(${coupons.usedCount} - 1, 0)` })
+    .where(eq(coupons.code, code));
+}
+
 /** Expire an unpaid order: cancel all farm orders & restore stock. */
 export async function expireUnpaidOrder(orderId: string, now: Date) {
   const fos = await db.select().from(farmOrders).where(and(eq(farmOrders.orderId, orderId), eq(farmOrders.status, "pending_payment")));
   for (const fo of fos) await transitionFarmOrder(fo.id, "cancelled", { source: "cron", now, note: "お支払い期限切れのためキャンセルしました" });
-  await db.update(orders).set({ status: "cancelled", cancelledAt: now }).where(and(eq(orders.id, orderId), eq(orders.status, "pending_payment")));
+  const [expired] = await db
+    .update(orders)
+    .set({ status: "cancelled", cancelledAt: now })
+    .where(and(eq(orders.id, orderId), eq(orders.status, "pending_payment")))
+    .returning({ couponCode: orders.couponCode });
+  if (expired?.couponCode) await releaseCoupon(db, expired.couponCode);
 }
 
 /* ───────────────────────── Reviews ───────────────────────── */
