@@ -22,6 +22,8 @@ const schema = z.object({
   RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().default("あわじ玉ねぎマルシェ <noreply@example.com>"),
   BLOB_READ_WRITE_TOKEN: z.string().optional(),
+  /** Read-write token of a SEPARATE, private Blob store used for database backups (customer data). */
+  BACKUP_BLOB_READ_WRITE_TOKEN: z.string().optional(),
   CRON_SECRET: z.string().optional(),
   DEMO_MODE: z
     .enum(["true", "false"])
@@ -43,6 +45,7 @@ export const features = {
   stripe: Boolean(env.STRIPE_SECRET_KEY),
   email: Boolean(env.RESEND_API_KEY),
   blob: Boolean(env.BLOB_READ_WRITE_TOKEN),
+  backups: Boolean(env.BACKUP_BLOB_READ_WRITE_TOKEN),
   /** Shows demo accounts on login & allows one-click demo payment. */
   demo: env.DEMO_MODE || !env.STRIPE_SECRET_KEY,
 } as const;

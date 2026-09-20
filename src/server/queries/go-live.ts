@@ -98,6 +98,14 @@ export async function getGoLiveChecks(): Promise<GoLiveCheck[]> {
       detail: env.BLOB_READ_WRITE_TOKEN ? "Vercel Blob に接続済み" : "未設定です。生産者が写真を追加できません",
     },
     {
+      key: "backups",
+      label: "データベースのバックアップ",
+      state: env.BACKUP_BLOB_READ_WRITE_TOKEN ? "ready" : "warning",
+      detail: env.BACKUP_BLOB_READ_WRITE_TOKEN
+        ? "毎日、非公開の Blob ストアへ保存しています"
+        : "未設定です。非公開の Blob ストアを作り BACKUP_BLOB_READ_WRITE_TOKEN を設定すると、毎日自動保存します",
+    },
+    {
       key: "legal",
       label: "特定商取引法の表記・運営者情報",
       state: placeholders.length ? "blocker" : "ready",

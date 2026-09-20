@@ -1,6 +1,7 @@
 import "server-only";
 import { and, desc, eq, inArray, isNotNull, isNull, lt, lte } from "drizzle-orm";
 import { feeConfig } from "@/config/fees";
+import { opsConfig } from "@/config/ops";
 import { routes } from "@/config/nav";
 import { shippingPolicy } from "@/config/shipping";
 import { db } from "@/db";
@@ -142,6 +143,19 @@ export const jobs = {
       }
       if (due.length) await db.update(farmOrders).set({ reviewRequestedAt: now }).where(inArray(farmOrders.id, due.map((d) => d.id)));
       return { sent: due.length };
+    },
+  },
+
+  "backup-db": {
+    label: "データベースのバックアップ",
+    description: `全テーブルを JSON に書き出し、非公開の Blob ストアへ保存します（${opsConfig.backup.keepDays}日より古い分は削除）`,
+    schedule: "毎日 深夜",
+    maxAgeHours: 30,
+    async run(now): Promise<JobResult> {
+      const { runBackup, blobBackupDeps } = await import("@/server/services/backup");
+      const r = await runBackup(now, await blobBackupDeps());
+      if ("skipped" in r) return { skipped: r.skipped };
+      return { tables: r.tables, rows: r.rows, bytes: r.bytes, deleted: r.deleted };
     },
   },
 

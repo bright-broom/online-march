@@ -31,7 +31,8 @@ npm run dev        # http://localhost:3000
 | `STRIPE_CONNECT_WEBHOOK_SECRET` | 本番 | 送信先②「連結アカウント」: `account.updated`。URL はどちらも `https://<domain>/api/webhooks/stripe` |
 | `STRIPE_ACCOUNTS_WEBHOOK_SECRET` | 推奨 | 送信先③「自分のアカウント」・ペイロード thin: `v2.core.account[configuration.recipient].capability_status_updated`, `v2.core.account[requirements].updated`。URL `https://<domain>/api/webhooks/stripe/accounts` |
 | `RESEND_API_KEY` / `EMAIL_FROM` | 本番 | 送信ドメインを Resend で認証 |
-| `BLOB_READ_WRITE_TOKEN` | ✅ | 画像アップロード |
+| `BLOB_READ_WRITE_TOKEN` | ✅ | 画像アップロード（公開ストア） |
+| `BACKUP_BLOB_READ_WRITE_TOKEN` | 推奨 | **非公開**ストアの RW トークン。`backup-db` が毎日 JSON(gzip) を保存（14日保持）。顧客データを含むため公開ストアとは必ず分ける |
 | `DEMO_MODE` | 任意 | `true` でデモアカウント表示・デモ決済を許可 |
 
 5. Deploy。`npm run build` が `db:migrate` を先に実行（DATABASE_URL がある場合）。

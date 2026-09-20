@@ -267,7 +267,8 @@ describe("operational alerts", () => {
 
     // every job succeeded just now → nothing stale
     const now = new Date();
-    await db.insert(s.jobRuns).values((["cancel-unpaid", "ship-reminders", "sync-tracking", "review-requests", "close-payouts"] as const).map((job) => ({ job, status: "success" as const, trigger: "cron" as const, summary: {}, startedAt: now })));
+    const { jobs } = await import("./index");
+    await db.insert(s.jobRuns).values(Object.keys(jobs).map((job) => ({ job, status: "success" as const, trigger: "cron" as const, summary: {}, startedAt: now })));
     expect(await alertOnStaleJobs(now)).toEqual([]);
 
     // a job whose last success is older than its maxAgeHours is reported again
