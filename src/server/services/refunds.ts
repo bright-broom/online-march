@@ -1,5 +1,5 @@
 import "server-only";
-import { eq } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { routes } from "@/config/nav";
 import { db } from "@/db";
 import { farmOrders, orders, shipmentEvents, type FarmOrder } from "@/db/schema";
@@ -46,20 +46,41 @@ export async function refundOrder(data: { orderId: string; farmOrderId?: string 
 
   const amount = targets.reduce((a, f) => a + refundableAmountOf(f), 0);
   const viaStripe = order.paymentProvider === "stripe" && Boolean(order.stripePaymentIntentId);
-  if (viaStripe) {
-    if (!features.stripe) throw new ActionError("Stripe が未設定のため返金できません。環境変数を確認してください");
-    const { refundPayment } = await import("@/server/services/payments/stripe");
-    // whole order: omit amount → Stripe refunds the remaining balance
-    await refundPayment(order.stripePaymentIntentId!, data.farmOrderId ? amount : undefined, data.farmOrderId ? `farm-order:${data.farmOrderId}` : `order:${order.id}`);
-  }
+  if (viaStripe && !features.stripe) throw new ActionError("Stripe が未設定のため返金できません。環境変数を確認してください");
 
   const now = new Date();
+  // Claim the rows before touching Stripe: the checks above are reads, so two operators pressing 返金 at the
+  // same moment would both get through and leave the customer with two refund notifications and two timeline
+  // entries for one movement of money. Only the run that claims every target proceeds.
+  const claimed = await db
+    .update(farmOrders)
+    .set({ refundedAt: now })
+    .where(and(inArray(farmOrders.id, targets.map((f) => f.id)), isNull(farmOrders.refundedAt)))
+    .returning({ id: farmOrders.id });
+  const release = async () => {
+    if (claimed.length) await db.update(farmOrders).set({ refundedAt: null }).where(inArray(farmOrders.id, claimed.map((c) => c.id)));
+  };
+  if (claimed.length !== targets.length) {
+    await release();
+    throw new ActionError("この注文は別の処理で返金されました");
+  }
+
+  if (viaStripe) {
+    const { refundPayment } = await import("@/server/services/payments/stripe");
+    try {
+      // whole order: omit amount → Stripe refunds the remaining balance
+      await refundPayment(order.stripePaymentIntentId!, data.farmOrderId ? amount : undefined, data.farmOrderId ? `farm-order:${data.farmOrderId}` : `order:${order.id}`);
+    } catch (e) {
+      await release(); // nothing moved — let the operator retry
+      throw e;
+    }
+  }
   for (const fo of targets) {
     if (fo.status === "delivered") await transitionFarmOrder(fo.id, "refunded", { source: "admin", now });
     else if (fo.status === "paid" || fo.status === "preparing") {
       await transitionFarmOrder(fo.id, "cancelled", { source: "admin", now, note: "運営によりキャンセルしました" });
     }
-    await db.update(farmOrders).set({ refundedAt: now, refundAmount: refundableAmountOf(fo) }).where(eq(farmOrders.id, fo.id));
+    await db.update(farmOrders).set({ refundAmount: refundableAmountOf(fo) }).where(eq(farmOrders.id, fo.id));
     await db.insert(shipmentEvents).values({
       farmOrderId: fo.id,
       type: "refund",

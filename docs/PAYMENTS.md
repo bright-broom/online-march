@@ -68,6 +68,10 @@ success ページでも session を確認して `markOrderPaid` を呼ぶ（webh
 - 顧客キャンセル（発送前のみ）: 全 farm_orders cancelled → Stripe 全額返金 → orders.refunded。
 - 部分（農家単位）返金: admin が /admin/orders から実行 → `services/refunds.ts#refundOrder`
   （配達済み→refunded / 発送前→cancelled＋在庫戻し / 配送中は拒否）。`farm_orders.refundedAt/refundAmount` に記録。
+- **返金の二重実行防止**: `refundOrder` は対象 farm_orders を `refundedAt IS NULL` 条件で**先に確保**してから Stripe を呼ぶ。
+  同時に2人が押しても Stripe 呼び出し・通知・タイムラインの `refund` 行は1回だけ。Stripe が失敗したら確保を解除して
+  再試行できる状態に戻す（金額は idempotency key でも守られるが、それだけでは通知とAPI呼び出しが二重になる）。
+  回帰テスト `services/__tests__/refund-race.test.ts`。
 - 精算締め後の返金は **翌月の精算で自動相殺**（clawback）：`close-payouts` が「精算済み（payoutId あり）かつ返金済み・未相殺」の
   farm_orders の `payoutAmount` を差し引き、`payouts.refundAdjustment` に記録、`farm_orders.clawbackPayoutId` で二重控除を防ぐ。
   差引後が最低振込額未満（マイナス含む）なら全額翌月へ繰越。
