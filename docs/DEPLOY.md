@@ -36,28 +36,29 @@ npm run dev        # http://localhost:3000
 
 5. Deploy。`npm run build` が `db:migrate` を先に実行（DATABASE_URL がある場合）。
 6. 初回のみデモデータ: ローカルで `DATABASE_URL=... npm run db:seed`（本番運用では不要）。
-7. **Region は DB と同じ場所に置く**（vercel.json `regions`）。現在 Neon が `us-east-1` のため関数は `iad1`。
-   静的シェルは CDN（東京エッジ）から配信されるので、日本からの初期表示は速い。動的部分のみ iad1 往復。
-   → 本番運用前に Neon を `aws-ap-southeast-1`（シンガポール）で作り直し、`regions: ["sin1"]` にするのが次の一手
-   （Neon の Vercel 連携は東京リージョン非対応のため sin1 が最短）。
+7. **Region は DB と同じ場所に置く**（vercel.json `regions`）。現在は Neon `ap-southeast-1`（シンガポール）+ 関数 `sin1`。
+   静的シェルは CDN（東京エッジ）から配信され、動的部分のみ sin1 往復。2026-09 の実測（日本から）:
+   関数のみ 220ms → 145ms、関数+DB 360ms → 155ms（移設前は us-east-1 / iad1）。Neon は Tokyo 非対応のため sin1 が最短。
 8. デプロイ補助: `bash scripts/deploy-vercel.sh` — 環境変数/Neon/Blob の確認・作成、seed、push、ビルドログ取得、
    スモークテストまで実行し、結果を `.deploy/run.log`・`.deploy/build.log` に保存する。
 
-## Runbook: DB をシンガポールへ移す（本番データ投入前に推奨）
+## Runbook: DB のリージョン移設（実施済み・再実施の手順）
 
-日本からの動的レスポンスを約半分にする。Neon の Vercel 連携は東京非対応のため sin1 が最短。
-1. `vercel integration add neon --name awaji-marche-db-sg -m region=sin1 --prefix SG_`（SG_DATABASE_URL が追加される）
-2. `DATABASE_URL=<SG_DATABASE_URL> npm run db:seed`（migrate + seed。実データがある場合は pg_dump/pg_restore で移送）
-3. Dashboard → Settings → Environment Variables で `DATABASE_URL` を SG の値に差し替え（Production/Preview）
-4. `vercel.json` の `regions` を `["sin1"]`、Blob も `--region sin1` で作り直す場合は同様に差し替え
-5. push → デプロイ → `bash scripts/deploy-vercel.sh` のスモークテストで確認 → 旧 Neon を削除
-
-## 注意: ローカル開発で本番DBを使わない
-
-`vercel integration add` / `vercel env pull` は `.env.local` に本番（Neon）の `DATABASE_URL` を書き込み、
-Next.js はそれを自動で読むため **ローカル開発が本番DBに書き込む状態** になる。
-ローカルは PGlite を使う（`.env.local` に `DATABASE_URL` を置かない）。Neon を使う検証は
-`set -a; . <pulled-env>; set +a` で明示的に一時注入する。
+Neon の Vercel 連携ではリージョンを選べないことがある。その場合は Neon コンソールで作る。
+1. console.neon.tech → New project → Region に目的のリージョン（Tokyo は提供なし。日本向けは Singapore）。
+   Services は Postgres のみ（Object storage / Functions / AI gateway / Neon Auth は不要）。
+2. 接続文字列（**pooled**）を取得し、ローカルの `.deploy/env.sg` に `DATABASE_URL='…'` として保存（引用符必須：`&` を含むため）。
+   Neon CLI なら `neon connection-string production --project-id <id> --pooled`。
+3. `set -a; . .deploy/env.sg; set +a; npm run db:migrate && npm run db:seed`
+4. Stripe 連結アカウントを引き継ぐ: `node .deploy/carry-stripe-links.mjs`（確認）→ `--apply`（反映）。
+   seed を流し直すと farms の `stripe_account_id` が消えるため、農家の再オンボードを避けるにはこれが必要。
+5. 件数確認: `node .deploy/db-compare.mjs`（新旧のテーブル別行数）。
+6. 切り替え（ここから数分ダウン）:
+   - `vercel integration resource disconnect awaji-marche-db awaji-marche --yes`（旧 DB の env を外す）
+   - `vercel env add DATABASE_URL production < <接続文字列のみのファイル>`
+   - `vercel.json` の `regions` を新リージョンに変更して push（デプロイで反映）
+7. 確認: トップ/商品一覧、ログイン、生産者の売上・精算（Stripe 連携の表示）、/admin/settings。
+8. 旧 Neon プロジェクトは確認後に削除（無料プランはプロジェクト数に上限）。
 
 ## 本番前チェックリスト
 
