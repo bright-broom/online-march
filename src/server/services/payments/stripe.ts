@@ -184,6 +184,12 @@ export async function createConnectOnboardingLink(p: { farmId: string; accountId
   return { accountId, url: link.url };
 }
 
+/** Platform balance that can be transferred right now (JPY). Pending charge funds are not included. */
+export async function fetchAvailableBalance(currency = "jpy") {
+  const balance = await getStripe().balance.retrieve();
+  return balance.available.find((b) => b.currency === currency)?.amount ?? 0;
+}
+
 export async function transferToFarm(p: { accountId: string; amount: number; payoutId: string; description: string }) {
   return getStripe().transfers.create({
     amount: p.amount,

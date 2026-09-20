@@ -123,12 +123,14 @@ describe("executeDuePayouts", () => {
       if (p.accountId === "acct_broken") throw new Error("balance_insufficient");
       return { id: `tr_${p.accountId}` };
     });
-    const r = await executeDuePayouts(now, { isReady: async (id) => id !== "acct_revoked", transfer });
+    const deps = { isReady: async (id: string) => id !== "acct_revoked", availableBalance: async () => 10_000, transfer };
+    const r = await executeDuePayouts(now, deps);
 
     expect(r.transferred).toBe(1);
     expect(r.awaitingManual).toBe(2); // revoked + no account
     expect(r.failures).toHaveLength(1);
     expect(r.failures[0]).toContain("balance_insufficient");
+    expect((await db.query.payouts.findFirst({ where: eq(s.payouts.id, byFarm(broken.id)) }))!.transferError).toContain("balance_insufficient");
     expect(transfer).toHaveBeenCalledTimes(2); // never called for the revoked account
     const status = async (id: string) => (await db.query.payouts.findFirst({ where: eq(s.payouts.id, id) }))!;
     expect(await status(byFarm(ok.id))).toMatchObject({ status: "paid", stripeTransferId: "tr_acct_ok" });
@@ -140,7 +142,7 @@ describe("executeDuePayouts", () => {
 
     // re-running pays nothing twice
     transfer.mockClear();
-    const again = await executeDuePayouts(now, { isReady: async (id) => id !== "acct_revoked", transfer });
+    const again = await executeDuePayouts(now, deps);
     expect(transfer).toHaveBeenCalledTimes(1); // only the still-pending broken one is retried
     expect(again.transferred).toBe(0);
   });
@@ -184,12 +186,49 @@ describe("executeDuePayouts: concurrent runs", () => {
       .insert(s.payouts)
       .values({ farmId: farm.id, periodStart: "2026-07-01", periodEnd: "2026-07-31", grossSales: 1234, shippingFees: 0, commission: 0, amount: 1234, orderCount: 1, scheduledFor: toYmd(now) })
       .returning();
-    const deps = { isReady: async () => true, transfer: async () => ({ id: "tr_same" }) }; // Stripe returns the same transfer for the same key
+    const deps = { isReady: async () => true, availableBalance: async () => 10_000, transfer: async () => ({ id: "tr_same" }) }; // Stripe returns the same transfer for the same key
     const [a, b] = await Promise.all([executeDuePayouts(now, deps), executeDuePayouts(now, deps)]);
 
     expect(a.transferred + b.transferred).toBe(1);
     expect((await db.query.payouts.findFirst({ where: eq(s.payouts.id, p.id) }))).toMatchObject({ status: "paid", stripeTransferId: "tr_same" });
     const notes = await db.select().from(s.notifications).where(eq(s.notifications.userId, farm.ownerId));
     expect(notes.filter((n) => n.body.startsWith("2026-07分")).length).toBe(1);
+  });
+});
+
+describe("executeDuePayouts: platform balance", () => {
+  it("skips payouts the balance cannot cover without calling Stripe, records why and alerts admins", async () => {
+    const { executeDuePayouts } = await import("@/server/services/payouts");
+    const { toYmd } = await import("@/lib/dates");
+    const now = new Date();
+    const [farm] = await db.select().from(s.farms).where(eq(s.farms.status, "active")).limit(1);
+    await db.update(s.farms).set({ stripeAccountId: "acct_funds", stripeOnboarded: true }).where(eq(s.farms.id, farm.id));
+    await db.update(s.payouts).set({ status: "paid" }).where(eq(s.payouts.status, "pending")); // isolate from earlier tests
+    const due = { farmId: farm.id, periodStart: "2026-06-01", periodEnd: "2026-06-30", grossSales: 0, shippingFees: 0, commission: 0, orderCount: 1, scheduledFor: toYmd(now) };
+    const [small] = await db.insert(s.payouts).values({ ...due, amount: 800 }).returning();
+    const [big] = await db.insert(s.payouts).values({ ...due, amount: 5000 }).returning();
+    const admin = (await db.query.user.findFirst({ where: eq(s.user.email, "admin@demo.awaji") }))!;
+    const adminNotesBefore = (await db.select().from(s.notifications).where(eq(s.notifications.userId, admin.id))).length;
+
+    const transfer = vi.fn(async () => ({ id: "tr_small" }));
+    const r = await executeDuePayouts(now, { isReady: async () => true, availableBalance: async () => 1000, transfer });
+
+    expect(r.transferred).toBe(1);
+    expect(r.unfunded).toHaveLength(1);
+    expect(r.failures).toHaveLength(0);
+    expect(transfer).toHaveBeenCalledTimes(1); // the 5,000-yen payout never reached Stripe
+    expect((await db.query.payouts.findFirst({ where: eq(s.payouts.id, small.id) }))!.status).toBe("paid");
+    const unpaid = (await db.query.payouts.findFirst({ where: eq(s.payouts.id, big.id) }))!;
+    expect(unpaid.status).toBe("pending");
+    expect(unpaid.transferError).toContain("残高が不足");
+    expect(unpaid.transferAttemptedAt).not.toBeNull();
+    const adminNotes = await db.select().from(s.notifications).where(eq(s.notifications.userId, admin.id));
+    expect(adminNotes.length).toBe(adminNotesBefore + 1);
+    expect(adminNotes.at(-1)!.title).toBe("送金できなかった精算があります");
+
+    // funded on a later run: the transfer goes through and the error is cleared
+    const r2 = await executeDuePayouts(now, { isReady: async () => true, availableBalance: async () => 9000, transfer: async () => ({ id: "tr_big" }) });
+    expect(r2.transferred).toBe(1);
+    expect(await db.query.payouts.findFirst({ where: eq(s.payouts.id, big.id) })).toMatchObject({ status: "paid", stripeTransferId: "tr_big", transferError: null });
   });
 });

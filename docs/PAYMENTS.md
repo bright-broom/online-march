@@ -71,9 +71,12 @@ success ページでも session を確認して `markOrderPaid` を呼ぶ（webh
 ## 安全性（二重処理・非同期決済）
 
 - **送金（`services/payouts.ts#executeDuePayouts`）**: 期日到来の pending を1件ずつ処理。送金直前に Accounts v2 で
-  `stripe_transfers` を再確認し（無効なら `stripeOnboarded=false` にして手動振込待ちへ）、1件の失敗（残高不足など）で他農家を止めない。
-  失敗があればジョブを失敗扱いにして /admin/automation に表示し、pending のまま翌日以降の実行で再試行。成功時は農家へ通知。
-  Stripe は同じ idempotency key のエラー応答を少なくとも24時間は返し続けるため、再試行が実際に通るのは早くて翌々日の実行。
+  `stripe_transfers` を再確認し（無効なら `stripeOnboarded=false` にして手動振込待ちへ）、1件の失敗で他農家を止めない。
+  失敗・残高不足はジョブを失敗扱いにして /admin/automation に出し、理由を `payouts.transferError` に保存（/admin/payouts に表示）、
+  運営ユーザー全員へ通知。pending のまま翌日以降の実行で再試行し、成功時は `transferError` を null に戻して農家へ通知。
+- **残高の事前確認**: 実行開始時に `balance.retrieve()` の available（JPY）を取り、送金額が残高を超える精算は **Stripe を呼ばずに**
+  見送る。残高不足で API を叩くと、その精算の idempotency key（payoutId）にエラー応答が最大24時間貼り付き、翌日の再試行まで
+  弾かれるため。残高は1回だけ取得し、成功した送金額をローカルで差し引く。
 - **重複実行（Cron の再配信・今すぐ実行の重なり）**: `close-payouts` は精算の insert と farm_orders の紐付けを1トランザクションで行い、
   紐付けは `payoutId IS NULL`（相殺は `clawbackPayoutId IS NULL`）の行だけを対象にする。件数が合わなければ先行した実行が
   確定済みとみなしてロールバック（同じ注文から精算が2件でき、二重送金になるのを防ぐ）。送金後の `paid` 更新も `status='pending'`

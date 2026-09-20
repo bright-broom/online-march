@@ -203,13 +203,17 @@ export const jobs = {
       }
       // execute transfers that are due (runs daily, so the payout day is honoured and failed transfers retry)
       const stripe = features.stripe ? await import("@/server/services/payments/stripe") : null;
-      const { transferred, awaitingManual, failures } = await executeDuePayouts(
+      const { transferred, awaitingManual, failures, unfunded } = await executeDuePayouts(
         now,
-        stripe && { isReady: stripe.fetchPayoutReady, transfer: stripe.transferToFarm },
+        stripe && { isReady: stripe.fetchPayoutReady, availableBalance: stripe.fetchAvailableBalance, transfer: stripe.transferToFarm },
       );
       expireTags(tags.analytics);
-      // surface failures as a failed run (visible on /admin/automation) after every other farm has been paid
-      if (failures.length) throw new Error(`送金失敗 ${failures.length}件（成功 ${transferred}件・精算作成 ${created}件）: ${failures.join(" / ")}`);
+      // surface problems as a failed run (visible on /admin/automation) after every other farm has been paid
+      const problems = [
+        unfunded.length ? `残高不足 ${unfunded.length}件: ${unfunded.join(" / ")}` : "",
+        failures.length ? `送金失敗 ${failures.length}件: ${failures.join(" / ")}` : "",
+      ].filter(Boolean);
+      if (problems.length) throw new Error(`${problems.join("・")}（成功 ${transferred}件・精算作成 ${created}件）`);
       return { created, transferred, awaitingManual };
     },
   },

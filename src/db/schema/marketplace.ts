@@ -434,6 +434,9 @@ export const payouts = pgTable(
     orderCount: integer("order_count").notNull(),
     status: payoutStatus("status").notNull().default("pending"),
     stripeTransferId: text("stripe_transfer_id"),
+    /** why the last automatic transfer did not go through (insufficient platform balance, Stripe error) */
+    transferError: text("transfer_error"),
+    transferAttemptedAt: timestamp("transfer_attempted_at", { withTimezone: true }),
     scheduledFor: date("scheduled_for"),
     paidAt: timestamp("paid_at", { withTimezone: true }),
     createdAt,

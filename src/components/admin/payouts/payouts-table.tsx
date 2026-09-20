@@ -55,7 +55,16 @@ export function PayoutsTable({ rows }: { rows: AdminPayoutRow[] }) {
         </div>
       ),
     },
-    { accessorKey: "status", header: "状態", cell: ({ row: { original: p } }) => <StatusBadge kind="payout" status={p.status} /> },
+    {
+      accessorKey: "status",
+      header: "状態",
+      cell: ({ row: { original: p } }) => (
+        <div className="space-y-1">
+          <StatusBadge kind="payout" status={p.status} />
+          {p.status !== "paid" && p.transferError && <p className="text-destructive max-w-56 text-[11px] leading-tight">送金できませんでした：{p.transferError}</p>}
+        </div>
+      ),
+    },
     {
       id: "actions",
       header: "",
@@ -108,6 +117,12 @@ function PayoutSheet({ payout: p, onOpenChange }: { payout: AdminPayoutRow | nul
                 {p.paidAt && <span className="text-muted-foreground">振込日時 {formatDateTime(p.paidAt)}</span>}
                 {p.stripeTransferId && <code className="bg-muted rounded px-1.5 py-0.5 text-[11px]">{p.stripeTransferId}</code>}
               </div>
+              {p.status !== "paid" && p.transferError && (
+                <p className="text-destructive text-xs leading-relaxed">
+                  送金できませんでした：{p.transferError}
+                  {p.transferAttemptedAt && <span className="text-muted-foreground">（{formatDateTime(p.transferAttemptedAt)}）</span>}
+                </p>
+              )}
               <Separator />
               <Table>
                 <TableHeader>
