@@ -2,7 +2,7 @@
 import { PenLine } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { toast } from "sonner";
 import { SubmitButton } from "@/components/common/submit-button";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,7 @@ export function ReviewDialog({
   const [open, setOpen] = useState(false);
   const [rating, setRating] = useState(review?.rating ?? 0);
   const [body, setBody] = useState(review?.body ?? "");
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
   const [state, formAction] = useActionState<ReviewResult | null, FormData>(async (prev, fd) => {
     const res = review ? await updateReview(prev, fd) : await createReview(prev, fd);
     if (res.ok) {
@@ -55,7 +56,16 @@ export function ReviewDialog({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent
+        className="sm:max-w-lg"
+        onOpenAutoFocus={(e) => {
+          // 開いた直後は1つ目の星にフォーカスが入る。星は「フォーカス中の数」をプレビュー表示するので、
+          // 5つ星で投稿したレビューを編集しようとすると★1に見えてしまう。編集では本文へフォーカスする。
+          if (!editing) return;
+          e.preventDefault();
+          bodyRef.current?.focus();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>{editing ? "レビューを編集" : "レビューを書く"}</DialogTitle>
           <DialogDescription>味や大きさ、料理に使った感想など、次に選ぶ方の参考になることを教えてください。</DialogDescription>
@@ -92,6 +102,7 @@ export function ReviewDialog({
             <Field data-invalid={!!fe?.body}>
               <FieldLabel htmlFor={`rv-body-${productId}`}>本文</FieldLabel>
               <Textarea
+                ref={bodyRef}
                 id={`rv-body-${productId}`}
                 name="body"
                 rows={5}
