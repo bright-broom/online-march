@@ -168,6 +168,14 @@ export const shopFormSchema = z.object({
 });
 export type ShopFormInput = z.infer<typeof shopFormSchema>;
 
+/** 受付停止（お休み）。再開日を必ず決める＝戻し忘れで売り逃さない */
+export const farmPauseSchema = z.object({
+  until: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "再開日を選んでください")
+    .nullable(),
+});
+
 export const shippingSettingsSchema = z
   .object({
     defaultCarrier: z.enum(carrierKeys, "配送業者を選択してください"),

@@ -111,9 +111,13 @@ export async function quoteCart(
   const unavailable: string[] = [];
   const grouped = new Map<string, QuotedFarm>();
 
+  const today = toYmd(input.now);
+  const isPaused = (f: { pausedUntil: string | null }) => Boolean(f.pausedUntil && f.pausedUntil >= today);
+
   for (const line of input.lines) {
     const r = byId.get(line.variantId);
-    if (!r || r.p.status !== "active" || r.f.status !== "active" || r.v.sortOrder >= REMOVED_VARIANT_SORT || line.quantity < 1) {
+    // お休み中の農園は受け付けない（出荷できない注文を作らないため。期間を過ぎれば自動で戻る）
+    if (!r || r.p.status !== "active" || r.f.status !== "active" || isPaused(r.f) || r.v.sortOrder >= REMOVED_VARIANT_SORT || line.quantity < 1) {
       unavailable.push(line.variantId);
       continue;
     }

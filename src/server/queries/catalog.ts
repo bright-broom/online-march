@@ -85,6 +85,8 @@ export type FarmShippingDTO = {
   shipWeekdays: number[];
   carrier: Carrier;
   freeShippingThreshold: number | null;
+  /** 受付停止中ならその最終日（YYYY-MM-DD）。過ぎていれば受付中 */
+  pausedUntil: string | null;
 };
 
 export type FarmDetailDTO = FarmCardDTO &
@@ -428,6 +430,7 @@ export async function getProductBySlug(slug: string): Promise<ProductDetailDTO |
       shipWeekdays: p.farm.shipWeekdays,
       carrier: p.farm.defaultCarrier,
       freeShippingThreshold: p.farm.freeShippingThreshold,
+      pausedUntil: p.farm.pausedUntil,
     },
   };
 }
@@ -509,6 +512,7 @@ export async function getFarmBySlug(slug: string): Promise<FarmDetailDTO | null>
       shipWeekdays: farms.shipWeekdays,
       carrier: farms.defaultCarrier,
       freeShippingThreshold: farms.freeShippingThreshold,
+      pausedUntil: farms.pausedUntil,
       updatedAt: farms.updatedAt,
     })
     .from(farms)

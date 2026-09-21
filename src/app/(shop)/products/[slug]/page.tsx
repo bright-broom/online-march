@@ -171,6 +171,7 @@ export default async function ProductPage({ params }: PageProps<"/products/[slug
               farm: p.farm,
               imageUrl: p.images[0]?.url ?? null,
             }}
+            pausedUntil={p.farm.pausedUntil}
           />
           <FarmMiniCard farm={p.farm} />
         </div>

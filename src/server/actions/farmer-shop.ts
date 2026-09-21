@@ -5,8 +5,9 @@ import { refresh, updateTag } from "next/cache";
 import { db } from "@/db";
 import { farms } from "@/db/schema";
 import { tags } from "@/lib/cache-tags";
+import { toYmd } from "@/lib/dates";
 import { features } from "@/lib/env";
-import { shippingSettingsSchema, shopFormSchema } from "@/lib/validators/farmer";
+import { farmPauseSchema, shippingSettingsSchema, shopFormSchema } from "@/lib/validators/farmer";
 import { assertFarm } from "@/server/auth/guards";
 import { ActionError, formToObject, parseInput, runAction, type ActionResult } from "./_utils";
 
@@ -41,6 +42,25 @@ export async function saveShippingSettings(_prev: unknown, formData: FormData): 
     updateTag(tags.farmProducts(farm.id));
     refresh();
   }, "出荷・配送設定を保存しました");
+}
+
+/**
+ * 受付停止（お休み）の設定・解除。`until` の日まで新規注文を受け付けない。
+ * 終了日を必ず持たせるので、農家さんが解除を忘れても翌日から自動で再開する。
+ */
+export async function setFarmPause(input: { until: string | null }): Promise<ActionResult> {
+  return runAction(async () => {
+    const { farm } = await assertFarm();
+    const { until } = parseInput(farmPauseSchema, input);
+    if (until && until < toYmd(new Date())) throw new ActionError("再開日は今日以降を選んでください");
+    await db.update(farms).set({ pausedUntil: until }).where(eq(farms.id, farm.id));
+    // 商品ページ・農園ページの「お休み中」表示に効かせる
+    updateTag(tags.farm(farm.id));
+    updateTag(tags.farmProducts(farm.id));
+    updateTag(tags.farms);
+    updateTag(tags.products);
+    refresh();
+  }, "設定を保存しました");
 }
 
 /** Stripe Connect onboarding → redirects to Stripe (only when Stripe is configured). */

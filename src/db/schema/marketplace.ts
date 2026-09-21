@@ -108,6 +108,11 @@ export const farms = pgTable(
     /** 0=Sun … 6=Sat */
     shipWeekdays: jsonb("ship_weekdays").$type<number[]>().notNull().default([1, 2, 3, 4, 5, 6]),
     freeShippingThreshold: integer("free_shipping_threshold"),
+    /**
+     * 出荷できない期間の受付停止（お休み）。この日までは新規注文を受けない。
+     * 過ぎれば自動で再開するので、農家さんが戻し忘れて売り逃す心配がない。
+     */
+    pausedUntil: date("paused_until"),
     isFeatured: boolean("is_featured").notNull().default(false),
     ratingSum: integer("rating_sum").notNull().default(0),
     ratingCount: integer("rating_count").notNull().default(0),

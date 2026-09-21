@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { EmptyState } from "@/components/common/empty-state";
 import { SectionHeading } from "@/components/common/section-heading";
+import { FarmPausedNotice } from "@/components/shop/farm-paused-notice";
 import { Button } from "@/components/ui/button";
 import { CultivationBadge, FarmAvatar } from "@/components/shop/farm-card";
 import { FollowButton } from "@/components/shop/follow-button";
@@ -125,6 +126,8 @@ export default async function FarmPage({ params }: PageProps<"/farms/[slug]">) {
             </Button>
           </div>
         </header>
+
+        <FarmPausedNotice farmName={farm.name} pausedUntil={farm.pausedUntil} />
 
         <dl className="mt-10 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border bg-border sm:grid-cols-4">
           {stats.map((s) => (

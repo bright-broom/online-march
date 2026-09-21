@@ -1,0 +1,1 @@
+ALTER TABLE "farms" ADD COLUMN "paused_until" date;
