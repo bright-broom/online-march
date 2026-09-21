@@ -29,10 +29,11 @@ export default async function ReviewsPage() {
         </TabsList>
 
         <TabsContent value="pending">
+          {/* 2列にするのは1枚が広く取れる幅から。中間幅で2列にすると商品名が1文字ずつ折り返す */}
           {pending.length ? (
-            <ul className="grid gap-3 md:grid-cols-2">
+            <ul className="grid gap-3 xl:grid-cols-2">
               {pending.map((r) => (
-                <li key={`${r.farmOrderId}:${r.productId}`} className="bg-card flex items-center gap-4 rounded-xl border p-4">
+                <li key={`${r.farmOrderId}:${r.productId}`} className="bg-card flex flex-wrap items-center gap-4 rounded-xl border p-4">
                   <div className="bg-muted relative size-16 shrink-0 overflow-hidden rounded-lg">
                     {r.imageUrl && <Image src={r.imageUrl} alt={r.productName} fill sizes="64px" className="object-cover" />}
                   </div>
