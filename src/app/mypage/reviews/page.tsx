@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/common/empty-state";
 import { RatingStars } from "@/components/common/rating";
 import { ToneBadge } from "@/components/common/status-badge";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { DeleteReviewButton } from "@/components/mypage/delete-review-button";
 import { ReviewDialog } from "@/components/mypage/review-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { routes } from "@/config/nav";
@@ -69,6 +70,15 @@ export default async function ReviewsPage() {
                   </div>
                   {r.title && <p className="font-medium">{r.title}</p>}
                   <p className="text-sm leading-relaxed whitespace-pre-wrap">{r.body}</p>
+                  <div className="flex justify-end gap-1">
+                    <ReviewDialog
+                      productId={r.productId}
+                      productName={r.productName}
+                      imageUrl={r.imageUrl}
+                      review={{ id: r.id, rating: r.rating, title: r.title, body: r.body }}
+                    />
+                    <DeleteReviewButton reviewId={r.id} productName={r.productName} />
+                  </div>
                   {r.reply && (
                     <div className="bg-paper border-primary/40 space-y-1 rounded-r-lg border-l-2 p-3">
                       <p className="text-primary flex items-center gap-1.5 text-xs font-medium">

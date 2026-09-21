@@ -10,27 +10,31 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { createReview } from "@/server/actions/reviews";
+import { createReview, updateReview } from "@/server/actions/reviews";
 import { StarPicker } from "./star-picker";
 
-type ReviewResult = Awaited<ReturnType<typeof createReview>>;
+type ReviewResult = Awaited<ReturnType<typeof createReview>> | Awaited<ReturnType<typeof updateReview>>;
 
+/** `review` を渡すと編集、渡さなければ新規投稿。 */
 export function ReviewDialog({
-  productId, farmOrderId, productName, variantLabel, imageUrl, trigger,
+  productId, farmOrderId, productName, variantLabel, imageUrl, trigger, review,
 }: {
   productId: string;
-  farmOrderId: string;
+  /** 新規投稿のときだけ必要（どの注文の商品かを結びつける） */
+  farmOrderId?: string;
   productName: string;
   variantLabel?: string;
   imageUrl?: string | null;
   trigger?: React.ReactNode;
+  review?: { id: string; rating: number; title: string; body: string };
 }) {
   const router = useRouter();
+  const editing = Boolean(review);
   const [open, setOpen] = useState(false);
-  const [rating, setRating] = useState(0);
-  const [body, setBody] = useState("");
+  const [rating, setRating] = useState(review?.rating ?? 0);
+  const [body, setBody] = useState(review?.body ?? "");
   const [state, formAction] = useActionState<ReviewResult | null, FormData>(async (prev, fd) => {
-    const res = await createReview(prev, fd);
+    const res = review ? await updateReview(prev, fd) : await createReview(prev, fd);
     if (res.ok) {
       toast.success(res.message ?? "レビューを投稿しました");
       setOpen(false);
@@ -47,13 +51,13 @@ export function ReviewDialog({
       <DialogTrigger asChild>
         {trigger ?? (
           <Button size="sm" variant="outline" className="rounded-full">
-            <PenLine />レビューを書く
+            <PenLine />{editing ? "編集" : "レビューを書く"}
           </Button>
         )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>レビューを書く</DialogTitle>
+          <DialogTitle>{editing ? "レビューを編集" : "レビューを書く"}</DialogTitle>
           <DialogDescription>味や大きさ、料理に使った感想など、次に選ぶ方の参考になることを教えてください。</DialogDescription>
         </DialogHeader>
         <div className="bg-muted/40 flex items-center gap-3 rounded-xl p-3">
@@ -66,8 +70,14 @@ export function ReviewDialog({
           </div>
         </div>
         <form action={formAction} className="space-y-5">
-          <input type="hidden" name="productId" value={productId} />
-          <input type="hidden" name="farmOrderId" value={farmOrderId} />
+          {review ? (
+            <input type="hidden" name="reviewId" value={review.id} />
+          ) : (
+            <>
+              <input type="hidden" name="productId" value={productId} />
+              <input type="hidden" name="farmOrderId" value={farmOrderId} />
+            </>
+          )}
           <FieldGroup className="gap-4">
             <Field data-invalid={!!fe?.rating}>
               <FieldLabel>評価</FieldLabel>
@@ -76,7 +86,7 @@ export function ReviewDialog({
             </Field>
             <Field data-invalid={!!fe?.title}>
               <FieldLabel htmlFor={`rv-title-${productId}`}>タイトル（任意）</FieldLabel>
-              <Input id={`rv-title-${productId}`} name="title" maxLength={60} placeholder="甘くてサラダにぴったり" />
+              <Input id={`rv-title-${productId}`} name="title" maxLength={60} defaultValue={review?.title} placeholder="甘くてサラダにぴったり" />
               {fe?.title && <FieldError>{fe.title[0]}</FieldError>}
             </Field>
             <Field data-invalid={!!fe?.body}>
@@ -97,7 +107,7 @@ export function ReviewDialog({
           </FieldGroup>
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>キャンセル</Button>
-            <SubmitButton className="rounded-full" disabled={!rating}>投稿する</SubmitButton>
+            <SubmitButton className="rounded-full" disabled={!rating}>{editing ? "保存する" : "投稿する"}</SubmitButton>
           </DialogFooter>
         </form>
       </DialogContent>

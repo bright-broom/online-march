@@ -5,7 +5,7 @@ import { routes } from "@/config/nav";
 import { db } from "@/db";
 import { farmOrders, farms, orderItems, orders, reviews } from "@/db/schema";
 import { tags } from "@/lib/cache-tags";
-import { reviewReplySchema, reviewSchema } from "@/lib/validators/engagement";
+import { reviewEditSchema, reviewReplySchema, reviewSchema } from "@/lib/validators/engagement";
 import { assertFarm, assertRole, assertUser } from "@/server/auth/guards";
 import { notify } from "@/server/services/notify";
 import { recomputeRatings } from "@/server/services/orders";
@@ -33,6 +33,35 @@ export async function createReview(_prev: unknown, formData: FormData): Promise<
     updateTag(tags.productReviews(data.productId));
     return { id: row.id };
   }, "レビューを投稿しました。ありがとうございます！");
+}
+
+/**
+ * Customer edits their own review. The farm's reply is left as it was — it belongs to the farmer,
+ * and the timestamps on screen make the order of the conversation clear.
+ */
+export async function updateReview(_prev: unknown, formData: FormData): Promise<ActionResult> {
+  return runAction(async () => {
+    const me = await assertUser();
+    const data = parseInput(reviewEditSchema, formToObject(formData));
+    const mine = await db.query.reviews.findFirst({ where: and(eq(reviews.id, data.reviewId), eq(reviews.userId, me.id)) });
+    if (!mine) throw new ActionError("レビューが見つかりません");
+    await db.update(reviews).set({ rating: data.rating, title: data.title, body: data.body }).where(eq(reviews.id, mine.id));
+    await recomputeRatings(mine.productId, mine.farmId); // 星が変われば商品・生産者の平均も変わる
+    updateTag(tags.productReviews(mine.productId));
+  }, "レビューを更新しました");
+}
+
+/** Customer withdraws their own review. */
+export async function deleteReview(reviewId: string): Promise<ActionResult> {
+  return runAction(async () => {
+    const me = await assertUser();
+    const id = parseInput(reviewEditSchema.shape.reviewId, reviewId);
+    const mine = await db.query.reviews.findFirst({ where: and(eq(reviews.id, id), eq(reviews.userId, me.id)) });
+    if (!mine) throw new ActionError("レビューが見つかりません");
+    await db.delete(reviews).where(eq(reviews.id, mine.id));
+    await recomputeRatings(mine.productId, mine.farmId);
+    updateTag(tags.productReviews(mine.productId));
+  }, "レビューを削除しました");
 }
 
 /** Farmer replies to a review on their product. */

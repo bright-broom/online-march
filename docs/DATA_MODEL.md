@@ -18,6 +18,20 @@ messages (farm, customer, sender)           notifications (user)        coupons 
 platform_settings (key/value)               job_runs (automation log)
 ```
 
+## 退会（アカウント削除）
+
+`user.deletedAt` が入っている行は退会済み。**user 行は消さない**: 注文は `onDelete: "cascade"` なので、
+行を消すと売上・精算の記録ごと消える（生産者の帳簿と月次精算が壊れる）。代わりに個人情報だけを消す。
+
+| 消す | 残す |
+| --- | --- |
+| 氏名・メール・電話・アドレス帳・お気に入り・フォロー・お知らせ・生産者とのメッセージ・ログイン情報（`account`/`session`） | 注文（金額・明細・お届け先スナップショット）とレビュー本文 |
+
+- メールは `deleted+<id>@users.invalid` に置き換える（`user.email` は unique。元のアドレスで再登録できる）
+- レビューの表示名は「退会したお客さま」になる
+- 進行中の注文（`farm_orders` が pending_payment / paid / preparing / shipped）があるうちは退会できない
+- 実装 `server/services/account-closure.ts`、回帰テスト `services/__tests__/account-closure.test.ts`
+
 ## テーブル要点
 
 | Table | 要点 |

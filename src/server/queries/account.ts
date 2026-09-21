@@ -402,6 +402,7 @@ export async function listMyReviews(userId: string) {
   return db
     .select({
       id: reviews.id,
+      productId: reviews.productId,
       rating: reviews.rating,
       title: reviews.title,
       body: reviews.body,
