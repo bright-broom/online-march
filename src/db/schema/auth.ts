@@ -20,6 +20,8 @@ export const user = pgTable("user", {
   image: text("image"),
   role: userRole("role").notNull().default("customer"),
   phone: text("phone"),
+  /** 退会日時。行は残すが個人情報は消してある（注文は帳簿として残すため user 行を消せない。docs/DATA_MODEL.md §退会） */
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
   ...timestamps,
 });
 

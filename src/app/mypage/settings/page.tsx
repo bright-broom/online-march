@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { CloseAccountButton } from "@/components/mypage/close-account-button";
 import { PasswordForm } from "@/components/mypage/password-form";
 import { ProfileForm } from "@/components/mypage/profile-form";
 import { SignOutButton } from "@/components/mypage/sign-out-button";
@@ -59,6 +60,17 @@ export default async function SettingsPage() {
           </CardHeader>
           <CardContent>
             <SignOutButton />
+          </CardContent>
+        </Card>
+        <Card className="border-destructive/30 lg:col-span-2">
+          <CardHeader>
+            <CardTitle>退会</CardTitle>
+            <CardDescription>
+              アカウントと個人情報を削除します。ご注文の記録は帳簿・配送の記録として法令に従い保管します。
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <CloseAccountButton email={profile.email} />
           </CardContent>
         </Card>
       </div>

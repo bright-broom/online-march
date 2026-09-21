@@ -1,6 +1,7 @@
 import "server-only";
 import { sql } from "drizzle-orm";
 import { demoEmailDomain, demoEmailDomains } from "@/config/demo";
+import { paymentConfig, paymentMethodLabel } from "@/config/payments";
 import { siteConfig } from "@/config/site";
 import { db } from "@/db";
 import { user } from "@/db/schema";
@@ -21,6 +22,35 @@ const isLiveKey = (k?: string) => Boolean(k && (k.startsWith("sk_live_") || k.st
  * Go-live readiness for /admin/settings. Everything here is derived from env + data the platform already has,
  * so the operator can see what is still missing without reading docs/DEPLOY.md.
  */
+
+/**
+ * サイトが案内している決済手段が、Stripe 側でも実際に有効かを見る。
+ * Checkout は `payment_method_types` を固定していない（= ダッシュボードの設定がそのまま出る）ので、
+ * 「PayPay を有効にしたのに出ない」を運営画面だけで切り分けられるようにする。
+ */
+async function paymentMethodsCheck(): Promise<GoLiveCheck> {
+  const base = { key: "payment-methods", label: "決済手段" } as const;
+  if (!features.stripe) return { ...base, state: "warning", detail: "Stripe が未設定のため確認できません" };
+  const advertised = paymentConfig.methods.filter((m) => m.listed);
+  try {
+    const { fetchEnabledPaymentMethods } = await import("@/server/services/payments/stripe");
+    const enabled = new Set((await fetchEnabledPaymentMethods()).filter((m) => m.enabled).map((m) => m.id));
+    const off = advertised.filter((m) => !enabled.has(m.id));
+    const on = advertised.filter((m) => enabled.has(m.id));
+    const names = (ids: { id: string }[]) => ids.map((m) => paymentMethodLabel(m.id)).join("・");
+    if (off.length) {
+      return {
+        ...base,
+        state: "warning",
+        detail: `${names(off)} は Stripe 側で無効です（このアカウントで有効: ${names(on) || "なし"}）。ダッシュボードの「決済手段」で有効化すると、次のお支払いから表示されます`,
+      };
+    }
+    return { ...base, state: "ready", detail: `${names(on)} が利用できます` };
+  } catch (e) {
+    return { ...base, state: "warning", detail: `Stripe から決済手段を取得できませんでした: ${e instanceof Error ? e.message : String(e)}` };
+  }
+}
+
 export async function getGoLiveChecks(): Promise<GoLiveCheck[]> {
   const [demo] = await db
     .select({ n: sql<number>`count(*)::int` })
@@ -33,6 +63,8 @@ export async function getGoLiveChecks(): Promise<GoLiveCheck[]> {
     siteConfig.contact.phone.includes("00-0000") && "電話番号",
   ].filter(Boolean) as string[];
 
+  const paymentMethods = await paymentMethodsCheck();
+
   return [
     {
       key: "stripe-key",
@@ -44,6 +76,7 @@ export async function getGoLiveChecks(): Promise<GoLiveCheck[]> {
           ? "本番キーで動作しています"
           : "テストキー（sk_test_…）です。実際の決済は行われません",
     },
+    paymentMethods,
     {
       key: "stripe-webhooks",
       label: "Stripe Webhook の署名シークレット",

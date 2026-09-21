@@ -102,6 +102,26 @@ export async function resolveStaleCheckout(sessionId: string): Promise<StaleChec
   return { kind: "paid", paymentIntentId };
 }
 
+/**
+ * Which payment methods this Stripe account actually offers at checkout.
+ *
+ * The app deliberately does not pin `payment_method_types`, so "why is PayPay not showing?" can only be
+ * answered by Stripe. The dashboard's toggles live on the (default) payment method configuration; each
+ * method there says whether it is available to the account and whether it is switched on.
+ * Read loosely on purpose: Stripe adds methods faster than the SDK types list them.
+ */
+export async function fetchEnabledPaymentMethods(): Promise<{ id: string; enabled: boolean }[]> {
+  const list = await getStripe().paymentMethodConfigurations.list({ limit: 10 });
+  const config = list.data.find((c) => c.is_default) ?? list.data[0];
+  if (!config) return [];
+  const entries = Object.entries(config as unknown as Record<string, unknown>);
+  return entries.flatMap(([id, value]) => {
+    if (!value || typeof value !== "object" || !("display_preference" in value)) return [];
+    const v = value as { available?: boolean; display_preference?: { value?: string } };
+    return [{ id, enabled: Boolean(v.available) && v.display_preference?.value === "on" }];
+  });
+}
+
 export type PaymentDetails = {
   /** Stripe payment method type: card / paypay / konbini … */
   method: string | null;

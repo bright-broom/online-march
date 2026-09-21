@@ -3,9 +3,11 @@ import { and, count, eq, ne } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { addresses, user } from "@/db/schema";
+import { isDemoEmail } from "@/config/demo";
 import { addressFormSchema, profileSchema } from "@/lib/validators/account";
 import { assertUser } from "@/server/auth/guards";
 import { markThreadRead } from "@/server/queries/messages";
+import { AccountCloseBlocked, closeCustomerAccount } from "@/server/services/account-closure";
 import { cancelOrderByCustomer } from "@/server/services/orders";
 import { ActionError, formToObject, parseInput, runAction, type ActionResult } from "./_utils";
 
@@ -108,4 +110,31 @@ export async function updateProfile(_prev: unknown, formData: FormData): Promise
       .set({ name: data.name, phone: data.phone || null })
       .where(eq(user.id, me.id));
   }, "プロフィールを更新しました");
+}
+
+/* ───────────── account closure ───────────── */
+
+const closeMessages: Record<string, string> = {
+  live_orders: "配送中・お支払い待ちのご注文があるため退会できません。完了またはキャンセル後にお手続きください",
+  not_customer: "このアカウントは退会できません。運営までお問い合わせください",
+  already_closed: "このアカウントはすでに退会済みです",
+};
+
+/**
+ * 退会。取り消せないので、確認のためメールアドレスを打ち直してもらう。
+ * 実際に消す／残すものは `server/services/account-closure.ts` を参照。
+ */
+export async function closeAccount(input: { confirmEmail: string }): Promise<ActionResult> {
+  return runAction(async () => {
+    const me = await assertUser();
+    if (isDemoEmail(me.email)) throw new ActionError("デモアカウントは退会できません");
+    const typed = parseInput(z.string().trim().toLowerCase(), String(input.confirmEmail ?? ""));
+    if (typed !== me.email.trim().toLowerCase()) throw new ActionError("メールアドレスが一致しません");
+    try {
+      await closeCustomerAccount(me.id);
+    } catch (e) {
+      if (e instanceof AccountCloseBlocked) throw new ActionError(closeMessages[e.reason] ?? closeMessages.not_customer);
+      throw e;
+    }
+  }, "退会手続きが完了しました。ご利用ありがとうございました");
 }

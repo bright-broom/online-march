@@ -43,6 +43,13 @@
       "when": 1789915059406,
       "tag": "0005_silent_black_tarantula",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789918968465,
+      "tag": "0006_blue_lockheed",
+      "breakpoints": true
     }
   ]
 }

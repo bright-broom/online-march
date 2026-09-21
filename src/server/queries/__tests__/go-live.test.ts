@@ -2,6 +2,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/cache", () => ({ revalidateTag: vi.fn(), updateTag: vi.fn(), cacheTag: vi.fn(), cacheLife: vi.fn() }));
 
+/** 決済手段のチェックは Stripe に問い合わせる。テストでは答えを固定する */
+const fetchEnabledPaymentMethods = vi.fn(async () => [
+  { id: "card", enabled: true },
+  { id: "apple_pay", enabled: true },
+  { id: "google_pay", enabled: true },
+  { id: "paypay", enabled: true },
+  { id: "konbini", enabled: true },
+]);
+vi.mock("@/server/services/payments/stripe", () => ({ fetchEnabledPaymentMethods }));
+
 const load = async () => {
   vi.resetModules();
   return (await import("../go-live")).getGoLiveChecks();
@@ -22,7 +32,10 @@ const liveEnv = {
 };
 
 describe("go-live checks", () => {
-  beforeEach(() => vi.unstubAllEnvs());
+  beforeEach(() => {
+    vi.unstubAllEnvs();
+    fetchEnabledPaymentMethods.mockClear();
+  });
 
   it("blocks launch while the app runs on demo defaults", async () => {
     const checks = await load();
@@ -56,5 +69,36 @@ describe("go-live checks", () => {
     const checks = await load();
     expect(stateOf(checks, "stripe-key").state).toBe("blocker");
     expect(stateOf(checks, "stripe-key").detail).toContain("テストキー");
+  });
+
+  it("案内している決済手段が Stripe 側で無効なら警告する", async () => {
+    for (const [k, v] of Object.entries(liveEnv)) vi.stubEnv(k, v);
+    fetchEnabledPaymentMethods.mockResolvedValueOnce([
+      { id: "card", enabled: true },
+      { id: "paypay", enabled: false }, // ダッシュボードで未有効化
+      { id: "konbini", enabled: false },
+    ]);
+
+    const check = stateOf(await load(), "payment-methods");
+
+    expect(check.state).toBe("warning");
+    expect(check.detail).toContain("PayPay");
+    expect(check.detail).toContain("コンビニ払い");
+  });
+
+  it("すべて有効なら準備完了として扱う", async () => {
+    for (const [k, v] of Object.entries(liveEnv)) vi.stubEnv(k, v);
+
+    const check = stateOf(await load(), "payment-methods");
+
+    expect(check.state).toBe("ready");
+    expect(check.detail).toContain("PayPay");
+  });
+
+  it("Stripe が未設定なら決済手段は確認できないとだけ伝える", async () => {
+    const check = stateOf(await load(), "payment-methods");
+
+    expect(check.state).toBe("warning");
+    expect(fetchEnabledPaymentMethods).not.toHaveBeenCalled();
   });
 });
