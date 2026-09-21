@@ -629,3 +629,48 @@ export async function getFarmerAnnouncements(limit = 3) {
     .limit(limit);
   return rows.map((r) => ({ ...r, publishedAt: r.publishedAt.toISOString() }));
 }
+
+/**
+ * 売上明細（CSV 書き出し用）。注文日で期間を切る＝会計期間の考え方に合わせる。
+ * キャンセル・返金も含めて出す（帳簿では「なかったこと」にはできないため）。
+ */
+export async function getSalesRows(farmId: string, from: YMD, to: YMD) {
+  const rows = await db
+    .select({
+      id: farmOrders.id,
+      orderedAt: farmOrders.createdAt,
+      orderCode: orders.code,
+      farmOrderCode: farmOrders.code,
+      status: farmOrders.status,
+      address: orders.shippingAddress,
+      subtotal: farmOrders.subtotal,
+      shippingFee: farmOrders.shippingFee,
+      discount: farmOrders.discount,
+      commission: farmOrders.commissionAmount,
+      payoutAmount: farmOrders.payoutAmount,
+      refundedAt: farmOrders.refundedAt,
+      shippedAt: farmOrders.shippedAt,
+      deliveredAt: farmOrders.deliveredAt,
+      payoutScheduledFor: payouts.scheduledFor,
+      payoutPaidAt: payouts.paidAt,
+    })
+    .from(farmOrders)
+    .innerJoin(orders, eq(orders.id, farmOrders.orderId))
+    .leftJoin(payouts, eq(payouts.id, farmOrders.payoutId))
+    .where(
+      and(
+        eq(farmOrders.farmId, farmId),
+        ne(farmOrders.status, "pending_payment"), // 未決済はまだ売上ではない
+        gte(farmOrders.createdAt, fromYmd(from)),
+        lt(farmOrders.createdAt, fromYmd(addDays(to, 1))), // to の当日ぶんを含める
+      ),
+    )
+    .orderBy(asc(farmOrders.createdAt))
+    .limit(5000);
+  const items = await itemsSummary(rows.map((r) => r.id));
+  return rows.map(({ id, address, ...r }) => ({
+    ...r,
+    prefecture: address.prefecture,
+    items: (items.get(id) ?? []).map((i) => `${i.name}（${i.label}）×${i.qty}`).join(" / "),
+  }));
+}

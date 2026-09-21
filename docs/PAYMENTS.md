@@ -27,6 +27,15 @@
   各段の個別テストは通るのに「つなぎ目」だけ壊れる事故（精算が farm_orders を claim しない、
   送金後に payout が paid にならない等）を検知する。本番では 2026-09-20 にテストカードで通し確認済み。
 
+## 生産者向けの書き出し
+
+`/api/farmer/sales?from=YYYY-MM-DD&to=YYYY-MM-DD&encoding=sjis|utf8` — 確定申告・記帳用の売上明細 CSV。
+1行 = 1出荷単位（farm_orders）、**注文日**で期間を切り、未決済は除外、キャンセル・返金は含める。
+列は 注文日 / 注文番号 / 出荷単位番号 / 状態 / お届け先（都道府県）/ 商品 / 商品代金 / 送料 / クーポン割引 /
+販売手数料 / 受取額 / 返金日 / 発送日 / 配達日 / 精算予定日 / 入金日、最終行に合計。
+実装 `services/sales-csv.ts` + `queries/farmer.ts#getSalesRows`、UI は /farmer/payouts。
+回帰テスト `services/__tests__/sales-csv.test.ts`（農園スコープ・期間の境界・金額の整合・CSVエスケープ）。
+
 ## モード
 
 | 条件 | 挙動 |

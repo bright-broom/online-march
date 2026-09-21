@@ -81,6 +81,7 @@ export const routes = {
     stripeReturn: "/api/farmer/stripe-return",
     shop: "/farmer/shop",
     settings: "/farmer/settings",
+    account: "/farmer/account",
   },
   admin: {
     root: "/admin",
@@ -189,6 +190,7 @@ export const farmerNav: NavGroup[] = [
       { title: "売上・精算", href: routes.farmer.payouts, icon: Wallet },
       { title: "ショップページ", href: routes.farmer.shop, icon: Store },
       { title: "出荷・配送設定", href: routes.farmer.settings, icon: Settings },
+      { title: "アカウント", href: routes.farmer.account, icon: CircleUserRound },
     ],
   },
 ];

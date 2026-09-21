@@ -5,6 +5,7 @@ import { BarBreakdownChart } from "@/components/charts";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { PayoutsTable } from "@/components/farmer/payouts/payouts-table";
+import { SalesExportCard } from "@/components/farmer/payouts/sales-export-card";
 import { StripeConnectCard } from "@/components/farmer/payouts/stripe-connect-card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -86,6 +87,8 @@ export default async function FarmerPayoutsPage({ searchParams }: PageProps<"/fa
         <h2 className="heading-display text-lg">精算の履歴</h2>
         <PayoutsTable rows={payouts} />
       </section>
+
+      <SalesExportCard thisYear={now.getFullYear()} />
     </div>
   );
 }

@@ -119,6 +119,15 @@ export const trackingImportSchema = z.object({
   text: z.string().min(1, "CSVを貼り付けるか、ファイルを選択してください").max(2_000_000, "ファイルが大きすぎます"),
 });
 
+/** 売上CSVの期間。注文日ベース（会計期間に合わせる） */
+export const salesCsvQuerySchema = z
+  .object({
+    from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "開始日が正しくありません"),
+    to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "終了日が正しくありません"),
+    encoding: z.enum(["sjis", "utf8"]).default("sjis"),
+  })
+  .refine((v) => v.from <= v.to, { message: "期間の開始日と終了日が逆です", path: ["to"] });
+
 export const labelQuerySchema = z.object({
   ids: z
     .string()
