@@ -126,3 +126,4 @@
 | 生産者アカウント画面 | `app/farmer/account/` | — |
 | 本番公開チェック | `queries/go-live.ts` | `go-live.test.ts` |
 | 運用アラート / バックアップ | `services/ops-alerts.ts`, `services/backup.ts` | `jobs.test.ts`, `backup.test.ts`, `restore.test.ts` |
+| ドキュメントのリンク・画像・目次の切れ検知（アイコンは `docs/icons/` に同梱） | `test/docs.test.ts` | 同左 |
