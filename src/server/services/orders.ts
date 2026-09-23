@@ -79,6 +79,8 @@ export type CartQuote = {
   couponError: string | null;
   /** lines dropped because product/variant is unavailable */
   unavailable: string[];
+  /** そのうち「農園がお休み中」で落ちたもの。理由が分からないと、お客さまは待てばいいのか諦めるのか判断できない */
+  pausedFarms: { name: string; until: YMD }[];
   /** window where every farm can deliver */
   earliestDeliveryDate: YMD;
   latestSelectableDate: YMD;
@@ -113,12 +115,14 @@ export async function quoteCart(
 
   const today = toYmd(input.now);
   const isPaused = (f: { pausedUntil: string | null }) => Boolean(f.pausedUntil && f.pausedUntil >= today);
+  const pausedFarms = new Map<string, { name: string; until: YMD }>();
 
   for (const line of input.lines) {
     const r = byId.get(line.variantId);
     // お休み中の農園は受け付けない（出荷できない注文を作らないため。期間を過ぎれば自動で戻る）
     if (!r || r.p.status !== "active" || r.f.status !== "active" || isPaused(r.f) || r.v.sortOrder >= REMOVED_VARIANT_SORT || line.quantity < 1) {
       unavailable.push(line.variantId);
+      if (r && isPaused(r.f)) pausedFarms.set(r.f.id, { name: r.f.name, until: r.f.pausedUntil as YMD });
       continue;
     }
     const qty = Math.min(line.quantity, 99);
@@ -210,6 +214,7 @@ export async function quoteCart(
     coupon,
     couponError,
     unavailable,
+    pausedFarms: [...pausedFarms.values()],
     earliestDeliveryDate: earliest,
     latestSelectableDate: latest,
   };

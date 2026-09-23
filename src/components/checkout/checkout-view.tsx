@@ -9,6 +9,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { routes } from "@/config/nav";
+import { formatDate } from "@/lib/format";
 import { prefectures, type DeliveryTimeSlot, type Prefecture } from "@/config/shipping";
 import { useHydrated } from "@/hooks/use-hydrated";
 import { addressSchema, fieldErrorsOf } from "@/lib/validators/account";
@@ -182,6 +183,9 @@ export function CheckoutView({
               <ul className="list-disc pl-4">
                 {unavailableItems.map((i) => (
                   <li key={i.variantId}>{i.productName}（{i.variantLabel}）は現在販売していません</li>
+                ))}
+                {(quote?.pausedFarms ?? []).map((f: { name: string; until: string }) => (
+                  <li key={f.name}>{f.name}は{formatDate(f.until)}まで出荷をお休みしています</li>
                 ))}
                 {stockIssues.map((l) => (
                   <li key={l.variantId}>{l.productName}（{l.variantLabel}）の在庫が不足しています（残り{l.stock}点）</li>

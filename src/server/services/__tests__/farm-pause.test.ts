@@ -55,6 +55,8 @@ describe("受付の一時停止", () => {
     expect(!res.ok && res.error).toMatch(/販売を終了|お取り扱い|カート/); // 購入できない旨のエラー
     const quote = await quoteCart({ lines: [{ variantId, quantity: 1 }], prefecture: "大阪府", now: new Date() });
     expect(quote.unavailable).toContain(variantId);
+    // 「売っていない」ではなく「お休み中」と伝えられるように、理由も返す
+    expect(quote.pausedFarms).toEqual([{ name: "阿波ファーム", until: addDays(today, 3) }]);
   });
 
   it("最終日も止まっていて、翌日には自動で戻る", async () => {

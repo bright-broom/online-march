@@ -49,6 +49,8 @@ export type CheckoutQuote = {
   coupon: { code: string; description: string } | null;
   couponError: string | null;
   unavailable: string[];
+  /** そのうち「農園がお休み中」で買えないもの（待てばまた買えることを伝えるため） */
+  pausedFarms: { name: string; until: string }[];
   earliestDeliveryDate: string;
   latestSelectableDate: string;
 };
@@ -89,6 +91,7 @@ function toDto(q: CartQuote): CheckoutQuote {
     coupon: q.coupon ? { code: q.coupon.code, description: q.coupon.description } : null,
     couponError: q.couponError,
     unavailable: q.unavailable,
+    pausedFarms: q.pausedFarms,
     earliestDeliveryDate: q.earliestDeliveryDate,
     latestSelectableDate: q.latestSelectableDate,
   };
