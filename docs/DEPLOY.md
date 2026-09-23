@@ -33,7 +33,10 @@ npm run dev        # http://localhost:3000
 | `RESEND_API_KEY` / `EMAIL_FROM` | 本番 | 送信ドメインを Resend で認証 |
 | `BLOB_READ_WRITE_TOKEN` | ✅ | 画像アップロード（公開ストア） |
 | `BACKUP_BLOB_READ_WRITE_TOKEN` | 推奨 | **非公開**ストアの RW トークン。`backup-db` が毎日 JSON(gzip) を保存（14日保持）。顧客データを含むため公開ストアとは必ず分ける |
-| `DEMO_MODE` | 任意 | `true` でデモアカウント表示・デモ決済を許可 |
+| `DEMO_MODE` | 任意 | `true` でデモアカウント表示・デモ決済を許可。`false` にするとデモアカウントはログインできない（`src/config/demo.ts`） |
+
+> `STRIPE_SECRET_KEY` など Sensitive 指定の値は `vercel env pull` では取得できない（空で降ってくる）。
+> Stripe の状態を手元から確認したいときは、本番の運営画面（/admin/settings の「決済手段」）を見る。
 
 5. Deploy。`npm run build` が `db:migrate` を先に実行（DATABASE_URL がある場合）。
 6. 初回のみデモデータ: ローカルで `DATABASE_URL=... npm run db:seed`（本番運用では不要）。
@@ -107,8 +110,9 @@ Neon の Vercel 連携ではリージョンを選べないことがある。そ�
 
 ## 本番前チェックリスト
 
-運営画面 **/admin/settings →「本番公開チェック」** が env とデータから自動判定する（`server/queries/go-live.ts`）。
+運営画面 **/admin/settings →「本番公開チェック」** が env・データ・Stripe API から自動判定する（`server/queries/go-live.ts`）。
 「要対応」が 0 件になるまで公開しない。以下は画面に出る項目の補足と、画面では判定できない作業。
+**いま何が残っているかは `docs/STATUS.md` §2 にまとめてある。**
 
 ### 1. Stripe を本番（live）に切り替える
 

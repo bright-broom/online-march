@@ -63,8 +63,13 @@ export async function updateProduct(_prev: unknown, formData: FormData): Promise
 
 ## テスト観点（追加時）
 
-- 純関数（lib/shipping, lib/dates, fees）はユニットテスト対象（vitest 推奨）。
-- services は PGlite(memory://) で統合テスト可能（`seed()` を使う）。
+- 純関数（lib/shipping, lib/dates, fees）はユニットテスト対象（vitest）。
+- services は PGlite(`memory://`) で統合テスト。ファイルごとに独立DBが立つので、シードデータを壊してよい。
+- テスト名は日本語で「何が守られているか」を書く（例: `受付の一時停止 > 止めている間は注文できない`）。
+- **お金・在庫・個人情報に関わる守りを足したら、そのコードをわざと壊してテストが落ちることまで確認する。**
+  壊す前に `cp <file> "$TMPDIR/x.bak"` を取る（`git checkout --` は未コミットの変更ごと消える）。詳細は `docs/STATUS.md` §4.2。
+- 外部サービス（Stripe など）を叩く箇所はアダプタごと差し替える。ただし **Webhook の署名検証は本物のまま**にする
+  （`services/__tests__/deferred-payment.test.ts` のように `importActual` で必要な関数だけ差し替える）。
 
 ## 認可（ガード + 所有者チェック）
 

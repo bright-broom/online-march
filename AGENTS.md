@@ -17,6 +17,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 | 目的 | 読む doc |
 | --- | --- |
+| **いまどこまで出来ていて、次に何をするか**（引き継ぎはまずここ） | `docs/STATUS.md` |
 | 全体構成・ディレクトリ・レイヤ責務 | `docs/ARCHITECTURE.md` |
 | UI / デザイントークン / コピーのトーン | `docs/DESIGN.md` |
 | テーブル / 型 / 状態遷移 | `docs/DATA_MODEL.md` |
@@ -31,7 +32,8 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 Next.js 16 (App Router, **Cache Components 有効**, Turbopack) / React 19 / TypeScript strict /
 Tailwind CSS v4 / shadcn/ui (radix-nova) / lucide-react / Recharts (shadcn chart) /
 Drizzle ORM + Postgres（本番 Neon、ローカル PGlite 自動起動）/ Better Auth /
-Stripe (Checkout + Connect) / Resend / Vercel Blob / Vercel Cron / zod v4 / zustand / nuqs
+Stripe (Checkout + Connect Accounts v2 / カード・PayPay・コンビニ払い) / Resend / Vercel Blob /
+Vercel Cron / zod v4 / zustand / nuqs / vitest（PGlite 統合テスト）
 
 ## 絶対ルール（違反 = バグ）
 
@@ -74,4 +76,8 @@ lockfile 表現が異なり、CI の `npm ci` が落ちる。変更後は必ず 
 
 - 変更前に該当 doc の該当節だけ読む。大きな設計変更は doc も同時に更新する。
 - 新しい設定値は `src/config` に追加し、doc の該当表も更新。
-- 完了条件: `npm run typecheck` と `npm run lint` が通ること。
+- 完了条件: `npm run typecheck` / `npm run lint` / `npx vitest run` が通ること。
+  （`npm run build` はサンドボックスだとフォント取得で落ちる。ビルドの確認は Vercel 側で行う）
+- **守りを追加したらテストを書き、そのコードをわざと壊して落ちることまで確認する**（`docs/STATUS.md` §4.2）。
+- スキーマを変えたら **本番DBへのマイグレーションを push より先に** 当てる（`docs/STATUS.md` §4.1）。
+- 本番で動作確認したら、作ったテストデータは必ず消す（`docs/STATUS.md` §5）。

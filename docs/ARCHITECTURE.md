@@ -80,11 +80,10 @@ async function Shell({ children }: { children: React.ReactNode }) {
 | --- | --- |
 | shop | `/` `/products` `/products/[slug]` `/farms` `/farms/[slug]` `/cart` `/checkout` `/checkout/success` `/about` `/guide` `/faq` `/join` `/legal/[doc]` |
 | auth | `/login` `/signup` |
-| mypage | `/mypage` `orders` `orders/[id]` `favorites` `addresses` `reviews` `messages` `notifications` `settings` |
-| farmer | `/farmer` `products` `products/new` `products/[id]` `orders` `orders/[id]` `orders/[id]/slip` `shipping` `reviews` `messages` `payouts` `shop` `settings` |
+| mypage | `/mypage` `orders` `orders/[id]` `orders/[id]/receipt` `favorites` `addresses` `reviews` `messages` `notifications` `settings`（退会もここ） |
+| farmer | `/farmer` `products` `products/new` `products/[id]` `orders` `orders/[id]` `orders/[id]/slip` `shipping` `reviews` `messages` `payouts` `shop` `settings`（お休み設定もここ） `account` |
 | admin | `/admin` `farms` `farms/[id]` `products` `orders` `orders/[id]` `users` `payouts` `coupons` `announcements` `automation` `settings` |
-| api | `/api/auth/[...all]` `/api/upload` `/api/webhooks/stripe` `/api/cron/[job]` `/api/farmer/labels` (CSV) |
-| mypage 追加 | `/mypage/orders/[id]/receipt`（領収書） |
+| api | `/api/auth/[...all]` `/api/upload` `/api/cron/[job]` `/api/webhooks/stripe` `/api/webhooks/stripe/accounts`（v2 thin） `/api/farmer/stripe-return` `/api/farmer/labels`（送り状CSV） `/api/farmer/sales`（売上明細CSV） |
 
 パスは必ず `routes`（config/nav.ts）から生成する。
 
