@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/cache", () => ({ revalidateTag: vi.fn(), updateTag: vi.fn(), cacheTag: vi.fn(), cacheLife: vi.fn() }));
@@ -12,9 +13,21 @@ const fetchEnabledPaymentMethods = vi.fn(async () => [
 ]);
 vi.mock("@/server/services/payments/stripe", () => ({ fetchEnabledPaymentMethods }));
 
+const { db } = await import("@/db/client");
+const s = await import("@/db/schema");
+const { jobs } = await import("@/server/jobs");
+
 const load = async () => {
   vi.resetModules();
   return (await import("../go-live")).getGoLiveChecks();
+};
+
+/** 自動処理が「動いている」状態にする（チェックは実行記録を見るため） */
+const recordJobRuns = async (startedAt = new Date()) => {
+  await db.delete(s.jobRuns);
+  await db.insert(s.jobRuns).values(
+    Object.keys(jobs).map((job) => ({ job, status: "success" as const, trigger: "cron" as const, startedAt, finishedAt: startedAt })),
+  );
 };
 const stateOf = (checks: Awaited<ReturnType<typeof load>>, key: string) => checks.find((c) => c.key === key)!;
 
@@ -29,12 +42,16 @@ const liveEnv = {
   RESEND_API_KEY: "re_dummy",
   EMAIL_FROM: "マルシェ <noreply@awaji-marche.jp>",
   BLOB_READ_WRITE_TOKEN: "blob_dummy",
+  BACKUP_BLOB_READ_WRITE_TOKEN: "blob_backup_dummy",
+  NEXT_PUBLIC_SITE_URL: "https://awaji-marche.vercel.app",
+  BETTER_AUTH_URL: "https://awaji-marche.vercel.app",
 };
 
 describe("go-live checks", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.unstubAllEnvs();
     fetchEnabledPaymentMethods.mockClear();
+    await db.delete(s.jobRuns);
   });
 
   it("blocks launch while the app runs on demo defaults", async () => {
@@ -48,8 +65,9 @@ describe("go-live checks", () => {
 
   it("clears once live keys and secrets are configured", async () => {
     for (const [k, v] of Object.entries(liveEnv)) vi.stubEnv(k, v);
+    await recordJobRuns();
     const checks = await load();
-    for (const key of ["stripe-key", "stripe-webhooks", "demo-mode", "auth-secret", "cron", "email", "blob"]) {
+    for (const key of ["stripe-key", "stripe-webhooks", "demo-mode", "auth-secret", "cron", "email", "blob", "backups", "site-url"]) {
       expect(stateOf(checks, key).state, key).toBe("ready");
     }
     // the seeded demo rows are still in the database — flagged, but not a blocker once they cannot sign in
@@ -100,5 +118,58 @@ describe("go-live checks", () => {
 
     expect(check.state).toBe("warning");
     expect(fetchEnabledPaymentMethods).not.toHaveBeenCalled();
+  });
+
+  it("鍵があっても自動処理が動いていなければ警告する", async () => {
+    for (const [k, v] of Object.entries(liveEnv)) vi.stubEnv(k, v);
+
+    const checks = await load(); // 実行記録なし
+
+    expect(stateOf(checks, "cron").state).toBe("warning");
+    expect(stateOf(checks, "cron").detail).toContain("実行記録なし");
+  });
+
+  it("バックアップが48時間以上取れていなければ公開を止める", async () => {
+    for (const [k, v] of Object.entries(liveEnv)) vi.stubEnv(k, v);
+    await recordJobRuns(new Date(Date.now() - 3 * 86_400_000));
+
+    const checks = await load();
+
+    expect(stateOf(checks, "backups").state).toBe("blocker"); // トークンだけでは「取れている」と言えない
+    expect(stateOf(checks, "backups").detail).toContain("48時間以上前");
+  });
+
+  it("デモ以外の運営アカウントが居なければ公開を止める", async () => {
+    for (const [k, v] of Object.entries(liveEnv)) vi.stubEnv(k, v);
+    await recordJobRuns();
+
+    const before = stateOf(await load(), "admin-account");
+    const id = "user_golive_admin";
+    await db.insert(s.user).values({ id, name: "運営", email: "ops@awaji-marche.jp", role: "admin" });
+    const after = stateOf(await load(), "admin-account");
+    await db.delete(s.user).where(eq(s.user.id, id));
+
+    expect(before.state).toBe("blocker"); // 種データの運営はデモアカウントだけ
+    expect(after.state).toBe("ready");
+    expect(after.detail).toContain("ops@awaji-marche.jp");
+  });
+
+  it("サイトURLが本番のものでなければ公開を止める", async () => {
+    for (const [k, v] of Object.entries({ ...liveEnv, NEXT_PUBLIC_SITE_URL: "http://localhost:3000" })) vi.stubEnv(k, v);
+    await recordJobRuns();
+
+    const check = stateOf(await load(), "site-url");
+
+    expect(check.state).toBe("blocker");
+    expect(check.detail).toContain("localhost");
+  });
+
+  it("準備中は検索避けにしていることを伝える", async () => {
+    const preparing = stateOf(await load(), "search-index");
+    for (const [k, v] of Object.entries(liveEnv)) vi.stubEnv(k, v);
+    const live = stateOf(await load(), "search-index");
+
+    expect(preparing.detail).toContain("noindex");
+    expect(live.detail).toContain("公開しています");
   });
 });

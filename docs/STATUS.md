@@ -33,9 +33,13 @@
 | デモモード | 有効 | `DEMO_MODE=false`。デモアカウントはログイン不可になる（`src/config/demo.ts`） |
 | デモデータ | `@demo.awaji` のアカウントとシードデータが本番DBに入ったまま | 公開前に `npm run demo:purge`（`scripts/demo-purge.ts`）。運営アカウントは `npm run admin:promote` |
 | 特商法・運営者情報 | 仮の値 | `src/config/site.ts` の 代表者名 / 問い合わせメール / 電話番号 / 郵便番号 / 住所 / 受付時間 |
+| 運営アカウント | デモの `admin@demo.awaji` のみ | 本人のメールで会員登録 → `npm run admin:promote <メール>`。**デモ削除前にやらないと /admin に入れなくなる** |
+| 検索エンジンへの公開 | 準備中のため `noindex`（自動） | デモモードを無効にし本番キーを入れると自動で公開される。作業不要 |
 | Vercel Analytics | 未使用 | 使うなら `next.config.ts` の CSP `script-src` に `https://va.vercel-scripts.com` を追加 |
 
 コード側でやり残していると分かっているものは**無い**。上の表が埋まれば公開できる状態。
+チェック自体は「鍵があるか」ではなく「実際に動いているか」を見る（自動処理の最終成功・バックアップが48時間以内・
+デモ以外の運営アカウント・公開URL）。`server/queries/go-live.ts`、回帰テスト `queries/__tests__/go-live.test.ts`。
 
 ## 3. 本番で実際に確認済みのこと
 

@@ -1,11 +1,14 @@
 import "server-only";
-import { sql } from "drizzle-orm";
-import { demoEmailDomain, demoEmailDomains } from "@/config/demo";
+import { desc, eq, sql } from "drizzle-orm";
+import { demoEmailDomain, demoEmailDomains, isDemoEmail } from "@/config/demo";
 import { paymentConfig, paymentMethodLabel } from "@/config/payments";
 import { siteConfig } from "@/config/site";
 import { db } from "@/db";
-import { user } from "@/db/schema";
-import { env, features } from "@/lib/env";
+import { jobRuns, user } from "@/db/schema";
+import { toYmd } from "@/lib/dates";
+import { env, features, siteUrl } from "@/lib/env";
+import { formatDateTime } from "@/lib/format";
+import { jobs, type JobName } from "@/server/jobs";
 
 export type GoLiveCheck = {
   key: string;
@@ -51,6 +54,20 @@ async function paymentMethodsCheck(): Promise<GoLiveCheck> {
   }
 }
 
+
+/** 最後に成功した日時を job ごとに引く（記録は残り続けるので直近200件で足りる） */
+async function lastJobSuccess() {
+  const rows = await db
+    .select({ job: jobRuns.job, startedAt: jobRuns.startedAt })
+    .from(jobRuns)
+    .where(eq(jobRuns.status, "success"))
+    .orderBy(desc(jobRuns.startedAt))
+    .limit(200);
+  const last = new Map<string, Date>();
+  for (const r of rows) if (!last.has(r.job)) last.set(r.job, r.startedAt);
+  return last;
+}
+
 export async function getGoLiveChecks(): Promise<GoLiveCheck[]> {
   const [demo] = await db
     .select({ n: sql<number>`count(*)::int` })
@@ -61,9 +78,26 @@ export async function getGoLiveChecks(): Promise<GoLiveCheck[]> {
     siteConfig.company.representative.includes("要設定") && "代表者名",
     siteConfig.contact.email.endsWith(".example") && "問い合わせメール",
     siteConfig.contact.phone.includes("00-0000") && "電話番号",
+    siteConfig.company.postalCode.endsWith("-0000") && "郵便番号",
+    siteConfig.company.address.includes("番地は請求があれば") && "住所",
+    Object.values(siteConfig.social).some((url) => /^https:\/\/[^/]+\/?$/.test(url)) && "SNSのリンク",
   ].filter(Boolean) as string[];
 
   const paymentMethods = await paymentMethodsCheck();
+  const now = new Date();
+  const lastSuccess = await lastJobSuccess();
+  const staleJobs = (Object.keys(jobs) as JobName[]).filter((name) => {
+    const last = lastSuccess.get(name);
+    return !last || now.getTime() - last.getTime() > jobs[name].maxAgeHours * 3_600_000;
+  });
+  const lastBackup = lastSuccess.get("backup-db") ?? null;
+  const backupStale = !lastBackup || now.getTime() - lastBackup.getTime() > 48 * 3_600_000;
+  const [adminRow] = await db
+    .select({ emails: sql<string[]>`coalesce(array_agg(${user.email}), '{}')` })
+    .from(user)
+    .where(eq(user.role, "admin"));
+  const realAdmins = (adminRow?.emails ?? []).filter((e) => !isDemoEmail(e));
+  const urlLooksLive = /^https:\/\//.test(siteUrl) && !/localhost|127\.0\.0\.1|example\./.test(siteUrl);
 
   return [
     {
@@ -110,9 +144,16 @@ export async function getGoLiveChecks(): Promise<GoLiveCheck[]> {
     },
     {
       key: "cron",
-      label: "自動処理の認証（Cron）",
-      state: env.CRON_SECRET ? "ready" : "blocker",
-      detail: env.CRON_SECRET ? "CRON_SECRET が設定されています" : "未設定です。本番では /api/cron/* が 503 を返します",
+      label: "自動処理（Cron）",
+      // 鍵があることと動いていることは別物。実行記録で見る
+      state: !env.CRON_SECRET ? "blocker" : staleJobs.length ? "warning" : "ready",
+      detail: !env.CRON_SECRET
+        ? "CRON_SECRET が未設定です。本番では /api/cron/* が 503 を返します"
+        : staleJobs.length
+          ? `しばらく成功していない自動処理があります: ${staleJobs
+              .map((n) => `${jobs[n].label}（${lastSuccess.get(n) ? `最終成功 ${toYmd(lastSuccess.get(n)!)}` : "実行記録なし"}）`)
+              .join("・")}`
+          : `${Object.keys(jobs).length}件すべて動いています`,
     },
     {
       key: "email",
@@ -133,10 +174,40 @@ export async function getGoLiveChecks(): Promise<GoLiveCheck[]> {
     {
       key: "backups",
       label: "データベースのバックアップ",
-      state: env.BACKUP_BLOB_READ_WRITE_TOKEN ? "ready" : "warning",
-      detail: env.BACKUP_BLOB_READ_WRITE_TOKEN
-        ? "毎日、非公開の Blob ストアへ保存しています"
-        : "未設定です。非公開の Blob ストアを作り BACKUP_BLOB_READ_WRITE_TOKEN を設定すると、毎日自動保存します",
+      // トークンがあっても cron が落ちていれば取れていない。最後に取れた日時で見る
+      state: !env.BACKUP_BLOB_READ_WRITE_TOKEN ? "warning" : backupStale ? "blocker" : "ready",
+      detail: !env.BACKUP_BLOB_READ_WRITE_TOKEN
+        ? "未設定です。非公開の Blob ストアを作り BACKUP_BLOB_READ_WRITE_TOKEN を設定すると、毎日自動保存します"
+        : lastBackup
+          ? `最後に取れたのは ${formatDateTime(lastBackup)}${backupStale ? "（48時間以上前です。/admin/automation で確認してください）" : ""}`
+          : "まだ一度も取れていません。/admin/automation から「今すぐ実行」で確認してください",
+    },
+    {
+      key: "admin-account",
+      label: "運営アカウント",
+      // デモ削除後に運営が誰も居ないと /admin に入れなくなる
+      state: realAdmins.length ? "ready" : "blocker",
+      detail: realAdmins.length
+        ? `${realAdmins.join("・")}`
+        : "デモ以外の運営アカウントがありません。会員登録したうえで `npm run admin:promote <メールアドレス>` を実行してください",
+    },
+    {
+      key: "site-url",
+      label: "サイトURL",
+      // 決済の戻り先・メールのリンク・robots/sitemap がすべてこの値を使う
+      state: urlLooksLive ? "ready" : "blocker",
+      detail: urlLooksLive
+        ? siteUrl
+        : `${siteUrl} になっています。BETTER_AUTH_URL と NEXT_PUBLIC_SITE_URL に公開URL（https://…）を設定してください`,
+    },
+    {
+      key: "search-index",
+      label: "検索エンジンへの公開",
+      // 準備中のサイトが本番データのように拾われないよう、公開条件が揃うまで noindex（src/app/robots.ts）
+      state: "ready",
+      detail: features.demo || !isLiveKey(env.STRIPE_SECRET_KEY)
+        ? "準備中のため検索避け（noindex）にしています。デモモードを無効にし本番キーを設定すると自動で公開されます"
+        : "検索エンジンに公開しています",
     },
     {
       key: "legal",
