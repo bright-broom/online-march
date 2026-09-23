@@ -41,3 +41,25 @@ Server Action では `updateTag()` も可。
 
 Vercel Speed Insights / Analytics を有効化推奨（`@vercel/speed-insights` を layout に追加するだけ）。
 目標: LCP < 2.0s（4G）、CLS < 0.05、INP < 200ms。
+
+### コールドスタート（2026-09-23 に本番で計測）
+
+| 区間 | 実測 | 根拠 |
+| --- | --- | --- |
+| Neon の起動（停止 → 起動） | 0.34〜0.44s | Neon の操作ログ `start_compute` |
+| 関数のコールドスタート（DB 起床済みでも） | 5〜6s | DB を叩かないに等しい `/api/auth/ok` の初回 |
+| /checkout 初回の見積もり＋ヘッダーのリンク先読み5本 | 約9s（同時に完了） | ブラウザの Resource Timing |
+
+**遅いのは DB ではなく関数の起動。** 対策として本番ビルドでは PGlite の wasm/data（約17MB）を関数に同梱しない
+（`next.config.ts` の `outputFileTracingExcludes`、回帰テスト `test/next-config.test.ts`）。
+
+内訳は `GET /api/health` で外から測れる（秘密情報なし・キャッシュなし）:
+
+| フィールド | 意味 |
+| --- | --- |
+| `coldStart` | このインスタンスの最初のリクエストか |
+| `processAgeMs` | プロセス起動からの経過。コールド時は「起動＋モジュール読み込み」の目安 |
+| `dbMs` | `select 1` の往復（Neon が停止中なら起床込み） |
+
+計測の手順: 15分ほど本番に触らない → `/api/health` を1回 → すぐもう1回（2回目が温まった状態の基準）。
+

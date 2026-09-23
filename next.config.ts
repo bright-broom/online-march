@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const embeddedDb = !process.env.DATABASE_URL;
+/** Trace-exclude glob for PGlite's wasm/data (picomatch, matched against traced paths). */
+const PGLITE_BINARIES = "**/node_modules/@electric-sql/pglite/dist/*.{wasm,data}";
 
 /**
  * Content Security Policy.
@@ -54,6 +56,13 @@ const nextConfig: NextConfig = {
     localPatterns: [{ pathname: "/uploads/**" }, { pathname: "/**" }],
   },
   serverExternalPackages: ["@electric-sql/pglite"],
+  /**
+   * PGlite (the local / CI database) points at its binaries with `new URL("./pglite.wasm", import.meta.url)`, so file
+   * tracing copied ~17MB of wasm/data into every server function — which production (Neon) never loads, but pays for
+   * on every cold start. Only the binaries go: the JS stays, because `db/client.ts` imports PGlite statically. If a
+   * deployment ever lost DATABASE_URL at runtime it now fails loudly instead of serving an empty in-memory store.
+   */
+  ...(embeddedDb ? {} : { outputFileTracingExcludes: { "*": [PGLITE_BINARIES] } }),
   experimental: {
     serverActions: { bodySizeLimit: "4mb" },
     /** Embedded PGlite is single-process: prerender with one worker when no DATABASE_URL. */

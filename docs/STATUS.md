@@ -99,8 +99,9 @@
 
 ### 気になっている点（未着手）
 
-- **/checkout の初回表示が遅い**（コールドスタート時に十数秒スケルトンのまま）。2026-09-23 に本番で観測。
-  静的シェルはすぐ出るが、動的部分（住所・プロフィール・設定の読み込み）が遅い。実測してから手を入れること。
+- **/checkout の初回表示が遅い**（コールドスタート時に十数秒スケルトンのまま）。2026-09-23 に計測済み:
+  原因は **関数のコールドスタート 5〜6s**（Neon の起床は 0.4s 程度）。PGlite のバイナリ約17MB を本番関数から外した
+  （`docs/PERFORMANCE.md` §4）。**デプロイ後に `/api/health` で再計測して効果を確認すること**（未確認）。
 
 ## 6. この環境（AI エージェント）でハマる点
 
@@ -127,3 +128,4 @@
 | 本番公開チェック | `queries/go-live.ts` | `go-live.test.ts` |
 | 運用アラート / バックアップ | `services/ops-alerts.ts`, `services/backup.ts` | `jobs.test.ts`, `backup.test.ts`, `restore.test.ts` |
 | ドキュメントのリンク・画像・目次の切れ検知（アイコンは `docs/icons/` に同梱） | `test/docs.test.ts` | 同左 |
+| 稼働確認とコールドスタートの内訳 | `app/api/health`, `services/health.ts` | `health.test.ts`, `test/next-config.test.ts` |
