@@ -14,7 +14,7 @@
 [![Neon](https://img.shields.io/badge/Neon-Postgres-00E599?logo=postgresql&logoColor=000)](https://neon.tech)
 [![Stripe](https://img.shields.io/badge/Stripe-Checkout_+_Connect-635BFF?logo=stripe&logoColor=fff)](https://stripe.com)
 [![Vercel](https://img.shields.io/badge/Vercel-sin1-000?logo=vercel)](https://awaji-marche.vercel.app)
-[![CI](https://github.com/bright-broom/online-march-/actions/workflows/ci.yml/badge.svg)](.github/workflows/ci.yml)
+[![CI](https://github.com/bright-broom/online-march/actions/workflows/ci.yml/badge.svg)](.github/workflows/ci.yml)
 
 <img src="docs/icons/muted/globe.svg" width="16" height="16" alt="" /> **本番**: https://awaji-marche.vercel.app &nbsp;·&nbsp; <img src="docs/icons/muted/clipboard-list.svg" width="16" height="16" alt="" /> **現況と引き継ぎ**: [`docs/STATUS.md`](docs/STATUS.md) &nbsp;·&nbsp; <img src="docs/icons/muted/bot.svg" width="16" height="16" alt="" /> **開発ガイド**: [`AGENTS.md`](AGENTS.md)
 
