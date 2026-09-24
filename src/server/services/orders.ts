@@ -36,6 +36,7 @@ import { ActionError } from "@/server/actions/_utils";
 import { expireTags } from "@/server/cache";
 import { readSettingsUncached } from "@/server/queries/settings";
 import { emailTemplates } from "./email/templates";
+import { sendEmail } from "./email";
 import { notify } from "./notify";
 
 type Tx = Parameters<Parameters<Database["transaction"]>[0]>[0];
@@ -531,13 +532,14 @@ export async function cancelOrderByCustomer(orderId: string, userId: string, now
   if (!order) throw new ActionError("注文が見つかりません");
   const cancellable = order.farmOrders.every((f) => ["pending_payment", "paid", "preparing", "cancelled"].includes(f.status));
   if (!cancellable) throw new ActionError("発送済みの商品を含むためキャンセルできません。メッセージで生産者にご相談ください。");
+  // 支払い済みなら返金の一本道へ（二重返金の防止・返金額の記録・返金メールがそこにある）
+  if (order.paidAt && order.status === "paid") {
+    const { refundOrder } = await import("./refunds");
+    await refundOrder({ orderId }, { source: "customer", note: "お客さまによるキャンセル" });
+    return;
+  }
   for (const fo of order.farmOrders) {
     if (fo.status !== "cancelled") await transitionFarmOrder(fo.id, "cancelled", { source: "customer", now });
-  }
-  if (order.status === "paid" && order.paymentProvider === "stripe" && order.stripePaymentIntentId) {
-    const { refundPayment } = await import("./payments/stripe");
-    await refundPayment(order.stripePaymentIntentId, undefined, `order:${order.id}`);
-    await db.update(orders).set({ status: "refunded" }).where(eq(orders.id, orderId));
   }
 }
 
@@ -551,6 +553,8 @@ async function releaseCoupon(exec: Pick<Database, "update">, code: string) {
 
 /** Expire an unpaid order: cancel all farm orders & restore stock. */
 export async function expireUnpaidOrder(orderId: string, now: Date) {
+  // 先に読む: 下の transition が最後の出荷単位を閉じた時点で、親の注文も cancelled になる
+  const before = await db.query.orders.findFirst({ where: eq(orders.id, orderId) });
   const fos = await db.select().from(farmOrders).where(and(eq(farmOrders.orderId, orderId), eq(farmOrders.status, "pending_payment")));
   for (const fo of fos) await transitionFarmOrder(fo.id, "cancelled", { source: "cron", now, note: "お支払い期限切れのためキャンセルしました" });
   const [expired] = await db
@@ -559,6 +563,11 @@ export async function expireUnpaidOrder(orderId: string, now: Date) {
     .where(and(eq(orders.id, orderId), eq(orders.status, "pending_payment")))
     .returning({ couponCode: orders.couponCode });
   if (expired?.couponCode) await releaseCoupon(db, expired.couponCode);
+  // お支払い番号を受け取った人（コンビニ払い）にだけ知らせる。決済画面を閉じただけの人に「キャンセル」メールは送らない。
+  // 二度呼ばれても（webhook と cron）2回目は status が cancelled なので送らない
+  if (before?.status === "pending_payment" && before.paymentDueAt) {
+    await sendEmail(emailTemplates.paymentExpired({ to: before.email, name: before.shippingAddress.recipientName, orderId, code: before.code }));
+  }
 }
 
 /* ───────────────────────── Reviews ───────────────────────── */

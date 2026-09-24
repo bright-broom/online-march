@@ -7,6 +7,7 @@ import { bulkShipSchema, cancelOrderSchema, idsSchema, shipOrderSchema, tracking
 import { assertFarm } from "@/server/auth/guards";
 import { getPayoutOrders, matchOrdersByCode, type PayoutOrderRow } from "@/server/queries/farmer";
 import { transitionFarmOrder } from "@/server/services/orders";
+import { cancelFarmOrderAsFarmer } from "@/server/services/refunds";
 import { parseTrackingCsv } from "@/server/services/shipping/label-csv";
 import { ActionError, parseInput, runAction, type ActionResult } from "./_utils";
 
@@ -70,14 +71,14 @@ export async function shipOrdersBulk(input: { rows: { id: string; carrier: Carri
   });
 }
 
-/** キャンセル (with reason). Stock is restored by the service. */
+/** キャンセル (with reason). 支払い済みならお客さまへ返金する。在庫はサービスが戻す。 */
 export async function cancelOrder(input: { id: string; reason: string }): Promise<ActionResult> {
   return runAction(async () => {
     const { farm } = await assertFarm();
     const data = parseInput(cancelOrderSchema, input);
-    await transitionFarmOrder(data.id, "cancelled", { source: "farmer", farmId: farm.id, now: new Date(), note: `生産者によるキャンセル：${data.reason}` });
+    await cancelFarmOrderAsFarmer({ farmOrderId: data.id, farmId: farm.id, reason: data.reason, now: new Date() });
     refresh();
-  }, "注文をキャンセルしました。在庫を戻しました");
+  }, "注文をキャンセルしました。在庫を戻し、お支払い済みの場合はお客さまへ返金しました");
 }
 
 export type TrackingPreviewRow = {

@@ -111,7 +111,15 @@ success ページでも session を確認して `markOrderPaid` を呼ぶ（webh
 
 ## 返金・キャンセル
 
-- 顧客キャンセル（発送前のみ）: 全 farm_orders cancelled → Stripe 全額返金 → orders.refunded。
+- **返金は必ず `services/refunds.ts#refundOrder` を通す**（運営の返金・生産者のキャンセル・お客さまのキャンセルの3経路とも）。
+  二重返金の防止、`farm_orders.refundedAt/refundAmount` の記録（売上明細CSV・翌月相殺が使う）、タイムライン、
+  お客さまへの返金メール（`emailTemplates.refunded`）がそこにまとまっている。Stripe を直接呼ばないこと。
+  回帰テスト `services/__tests__/cancel-refund.test.ts`。
+- 顧客キャンセル（発送前のみ）: 支払い済みなら `refundOrder`（注文全体）→ 全額返金・orders.refunded。未決済ならキャンセルだけ。
+- 生産者キャンセル（発送前のみ, `refunds.ts#cancelFarmOrderAsFarmer`）: 支払い済みなら `refundOrder`（その出荷単位）で返金。
+  **2026-09-24 まではキャンセルで在庫を戻すだけで返金されていなかった**（画面には「返金は運営が行います」とあったが運営に通知はなかった）。
+- お支払い期限切れ（`expireUnpaidOrder`）: お支払い番号を受け取った人（`payment_due_at` あり＝コンビニ払い）にだけ
+  キャンセルのメール（`emailTemplates.paymentExpired`）。決済画面を閉じただけの人には送らない。
 - 部分（農家単位）返金: admin が /admin/orders から実行 → `services/refunds.ts#refundOrder`
   （配達済み→refunded / 発送前→cancelled＋在庫戻し / 配送中は拒否）。`farm_orders.refundedAt/refundAmount` に記録。
 - **返金の二重実行防止**: `refundOrder` は対象 farm_orders を `refundedAt IS NULL` 条件で**先に確保**してから Stripe を呼ぶ。

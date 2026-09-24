@@ -8,19 +8,26 @@ import { features } from "@/lib/env";
 import { formatYen } from "@/lib/format";
 import { ActionError } from "@/server/actions/_utils";
 import { expireTags } from "@/server/cache";
+import { emailTemplates } from "./email/templates";
 import { notify } from "./notify";
 import { transitionFarmOrder } from "./orders";
 
 export const refundableAmountOf = (fo: FarmOrder) => Math.max(0, fo.subtotal + fo.shippingFee - fo.discount);
 export const isRefunded = (fo: FarmOrder) => fo.status === "refunded" || fo.refundedAt != null;
 
+/** Who is refunding, for the timeline and the customer's notice. Authorization is the caller's job. */
+export type RefundActor = { source: "admin" | "farmer" | "customer"; note?: string };
+const byAdmin: RefundActor = { source: "admin", note: "運営によりキャンセルしました" };
+
 /**
- * Refund a whole order or one farm order (admin operation; authorization is the caller's job).
+ * Refund a whole order or one farm order. The only place money goes back to a customer: admin refunds, farmer
+ * cancellations of paid orders and customer cancellations all come through here, so the double-refund guard,
+ * the refundedAt / refundAmount record (sales CSV, clawback) and the customer's email apply to every one of them.
  *  - Stripe: partial refund per farm order, or the remaining balance for a whole order. Demo: state only.
  *  - delivered → refunded; paid/preparing → cancelled (stock restored); shipped/unpaid are rejected.
  *  - farm_orders.refundedAt / refundAmount record the money movement; a `refund` event is added to the timeline.
  */
-export async function refundOrder(data: { orderId: string; farmOrderId?: string }) {
+export async function refundOrder(data: { orderId: string; farmOrderId?: string }, actor: RefundActor = byAdmin) {
   const order = await db.query.orders.findFirst({
     where: eq(orders.id, data.orderId),
     with: { farmOrders: true },
@@ -76,16 +83,16 @@ export async function refundOrder(data: { orderId: string; farmOrderId?: string 
     }
   }
   for (const fo of targets) {
-    if (fo.status === "delivered") await transitionFarmOrder(fo.id, "refunded", { source: "admin", now });
+    if (fo.status === "delivered") await transitionFarmOrder(fo.id, "refunded", { source: actor.source, now });
     else if (fo.status === "paid" || fo.status === "preparing") {
-      await transitionFarmOrder(fo.id, "cancelled", { source: "admin", now, note: "運営によりキャンセルしました" });
+      await transitionFarmOrder(fo.id, "cancelled", { source: actor.source, now, note: actor.note ?? byAdmin.note });
     }
     await db.update(farmOrders).set({ refundAmount: refundableAmountOf(fo) }).where(eq(farmOrders.id, fo.id));
     await db.insert(shipmentEvents).values({
       farmOrderId: fo.id,
       type: "refund",
       message: `${formatYen(refundableAmountOf(fo))} を返金しました`,
-      source: "admin",
+      source: actor.source,
       occurredAt: now,
     });
   }
@@ -102,7 +109,36 @@ export async function refundOrder(data: { orderId: string; farmOrderId?: string 
     title: "返金手続きが完了しました",
     body: `${order.code}｜${formatYen(amount)}`,
     href: routes.mypage.order(order.id),
+    email: emailTemplates.refunded({
+      to: order.email,
+      name: order.shippingAddress.recipientName,
+      orderId: order.id,
+      code: order.code,
+      amount,
+      reason: actor.source === "admin" ? null : actor.note ?? null,
+      viaCard: viaStripe,
+    }),
   });
   expireTags(tags.analytics, ...targets.map((f) => tags.farmAnalytics(f.farmId)));
   return { amount, demo: !viaStripe };
+}
+
+/**
+ * 生産者によるキャンセル。支払い済みの出荷単位は返金まで行う（以前は在庫を戻すだけで、お客さまは引き落とされたままだった）。
+ * 未決済のものは返金せずにキャンセルだけする。在庫は transitionFarmOrder が戻す。
+ */
+export async function cancelFarmOrderAsFarmer(input: { farmOrderId: string; farmId: string; reason: string; now: Date }) {
+  const fo = await db.query.farmOrders.findFirst({
+    where: and(eq(farmOrders.id, input.farmOrderId), eq(farmOrders.farmId, input.farmId)),
+    with: { order: true },
+  });
+  if (!fo) throw new ActionError("注文が見つかりません");
+  if (fo.status === "cancelled") throw new ActionError("この注文はキャンセル済みです");
+  const note = `生産者によるキャンセル：${input.reason}`;
+  if (fo.order.paidAt && !isRefunded(fo) && (fo.status === "paid" || fo.status === "preparing")) {
+    const { amount } = await refundOrder({ orderId: fo.orderId, farmOrderId: fo.id }, { source: "farmer", note });
+    return { refunded: amount };
+  }
+  await transitionFarmOrder(fo.id, "cancelled", { source: "farmer", farmId: input.farmId, now: input.now, note });
+  return { refunded: 0 };
 }

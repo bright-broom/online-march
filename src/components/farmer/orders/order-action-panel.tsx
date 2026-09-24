@@ -133,7 +133,7 @@ export function OrderActionPanel({
               <AlertDialogHeader>
                 <AlertDialogTitle>注文をキャンセルしますか？</AlertDialogTitle>
                 <AlertDialogDescription>
-                  在庫は自動で戻り、お客さまにキャンセルのお知らせが届きます。返金は運営が行います。この操作は取り消せません。
+                  在庫は自動で戻り、お支払い済みの代金はお客さまへ自動で返金されます（キャンセルと返金のお知らせもお客さまに届きます）。この操作は取り消せません。
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <Field>

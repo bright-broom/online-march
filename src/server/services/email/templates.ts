@@ -67,6 +67,40 @@ export const emailTemplates = {
     };
   },
 
+  /** 返金（運営の返金・生産者のキャンセル・お客さまのキャンセル、すべてここ） */
+  refunded(p: { to: string; name: string; orderId: string; code: string; amount: number; reason: string | null; viaCard: boolean }): EmailMessage {
+    return {
+      to: p.to,
+      subject: `【返金のお知らせ】注文番号 ${p.code}`,
+      blocks: [
+        { type: "p", text: `${p.name} 様\nご注文の返金手続きが完了しました。` },
+        { type: "table", rows: [
+          ["注文番号", p.code],
+          ["返金額", formatYen(p.amount)],
+          ...(p.reason ? [["理由", p.reason] as [string, string]] : []),
+        ] },
+        ...(p.viaCard
+          ? [{ type: "note" as const, text: "ご利用のお支払い方法へ返金します。反映までの日数はカード会社・決済サービスによって異なります。" }]
+          : []),
+        { type: "button", label: "注文状況を確認する", href: url(routes.mypage.order(p.orderId)) },
+      ],
+    };
+  },
+
+  /** コンビニ払い等の期限切れ。お支払い番号を受け取った人にだけ送る */
+  paymentExpired(p: { to: string; name: string; orderId: string; code: string }): EmailMessage {
+    return {
+      to: p.to,
+      subject: `【ご注文キャンセルのお知らせ】注文番号 ${p.code}`,
+      blocks: [
+        { type: "p", text: `${p.name} 様\nお支払い期限までにご入金が確認できなかったため、ご注文をキャンセルしました。` },
+        { type: "table", rows: [["注文番号", p.code]] },
+        { type: "note", text: "引き続きご希望の場合は、お手数ですがもう一度ご注文ください。" },
+        { type: "button", label: "注文状況を確認する", href: url(routes.mypage.order(p.orderId)) },
+      ],
+    };
+  },
+
   shipped(p: { to: string; name: string; orderId: string; farmName: string; carrier: Carrier; trackingNumber: string | null; eta: string | null }): EmailMessage {
     const c = carriers[p.carrier];
     return {

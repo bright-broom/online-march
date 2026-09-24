@@ -62,7 +62,8 @@ describe("order lifecycle", () => {
     const after = await db.query.productVariants.findFirst({ where: eq(s.productVariants.id, v.id) });
     expect(after!.stock).toBe(before - 2);
     const parent = await db.query.orders.findFirst({ where: and(eq(s.orders.id, o2.id)) });
-    expect(parent!.status).toBe("cancelled");
+    // 支払い済みのキャンセルは返金の一本道（refundOrder）を通るので refunded。以前は Stripe だけ refunded・デモは cancelled と揃っていなかった
+    expect(parent!.status).toBe("refunded");
   });
 
   it("rejects overselling", async () => {
