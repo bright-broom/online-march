@@ -41,3 +41,18 @@ export async function promoteToAdmin(target: ProvisioningTarget, email: string) 
   ).rows;
   return row ? { email: String(row.email), role: String(row.role) } : null;
 }
+
+/**
+ * 二段階認証をやり直させる（端末もバックアップコードもなくした運営向け）。秘密鍵を消して無効にし、
+ * ログイン中のセッションもすべて切る。次にログインすると guards が設定画面へ送るので、そこで設定し直す。
+ */
+export async function resetTwoFactor(target: ProvisioningTarget, email: string) {
+  const [row] = (
+    await target.execute(sql`update "user" set two_factor_enabled = false where lower(email) = ${email.trim().toLowerCase()} returning id, email`)
+  ).rows;
+  if (!row) return null;
+  await target.execute(sql`delete from two_factor where user_id = ${row.id}`);
+  await target.execute(sql`delete from session where user_id = ${row.id}`);
+  return { email: String(row.email) };
+}
+

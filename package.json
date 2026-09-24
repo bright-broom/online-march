@@ -18,7 +18,8 @@
     "deps:verify": "npx -y npm@11.6.2 ci --dry-run --ignore-scripts",
     "db:restore": "node --import tsx scripts/db-restore.ts",
     "demo:purge": "node --import tsx scripts/demo-purge.ts",
-    "admin:promote": "node --import tsx scripts/admin-promote.ts"
+    "admin:promote": "node --import tsx scripts/admin-promote.ts",
+    "admin:reset-2fa": "node --import tsx scripts/admin-reset-2fa.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8",
@@ -54,6 +55,7 @@
     "sonner": "^2.0.8",
     "stripe": "^22.6.2",
     "tailwind-merge": "^3.7.0",
+    "uqr": "^0.1.3",
     "vaul": "^1.1.2",
     "zod": "^4.6.5",
     "zustand": "^5.0.15"

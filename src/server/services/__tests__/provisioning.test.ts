@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("next/cache", () => ({ revalidateTag: vi.fn(), updateTag: vi.fn(), cacheTag: vi.fn(), cacheLife: vi.fn() }));
 
-const { inventory, purgeAllData, promoteToAdmin } = await import("../provisioning");
+const { inventory, purgeAllData, promoteToAdmin, resetTwoFactor } = await import("../provisioning");
 const { exportDatabase } = await import("../backup");
 const { restoreDatabase } = await import("../backup-restore");
 const schema = await import("@/db/schema");
@@ -56,4 +56,21 @@ describe("go-live provisioning", () => {
     expect(row.role).toBe("admin");
     expect(await promoteToAdmin(target, "nobody@awaji-marche.jp")).toBeNull();
   });
+
+  it("二段階認証のやり直し: 秘密鍵とセッションを消して無効に戻す（他人の設定には触れない）", async () => {
+    const target = await demoCopy();
+    for (const [id, email] of [["lost-1", "Lost@Awaji-Marche.jp"], ["other-1", "other@awaji-marche.jp"]]) {
+      await target.execute(sql`insert into "user" (id, name, email, email_verified, role, two_factor_enabled) values (${id}, '運営', ${email}, true, 'admin', true)`);
+      await target.execute(sql`insert into two_factor (id, secret, backup_codes, user_id) values (${`tf-${id}`}, 'enc', 'enc', ${id})`);
+      await target.execute(sql`insert into session (id, expires_at, token, user_id) values (${`s-${id}`}, now() + interval '1 day', ${`t-${id}`}, ${id})`);
+    }
+
+    expect(await resetTwoFactor(target, " lost@awaji-marche.jp ")).toEqual({ email: "Lost@Awaji-Marche.jp" });
+    const state = async (id: string) =>
+      (await target.execute(sql`select u.two_factor_enabled as on, (select count(*) from two_factor where user_id = u.id)::int as secrets, (select count(*) from session where user_id = u.id)::int as sessions from "user" u where u.id = ${id}`)).rows[0];
+    expect(await state("lost-1")).toEqual({ on: false, secrets: 0, sessions: 0 });
+    expect(await state("other-1")).toEqual({ on: true, secrets: 1, sessions: 1 });
+    expect(await resetTwoFactor(target, "nobody@awaji-marche.jp")).toBeNull();
+  });
 });
+

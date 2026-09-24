@@ -10,6 +10,7 @@ export type SessionUser = {
   email: string;
   image: string | null;
   role: UserRole;
+  twoFactorEnabled: boolean;
 };
 
 /**
@@ -19,6 +20,6 @@ export type SessionUser = {
 export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
   const s = await auth.api.getSession({ headers: await headers() });
   if (!s) return null;
-  const u = s.user as typeof s.user & { role?: UserRole };
-  return { id: u.id, name: u.name, email: u.email, image: u.image ?? null, role: u.role ?? "customer" };
+  const u = s.user as typeof s.user & { role?: UserRole; twoFactorEnabled?: boolean | null };
+  return { id: u.id, name: u.name, email: u.email, image: u.image ?? null, role: u.role ?? "customer", twoFactorEnabled: Boolean(u.twoFactorEnabled) };
 });

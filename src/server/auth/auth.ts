@@ -3,10 +3,11 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { nextCookies } from "better-auth/next-js";
+import { twoFactor } from "better-auth/plugins";
 import { isDemoEmail } from "@/config/demo";
 import { siteConfig } from "@/config/site";
 import { db } from "@/db";
-import { account, rateLimit, session, user, verification } from "@/db/schema";
+import { account, rateLimit, session, twoFactor as twoFactorTable, user, verification } from "@/db/schema";
 import { env, features, siteUrl } from "@/lib/env";
 import { sendEmail } from "@/server/services/email";
 import { emailTemplates } from "@/server/services/email/templates";
@@ -28,7 +29,7 @@ export const auth = betterAuth({
     const devOrigin = isDev && origin && LOCAL_ORIGIN.test(origin) ? [origin] : [];
     return [siteUrl, ...vercelOrigins, ...devOrigin];
   },
-  database: drizzleAdapter(db, { provider: "pg", schema: { user, session, account, verification, rateLimit } }),
+  database: drizzleAdapter(db, { provider: "pg", schema: { user, session, account, verification, rateLimit, twoFactor: twoFactorTable } }),
   /**
    * Brute-force protection. The default memory store is useless on Vercel (every function instance keeps its own
    * map), so counters live in Postgres. Limits are per IP+path: generous for normal browsing, tight on the
@@ -92,7 +93,12 @@ export const auth = betterAuth({
       }
     }),
   },
-  plugins: [nextCookies()],
+  plugins: [
+    // 二段階認証（認証アプリの6桁コード + バックアップコード）。運営は必須（guards.ts#needsTwoFactorSetup）。
+    // 秘密鍵とバックアップコードは BETTER_AUTH_SECRET で暗号化して two_factor に保存される
+    twoFactor({ issuer: siteConfig.name }),
+    nextCookies(), // must stay last: it forwards Set-Cookie from the plugins above
+  ],
 });
 
 export type AuthSession = typeof auth.$Infer.Session;

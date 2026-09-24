@@ -367,6 +367,8 @@ erDiagram
 | <img src="docs/icons/muted/undo-2.svg" width="16" height="16" alt="" /> | 返金の二重実行を防ぐ | 対象を先に確保してから Stripe を呼ぶ | `refund-race` |
 | <img src="docs/icons/muted/receipt.svg" width="16" height="16" alt="" /> | コンビニ払いの期限切れ後に入金されない | 打ち切り前に PaymentIntent を cancel | `deferred-payment` · `cancel-unpaid-stripe` |
 | <img src="docs/icons/muted/link.svg" width="16" height="16" alt="" /> | 決済から送金までのつなぎ目が壊れない | 注文 → Webhook → 出荷 → 配達 → 締め → 送金 を1本で通す | `golden-route` |
+| <img src="docs/icons/muted/undo-2.svg" width="16" height="16" alt="" /> | キャンセルしたら必ず返金される | 運営・生産者・お客さまのキャンセルとも返金は `refundOrder` の一本道 | `cancel-refund` |
+| <img src="docs/icons/muted/key-round.svg" width="16" height="16" alt="" /> | 運営アカウントを乗っ取らせない | 運営は二段階認証が必須（ページも Action も止める） | `two-factor` · `two-factor-guard` |
 | <img src="docs/icons/muted/lock.svg" width="16" height="16" alt="" /> | 他人のデータに触れない | 全 Action の認可テスト | `authorization` |
 | <img src="docs/icons/muted/database.svg" width="16" height="16" alt="" /> | バックアップを本当に戻せる | 保存後に読み戻し、使い捨てブランチへの復元を検証 | `backup` · `restore` |
 | <img src="docs/icons/muted/traffic-cone.svg" width="16" height="16" alt="" /> | 公開判断を誤らない | 「鍵があるか」ではなく「実際に動いているか」を判定 | `go-live` |
@@ -407,7 +409,8 @@ npm run dev
 | <img src="docs/icons/muted/database.svg" width="16" height="16" alt="" /> | `npm run db:generate` / `db:migrate` / `db:seed` / `db:reset` | マイグレーション生成・適用 / シード |
 | <img src="docs/icons/muted/history.svg" width="16" height="16" alt="" /> | `npm run db:restore` | バックアップから復元 |
 | <img src="docs/icons/muted/eraser.svg" width="16" height="16" alt="" /> | `npm run demo:purge` | 本番公開前にデモデータを削除 |
-| <img src="docs/icons/muted/crown.svg" width="16" height="16" alt="" /> | `npm run admin:promote <メール>` | 運営アカウントに昇格（**デモ削除より先に**） |
+| <img src="docs/icons/muted/crown.svg" width="16" height="16" alt="" /> | `npm run admin:promote -- --email <メール>` | 運営アカウントに昇格（**デモ削除より先に**）。次のログインで二段階認証を設定 |
+| <img src="docs/icons/muted/key-round.svg" width="16" height="16" alt="" /> | `npm run admin:reset-2fa -- --email <メール>` | 運営の二段階認証をやり直させる（端末をなくしたとき。本人確認のうえで） |
 | <img src="docs/icons/muted/package.svg" width="16" height="16" alt="" /> | `npm run deps:verify` | CI と同じ npm で lockfile を検証 |
 
 ---

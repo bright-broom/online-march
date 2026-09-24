@@ -9,7 +9,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 vi.mock("next/cache", () => ({ revalidateTag: vi.fn(), updateTag: vi.fn(), cacheTag: vi.fn(), cacheLife: vi.fn(), refresh: vi.fn() }));
 vi.mock("next/navigation", () => ({ unstable_rethrow: vi.fn(), redirect: vi.fn() }));
 
-let currentUser: { id: string; name: string; email: string; image: null; role: "customer" | "farmer" | "admin" } | null = null;
+let currentUser: { id: string; name: string; email: string; image: null; role: "customer" | "farmer" | "admin"; twoFactorEnabled?: boolean } | null = null;
 vi.mock("@/server/auth/session", () => ({ getSessionUser: async () => currentUser }));
 
 const { db } = await import("@/db/client");
@@ -149,5 +149,18 @@ describe("cross-tenant authorization", () => {
     expect((await farmerProducts.saveProduct(null, form)).ok).toBe(false);
     expect((await adminOps.runJobNow({ job: "cancel-unpaid" })).ok).toBe(false);
     expect((await db.query.products.findFirst({ where: eq(s.products.id, anyProduct.id) }))!.name).toBe(anyProduct.name);
+  });
+
+  it("二段階認証を設定していない運営（デモ以外）は運営の操作ができない", async () => {
+    const admin = (await db.query.user.findFirst({ where: eq(s.user.email, "admin@demo.awaji") }))!;
+    // 本物の運営アカウント（デモのドメイン以外）として呼ぶ
+    currentUser = { id: admin.id, name: "本番 運営", email: "owner@awaji-marche.jp", image: null, role: "admin", twoFactorEnabled: false };
+    const before = (await db.query.platformSettings.findMany()).length;
+    const res = await adminOps.setMaintenanceMode({ enabled: true });
+    expect(res).toMatchObject({ ok: false, error: expect.stringContaining("二段階認証") });
+    expect((await db.query.platformSettings.findMany()).length).toBe(before);
+
+    currentUser = { ...currentUser, twoFactorEnabled: true };
+    expect((await adminOps.setMaintenanceMode({ enabled: false })).ok).toBe(true);
   });
 });

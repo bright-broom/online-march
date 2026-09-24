@@ -42,6 +42,11 @@ export function LoginForm({ demo }: { demo: boolean }) {
         setActiveDemo(null);
         return;
       }
+      // 二段階認証を設定しているアカウント: パスワードは通ったが、セッションはコードの確認後に発行される
+      if (data && "twoFactorRedirect" in data && data.twoFactorRedirect) {
+        router.push(next ? `${routes.twoFactor}?next=${encodeURIComponent(next)}` : routes.twoFactor);
+        return;
+      }
       let role = (data?.user as { role?: string } | undefined)?.role;
       if (!role) {
         const s = await authClient.getSession();

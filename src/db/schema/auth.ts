@@ -20,6 +20,8 @@ export const user = pgTable("user", {
   image: text("image"),
   role: userRole("role").notNull().default("customer"),
   phone: text("phone"),
+  /** 二段階認証（TOTP）を有効にしているか。Better Auth の twoFactor プラグインが管理する。運営は必須（server/auth/guards.ts） */
+  twoFactorEnabled: boolean("two_factor_enabled").notNull().default(false),
   /** 退会日時。行は残すが個人情報は消してある（注文は帳簿として残すため user 行を消せない。docs/DATA_MODEL.md §退会） */
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
   ...timestamps,
@@ -87,6 +89,26 @@ export const rateLimit = pgTable(
     lastRequest: bigint("last_request", { mode: "number" }).notNull(),
   },
   (t) => [index("rate_limit_key_idx").on(t.key)],
+);
+
+/**
+ * 二段階認証の秘密鍵とバックアップコード（Better Auth twoFactor プラグイン。フィールド名は固定）。
+ * secret / backupCodes はプラグインが認証シークレットで暗号化して保存する。
+ */
+export const twoFactor = pgTable(
+  "two_factor",
+  {
+    id: text("id").primaryKey(),
+    secret: text("secret").notNull(),
+    backupCodes: text("backup_codes").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    verified: boolean("verified").default(true),
+    failedVerificationCount: integer("failed_verification_count").default(0),
+    lockedUntil: timestamp("locked_until", { withTimezone: true }),
+  },
+  (t) => [index("two_factor_user_idx").on(t.userId), index("two_factor_secret_idx").on(t.secret)],
 );
 
 export type User = typeof user.$inferSelect;

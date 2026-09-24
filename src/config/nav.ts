@@ -54,6 +54,8 @@ export const routes = {
   signup: "/signup",
   forgotPassword: "/forgot-password",
   resetPassword: "/reset-password",
+  twoFactor: "/two-factor",
+  twoFactorSetup: "/two-factor/setup",
   legal: { tokushoho: "/legal/tokushoho", terms: "/legal/terms", privacy: "/legal/privacy" },
   mypage: {
     root: "/mypage",

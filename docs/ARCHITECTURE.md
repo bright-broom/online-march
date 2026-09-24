@@ -52,6 +52,10 @@ src/
 
 - Better Auth（email+password, DB セッション, **cookieCache 無効** — ロール変更・失効を即時反映。権限を下げた時は全セッション破棄）。`user.role` = customer | farmer | admin。
 - ページ: `requireUser / requireRole / requireFarm`（redirect）。Action: `assertUser / assertRole / assertFarm`（ActionError）。
+- **運営は二段階認証（TOTP）が必須**: `guards.ts#needsTwoFactorSetup`。未設定の運営は `requireUser` が `/two-factor/setup` へ送り、
+  `assertUser` が Action を拒否する（土台の2関数で止めるので、運営向けのページ・Action はすべて対象）。デモアカウントは対象外。
+  2FA を設定したアカウントはパスワードの後に `/two-factor` で6桁コード（またはバックアップコード）を入れる。
+  端末をなくした運営は `npm run admin:reset-2fa -- --email …`（本人確認を別手段で取ってから）。
 - 農家は `farms.ownerId` で 1:1。farmer 画面の全クエリは **必ず farm.id でスコープ**。
 - 出店申請: customer が /join から申請 → farms.status=pending → admin 承認で status=active & user.role=farmer。
 
@@ -79,7 +83,7 @@ async function Shell({ children }: { children: React.ReactNode }) {
 | Area | Routes |
 | --- | --- |
 | shop | `/` `/products` `/products/[slug]` `/farms` `/farms/[slug]` `/cart` `/checkout` `/checkout/success` `/about` `/guide` `/faq` `/join` `/legal/[doc]` |
-| auth | `/login` `/signup` `/forgot-password` `/reset-password`（パスワード再設定。メールのリンクは `/api/auth/reset-password/:token` を経由して `?token=` 付きで戻る） |
+| auth | `/login` `/signup` `/two-factor` `/two-factor/setup` `/forgot-password` `/reset-password`（パスワード再設定。メールのリンクは `/api/auth/reset-password/:token` を経由して `?token=` 付きで戻る） |
 | mypage | `/mypage` `orders` `orders/[id]` `orders/[id]/receipt` `favorites` `addresses` `reviews` `messages` `notifications` `settings`（退会もここ） |
 | farmer | `/farmer` `products` `products/new` `products/[id]` `orders` `orders/[id]` `orders/[id]/slip` `shipping` `reviews` `messages` `payouts` `shop` `settings`（お休み設定もここ） `account` |
 | admin | `/admin` `farms` `farms/[id]` `products` `orders` `orders/[id]` `users` `payouts` `coupons` `announcements` `automation` `settings` |

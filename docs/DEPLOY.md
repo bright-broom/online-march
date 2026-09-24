@@ -175,6 +175,13 @@ DATABASE_URL=… npm run demo:purge -- --yes # 実行（--force でデモ以外�
 DATABASE_URL=… npm run admin:promote -- --email owner@example.jp
 ```
 
+   次にサイトでログインすると二段階認証の設定画面へ案内される（運営は必須）。認証アプリで QR を読み、
+   **バックアップコードを安全な場所に保管**してから6桁で確認する。端末もバックアップコードもなくしたら:
+
+```bash
+DATABASE_URL=… npm run admin:reset-2fa -- --email owner@example.jp   # 本人確認を別の手段で取ってから
+```
+
 5. 運営画面 /admin/settings の「本番公開チェック」が「準備完了」になることを確認。
 
 ### 4. その他

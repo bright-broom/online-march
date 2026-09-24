@@ -205,7 +205,7 @@ export async function getGoLiveChecks(): Promise<GoLiveCheck[]> {
       state: realAdmins.length ? "ready" : "blocker",
       detail: realAdmins.length
         ? `${realAdmins.join("・")}`
-        : "デモ以外の運営アカウントがありません。会員登録したうえで `npm run admin:promote <メールアドレス>` を実行してください",
+        : "デモ以外の運営アカウントがありません。会員登録したうえで `npm run admin:promote -- --email <メールアドレス>` を実行してください（ログイン後に二段階認証の設定が求められます）",
     },
     {
       key: "site-url",
