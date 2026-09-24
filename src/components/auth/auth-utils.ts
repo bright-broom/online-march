@@ -32,6 +32,8 @@ export function authErrorMessage(error: AuthError, fallback = "うまくいき�
       return "メールアドレスの形式が正しくありません。";
     case "INVALID_PASSWORD":
       return "現在のパスワードが正しくありません。";
+    case "INVALID_TOKEN":
+      return "このリンクは有効期限が切れているか、すでに使われています。もう一度お手続きください。";
     case "EMAIL_NOT_VERIFIED":
       return "メールアドレスの確認が完了していません。";
     default:

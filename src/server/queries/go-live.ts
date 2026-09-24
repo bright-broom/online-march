@@ -172,9 +172,11 @@ export async function getGoLiveChecks(): Promise<GoLiveCheck[]> {
     {
       key: "email",
       label: "メール送信",
-      state: env.RESEND_API_KEY ? (env.EMAIL_FROM.includes("example.com") ? "warning" : "ready") : "warning",
+      // 注文確認・返金のお知らせに加え、パスワード再設定もメールでしか届かない。送れないまま公開すると、
+      // パスワードを忘れたお客さまは自力で戻れなくなるので blocker
+      state: env.RESEND_API_KEY && !env.EMAIL_FROM.includes("example.com") ? "ready" : "blocker",
       detail: !env.RESEND_API_KEY
-        ? "未設定です。注文確認・出荷通知メールは送信されません"
+        ? "未設定です。注文確認・返金のお知らせ・パスワード再設定のメールが届きません"
         : env.EMAIL_FROM.includes("example.com")
           ? "EMAIL_FROM が例のままです。認証済みドメインのアドレスに変更してください"
           : `送信元 ${env.EMAIL_FROM}`,

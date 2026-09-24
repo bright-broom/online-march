@@ -8,6 +8,8 @@ import { siteConfig } from "@/config/site";
 import { db } from "@/db";
 import { account, rateLimit, session, user, verification } from "@/db/schema";
 import { env, features, siteUrl } from "@/lib/env";
+import { sendEmail } from "@/server/services/email";
+import { emailTemplates } from "@/server/services/email/templates";
 
 const vercelOrigins = [process.env.VERCEL_URL, process.env.VERCEL_BRANCH_URL, process.env.VERCEL_PROJECT_PRODUCTION_URL]
   .filter(Boolean)
@@ -42,10 +44,27 @@ export const auth = betterAuth({
       "/sign-in/email": { window: 300, max: 10 },
       "/sign-up/email": { window: 3600, max: 5 },
       "/forget-password": { window: 3600, max: 5 },
+      // Better Auth 1.7 の再設定リクエストはこのパス（旧名 /forget-password のルールだけでは効いていなかった）
+      "/request-password-reset": { window: 3600, max: 5 },
       "/reset-password": { window: 3600, max: 5 },
     },
   },
-  emailAndPassword: { enabled: true, minPasswordLength: 8, autoSignIn: true },
+  emailAndPassword: {
+    enabled: true,
+    minPasswordLength: 8,
+    autoSignIn: true,
+    /**
+     * パスワード再設定（/forgot-password → メール → /reset-password）。登録の無いアドレスでも同じ応答を返すので、
+     * 会員かどうかは外から分からない。デモアカウントには送らない（共有のアカウントを誰かが乗っ取れないように）。
+     */
+    sendResetPassword: async ({ user, url }) => {
+      if (isDemoEmail(user.email)) return;
+      await sendEmail(emailTemplates.passwordReset({ to: user.email, name: user.name, url }));
+    },
+    resetPasswordTokenExpiresIn: 60 * 60,
+    // 乗っ取られて再設定した場合に、乗っ取った側のログインも切れるように
+    revokeSessionsOnPasswordReset: true,
+  },
   user: {
     additionalFields: {
       role: { type: "string", required: false, defaultValue: "customer", input: false },

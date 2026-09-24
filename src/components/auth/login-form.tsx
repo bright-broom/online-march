@@ -88,7 +88,12 @@ export function LoginForm({ demo }: { demo: boolean }) {
             {errors.email && <FieldError>{errors.email}</FieldError>}
           </Field>
           <Field data-invalid={!!errors.password}>
-            <FieldLabel htmlFor="password">パスワード</FieldLabel>
+            <div className="flex items-center justify-between">
+              <FieldLabel htmlFor="password">パスワード</FieldLabel>
+              <Link href={routes.forgotPassword} className="text-muted-foreground hover:text-primary text-xs underline-offset-4 hover:underline">
+                パスワードをお忘れの方
+              </Link>
+            </div>
             <PasswordInput
               id="password"
               autoComplete="current-password"

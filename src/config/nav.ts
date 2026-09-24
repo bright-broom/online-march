@@ -52,6 +52,8 @@ export const routes = {
   join: "/join",
   login: "/login",
   signup: "/signup",
+  forgotPassword: "/forgot-password",
+  resetPassword: "/reset-password",
   legal: { tokushoho: "/legal/tokushoho", terms: "/legal/terms", privacy: "/legal/privacy" },
   mypage: {
     root: "/mypage",

@@ -71,6 +71,17 @@ export const loginSchema = z.object({
   password: z.string().min(1, "パスワードを入力してください"),
 });
 
+export const forgotPasswordSchema = z.object({
+  email: z.email("メールアドレスの形式が正しくありません"),
+});
+
+export const resetPasswordSchema = z
+  .object({
+    password: z.string().min(8, "8文字以上で入力してください").max(128, "128文字以内で入力してください"),
+    confirmPassword: z.string(),
+  })
+  .refine((v) => v.password === v.confirmPassword, { path: ["confirmPassword"], message: "確認用パスワードが一致しません" });
+
 export const signupSchema = z
   .object({
     name: z.string().trim().min(1, "お名前を入力してください").max(40, "40文字以内で入力してください"),

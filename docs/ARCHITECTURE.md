@@ -79,7 +79,7 @@ async function Shell({ children }: { children: React.ReactNode }) {
 | Area | Routes |
 | --- | --- |
 | shop | `/` `/products` `/products/[slug]` `/farms` `/farms/[slug]` `/cart` `/checkout` `/checkout/success` `/about` `/guide` `/faq` `/join` `/legal/[doc]` |
-| auth | `/login` `/signup` |
+| auth | `/login` `/signup` `/forgot-password` `/reset-password`（パスワード再設定。メールのリンクは `/api/auth/reset-password/:token` を経由して `?token=` 付きで戻る） |
 | mypage | `/mypage` `orders` `orders/[id]` `orders/[id]/receipt` `favorites` `addresses` `reviews` `messages` `notifications` `settings`（退会もここ） |
 | farmer | `/farmer` `products` `products/new` `products/[id]` `orders` `orders/[id]` `orders/[id]/slip` `shipping` `reviews` `messages` `payouts` `shop` `settings`（お休み設定もここ） `account` |
 | admin | `/admin` `farms` `farms/[id]` `products` `orders` `orders/[id]` `users` `payouts` `coupons` `announcements` `automation` `settings` |

@@ -67,6 +67,19 @@ export const emailTemplates = {
     };
   },
 
+  /** パスワード再設定。url は Better Auth が発行する1時間有効・1回限りのリンク */
+  passwordReset(p: { to: string; name: string; url: string }): EmailMessage {
+    return {
+      to: p.to,
+      subject: "【パスワード再設定のご案内】",
+      blocks: [
+        { type: "p", text: `${p.name} 様\nパスワード再設定のお申し込みを受け付けました。下のボタンから新しいパスワードを設定してください。` },
+        { type: "button", label: "パスワードを再設定する", href: p.url },
+        { type: "note", text: "このリンクの有効期限は1時間で、1回だけ使えます。お心当たりがない場合はこのメールを破棄してください。パスワードは変更されません。" },
+      ],
+    };
+  },
+
   /** 返金（運営の返金・生産者のキャンセル・お客さまのキャンセル、すべてここ） */
   refunded(p: { to: string; name: string; orderId: string; code: string; amount: number; reason: string | null; viaCard: boolean }): EmailMessage {
     return {

@@ -62,6 +62,7 @@ describe("go-live checks", () => {
     expect(stateOf(checks, "cron").state).toBe("blocker");
     expect(stateOf(checks, "legal").state).toBe("blocker"); // src/config/site.ts still has placeholders
     expect(stateOf(checks, "legal-docs").state).toBe("blocker"); // terms / privacy are still drafts
+    expect(stateOf(checks, "email").state).toBe("blocker"); // password reset only works by email
   });
 
   it("clears once live keys and secrets are configured", async () => {
@@ -76,11 +77,11 @@ describe("go-live checks", () => {
     expect(stateOf(checks, "demo-accounts").detail).toContain("demo.awaji");
   });
 
-  it("warns when the Accounts v2 destination or the sender domain is missing", async () => {
+  it("warns when the Accounts v2 destination is missing, and blocks on an example sender domain", async () => {
     for (const [k, v] of Object.entries({ ...liveEnv, STRIPE_ACCOUNTS_WEBHOOK_SECRET: "", EMAIL_FROM: "マルシェ <noreply@example.com>" })) vi.stubEnv(k, v);
     const checks = await load();
     expect(stateOf(checks, "stripe-webhooks").state).toBe("warning");
-    expect(stateOf(checks, "email").state).toBe("warning");
+    expect(stateOf(checks, "email").state).toBe("blocker"); // Resend will not send from an unverified domain
   });
 
   it("treats a test-mode Stripe key as a blocker", async () => {
