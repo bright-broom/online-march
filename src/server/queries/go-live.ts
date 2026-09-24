@@ -2,6 +2,7 @@ import "server-only";
 import { desc, eq, sql } from "drizzle-orm";
 import { demoEmailDomain, demoEmailDomains, isDemoEmail } from "@/config/demo";
 import { paymentConfig, paymentMethodLabel } from "@/config/payments";
+import { legalContent, legalDraft, type LegalDoc } from "@/config/content";
 import { siteConfig } from "@/config/site";
 import { db } from "@/db";
 import { jobRuns, user } from "@/db/schema";
@@ -17,6 +18,19 @@ export type GoLiveCheck = {
   state: "ready" | "blocker" | "warning";
   detail: string;
 };
+
+/**
+ * 利用規約・プライバシーポリシーが正式版か。下書き表示（legalDraft）が残っている、または専門家確認待ちの
+ * 【要確認】が本文に残っている間は公開できない。特商法の仮の値（下の "legal"）とは別に見る。
+ */
+export function checkLegalDocs(draft: boolean, docs: Record<string, LegalDoc>): Pick<GoLiveCheck, "state" | "detail"> {
+  const pending = Object.values(docs)
+    .flatMap((d) => [d.intro, ...d.sections.flatMap((sec) => [sec.heading, ...sec.body])])
+    .filter((text) => text.includes("【要確認】")).length;
+  if (!draft && !pending) return { state: "ready", detail: "正式版が掲載されています" };
+  const reasons = [draft && "下書き表示のまま", pending && `専門家確認待ち（【要確認】）が${pending}か所`].filter(Boolean);
+  return { state: "blocker", detail: `${reasons.join("・")}です（src/config/content.ts）` };
+}
 
 const DEFAULT_AUTH_SECRET = "dev-secret-change-me-in-production-please";
 const isLiveKey = (k?: string) => Boolean(k && (k.startsWith("sk_live_") || k.startsWith("rk_live_")));
@@ -215,5 +229,6 @@ export async function getGoLiveChecks(): Promise<GoLiveCheck[]> {
       state: placeholders.length ? "blocker" : "ready",
       detail: placeholders.length ? `${placeholders.join("・")}が仮の値です（src/config/site.ts）` : "実データが設定されています",
     },
+    { key: "legal-docs", label: "利用規約・プライバシーポリシー", ...checkLegalDocs(legalDraft, legalContent) },
   ];
 }

@@ -61,6 +61,7 @@ describe("go-live checks", () => {
     expect(stateOf(checks, "auth-secret").state).toBe("blocker");
     expect(stateOf(checks, "cron").state).toBe("blocker");
     expect(stateOf(checks, "legal").state).toBe("blocker"); // src/config/site.ts still has placeholders
+    expect(stateOf(checks, "legal-docs").state).toBe("blocker"); // terms / privacy are still drafts
   });
 
   it("clears once live keys and secrets are configured", async () => {
@@ -171,5 +172,25 @@ describe("go-live checks", () => {
 
     expect(preparing.detail).toContain("noindex");
     expect(live.detail).toContain("公開しています");
+  });
+});
+
+describe("利用規約・プライバシーポリシーのチェック", () => {
+  const doc = (text: string) => ({ updatedAt: "2026-09-24", intro: "前文", sections: [{ heading: "第1条", body: [text] }] });
+
+  it("下書き表示が残っていれば公開できない", async () => {
+    const { checkLegalDocs } = await import("../go-live");
+    expect(checkLegalDocs(true, { terms: doc("本文") })).toMatchObject({ state: "blocker", detail: expect.stringContaining("下書き") });
+  });
+
+  it("下書き表示を外しても【要確認】が残っていれば公開できない", async () => {
+    const { checkLegalDocs } = await import("../go-live");
+    const r = checkLegalDocs(false, { terms: doc("再配送料は購入者の負担とします。【要確認】"), privacy: doc("本文") });
+    expect(r).toMatchObject({ state: "blocker", detail: expect.stringContaining("1か所") });
+  });
+
+  it("下書き表示も【要確認】も無くなれば公開できる", async () => {
+    const { checkLegalDocs } = await import("../go-live");
+    expect(checkLegalDocs(false, { terms: doc("本文"), privacy: doc("本文") }).state).toBe("ready");
   });
 });
