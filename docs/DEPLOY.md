@@ -39,6 +39,7 @@ npm run dev        # http://localhost:3000
 > Stripe の状態を手元から確認したいときは、本番の運営画面（/admin/settings の「決済手段」）を見る。
 
 5. Deploy。`npm run build` が `db:migrate` を先に実行（DATABASE_URL がある場合）。
+   **Preview ビルド（`VERCEL_ENV=preview`）では実行しない**（`scripts/migrate-policy.ts`）。ブランチの push で本番 DB のスキーマが変わるのを防ぐため。
 6. 初回のみデモデータ: ローカルで `DATABASE_URL=... npm run db:seed`（本番運用では不要）。
 7. **Region は DB と同じ場所に置く**（vercel.json `regions`）。現在は Neon `ap-southeast-1`（シンガポール）+ 関数 `sin1`。
    静的シェルは CDN（東京エッジ）から配信され、動的部分のみ sin1 往復。2026-09 の実測（日本から）:

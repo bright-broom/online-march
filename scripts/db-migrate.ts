@@ -1,9 +1,11 @@
-/** Apply drizzle migrations to DATABASE_URL (Neon). No-op for embedded PGlite (auto-migrates on boot). */
+/** Apply drizzle migrations to DATABASE_URL (Neon). Skipped for embedded PGlite and Vercel preview builds (migrate-policy.ts). */
 import "dotenv/config";
+import { migrateDecision } from "./migrate-policy";
 
 async function main() {
-  if (!process.env.DATABASE_URL) {
-    console.info("[db:migrate] DATABASE_URL not set → embedded PGlite migrates itself on first use. Skipping.");
+  const decision = migrateDecision(process.env);
+  if (!decision.run) {
+    console.info(`[db:migrate] ${decision.reason}. Skipping.`);
     return;
   }
   const { db, MIGRATIONS_FOLDER } = await import("../src/db/client");
