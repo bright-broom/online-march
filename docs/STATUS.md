@@ -47,6 +47,7 @@
 
 | 何を | いつ | 結果 |
 | --- | --- | --- |
+| コールドスタート（放置15分後の初回。`/api/health` で内訳） | 2026-09-24 | 1.76s（起動 0.46s ＋ DB 0.63s）。修正前は 5.9〜6.5s。/checkout 初回 3.0s（修正前 約9s） |
 | カード決済の通し（注文→webhook→出荷→配達→月次締め→Connect送金） | 2026-09-20 | OK。webhook は本番ログで着信を確認（成功画面の保険ではないことまで確認） |
 | PayPay 決済 | 2026-09-21 | OK。`payment_method='paypay'` を記録、マイページに「お支払い方法：PayPay」 |
 | Stripe Connect 振込先登録（Accounts v2）と月次送金 | 2026-09-20 | OK。6農園中5つが登録済み（神代こだわり農園のみ未登録＝振込は運営が手動で行う扱い） |
@@ -99,9 +100,10 @@
 
 ### 気になっている点（未着手）
 
-- **/checkout の初回表示が遅い**（コールドスタート時に十数秒スケルトンのまま）。2026-09-23 に計測済み:
-  原因は **関数のコールドスタート 5〜6s**（Neon の起床は 0.4s 程度）。PGlite のバイナリ約17MB を本番関数から外した
-  （`docs/PERFORMANCE.md` §4）。**デプロイ後に `/api/health` で再計測して効果を確認すること**（未確認）。
+- **/checkout の初回表示が遅い** → 2026-09-24 に改善を確認。原因は関数のコールドスタート（5〜6s、Neon の起床は 0.4s 程度）。
+  PGlite のバイナリ約17MB を本番関数から外した結果、放置15分後の初回リクエストは **5.9〜6.5s → 1.76s**
+  （内訳: 起動 0.46s ＋ DB 0.63s）、/checkout の初回は **約9s → 3.0s**。詳細は `docs/PERFORMANCE.md` §4。
+  残り: /checkout 初回の 3.0s はまだ縮められる余地がある（ページ関数の起動・見積もりとヘッダー先読みの同時実行）。
 
 ## 6. この環境（AI エージェント）でハマる点
 
@@ -112,6 +114,7 @@
 | `npm run build` が Google Fonts の取得で失敗 | サンドボックスのネットワーク制限。**ローカル build は通らなくて正常**。Vercel 側のビルドで確認する（完了条件は typecheck / lint / vitest） |
 | 本番の env を読みたい | `.deploy/env.sg` に `DATABASE_URL` がある。`set -a && source .deploy/env.sg && set +a` で読み込む（`source` だけでは export されない） |
 | `STRIPE_SECRET_KEY` を手元で使いたい | **取得できない**（Vercel で Sensitive 指定のため pull できない）。Stripe API を叩く確認は、本番に置いた運営画面（/admin/settings の決済手段）経由で行う |
+| push したのに本番が古いまま | Vercel の Git 連携がデプロイを作らないことがある（2026-09-24 に `22a066a` で発生）。`npx vercel list awaji-marche --scope brightbroom-projects` で確認し、無ければ `npx vercel deploy --prod --scope brightbroom-projects`。同じリポジトリに別プロジェクト `online-march` もつながっていて毎回失敗しているが、本番は `awaji-marche` |
 | 商品ページに「今日」を埋め込みたい | ページはキャッシュされるので、サーバーで固めた日付は古くなる。**日付比較はクライアントで**（例 `components/shop/farm-paused-notice.tsx`） |
 
 ## 7. 直近で入れた機能（どこを見れば分かるか）

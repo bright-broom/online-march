@@ -53,6 +53,14 @@ Vercel Speed Insights / Analytics を有効化推奨（`@vercel/speed-insights` 
 **遅いのは DB ではなく関数の起動。** 対策として本番ビルドでは PGlite の wasm/data（約17MB）を関数に同梱しない
 （`next.config.ts` の `outputFileTracingExcludes`、回帰テスト `test/next-config.test.ts`）。
 
+効果（2026-09-24、デプロイ後に15分放置してから計測）:
+
+| 区間 | 修正前 | 修正後 |
+| --- | --- | --- |
+| 放置後の初回リクエスト | 5.9〜6.5s | 1.76s（起動 0.46s ＋ DB 0.63s） |
+| /checkout の初回 | 約9s | 3.0s（2回目 1.8s、3回目 0.3s） |
+| 温まった状態の `/api/auth/ok` | 0.4〜2.3s | 0.14〜0.39s |
+
 内訳は `GET /api/health` で外から測れる（秘密情報なし・キャッシュなし）:
 
 | フィールド | 意味 |
