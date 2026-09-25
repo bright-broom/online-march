@@ -1,5 +1,5 @@
 "use client";
-import { Bell, CheckCheck, ChevronRight, Megaphone, MessageCircle, Package, Star, Truck, Wallet, type LucideIcon } from "lucide-react";
+import { Bell, CheckCheck, ChevronRight, Megaphone, MessageCircle, Package, Sprout, Star, Truck, Wallet, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useOptimistic, useTransition } from "react";
@@ -18,6 +18,7 @@ const typeIcon: Record<NotificationType, LucideIcon> = {
   review: Star,
   payout: Wallet,
   message: MessageCircle,
+  product: Sprout,
   system: Megaphone,
 };
 

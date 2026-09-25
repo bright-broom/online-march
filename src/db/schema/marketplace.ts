@@ -64,6 +64,8 @@ export const notificationType = pgEnum("notification_type", [
   "payout",
   "message",
   "system",
+  /** フォロー中の農家の新商品（初回公開時に1回だけ。services/product-launch.ts） */
+  "product",
 ]);
 
 const createdAt = timestamp("created_at", { withTimezone: true }).notNull().defaultNow();
