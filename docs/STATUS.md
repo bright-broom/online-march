@@ -23,6 +23,9 @@
 
 ## 2. 未完（ほぼオーナーの作業。コード側の準備は済んでいる）
 
+**残作業の一覧は GitHub Issues が正**（2026-09-25 の全体監査から起票。ラベル: `P0` 公開前に必須 / `P1` 公開後すぐ / `P2` バックログ /
+`owner-decision` オーナー・専門家の判断待ち）。コードで直せる P0（#1〜#5）は対応済み。この節はオーナー作業の写し。
+
 運営画面 **/admin/settings →「本番公開チェック」** が env とデータと Stripe API から自動判定している。
 **この画面が正である。** 以下はその写し（2026-09-23 時点）。
 
@@ -140,3 +143,8 @@
 | パスワード再設定（1時間・1回限り・他端末ログアウト・会員の有無を漏らさない・5回/時） | `server/auth/auth.ts`, `app/(auth)/forgot-password`, `app/(auth)/reset-password` | `auth/__tests__/password-reset.test.ts` |
 | 本番公開チェック: 利用規約・プライバシーポリシーの下書き検知 | `queries/go-live.ts#checkLegalDocs` | `go-live.test.ts` |
 | 運営の二段階認証（必須・バックアップコード・やり直しスクリプト） | `server/auth/guards.ts#needsTwoFactorSetup`, `auth.ts`（twoFactor）, `app/(auth)/two-factor`, `scripts/admin-reset-2fa.ts` | `two-factor.test.ts`, `two-factor-guard.test.ts`, `authorization.test.ts`, `provisioning.test.ts` |
+| 商品編集中に売れた分を在庫に戻さない（#2） | `actions/farmer-products.ts#saveProduct`（開いた時点の在庫との差分だけ反映） | `actions/__tests__/product-stock.test.ts` |
+| 画像アップロードの保存先・ロール・中身の検証（#3） | `services/storage.ts#uploadFolderFor/sniffImageType`, `app/api/upload` | `services/__tests__/upload.test.ts` |
+| 最終確認画面のキャンセル・返品の表示（特商法12条の6, #1） | `config/content.ts#cancellationPolicy`, `checkout/order-summary.tsx`, Stripe `custom_text` | `components/checkout/__tests__/final-confirmation.test.tsx` |
+| 一部返金後の領収書（#4） | `lib/receipt.ts#receiptAmounts` | `services/__tests__/receipt.test.ts` |
+| フォロー中の農家の新商品のお知らせ（#5） | `services/product-launch.ts` | `actions/__tests__/product-launch.test.ts` |

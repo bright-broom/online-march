@@ -17,7 +17,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 | 目的 | 読む doc |
 | --- | --- |
-| **いまどこまで出来ていて、次に何をするか**（引き継ぎはまずここ） | `docs/STATUS.md` |
+| **いまどこまで出来ていて、次に何をするか**（引き継ぎはまずここ） | `docs/STATUS.md`（残作業の一覧は GitHub Issues。`gh issue list --label P0`） |
 | 全体構成・ディレクトリ・レイヤ責務 | `docs/ARCHITECTURE.md` |
 | UI / デザイントークン / コピーのトーン | `docs/DESIGN.md` |
 | テーブル / 型 / 状態遷移 | `docs/DATA_MODEL.md` |
