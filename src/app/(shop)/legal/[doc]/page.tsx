@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageIntro } from "@/components/shop/page-intro";
-import { guideContent, legalContent, legalDraft } from "@/config/content";
+import { cancellationPolicy, guideContent, legalContent, legalDraft } from "@/config/content";
 import { footerNav, routes } from "@/config/nav";
 import { siteConfig } from "@/config/site";
 import { cn } from "@/lib/utils";
@@ -55,7 +55,7 @@ function Tokushoho() {
     { th: "お支払い方法", td: guide("payment") },
     { th: "お支払い時期", td: "クレジットカード等はご注文時、コンビニ払いはご注文後の期限内にお支払いください。" },
     { th: "商品の引渡時期", td: "ご注文確定後、各生産者の出荷準備日数（通常1〜3日）以内に発送し、配送日数を経てお届けします。お届け希望日の指定も可能です。" },
-    { th: "返品・交換・キャンセル", td: guide("cancel") },
+    { th: "返品・交換・キャンセル", td: cancellationPolicy },
     { th: "販売について", td: `${name}は、各生産者が出品する商品の販売の場を提供するマーケットプレイスです。商品の出荷は各生産者が行います。` },
   ];
   return (

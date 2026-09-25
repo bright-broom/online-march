@@ -1,11 +1,14 @@
 "use client";
-import { FlaskConical, Lock, ShieldCheck } from "lucide-react";
+import { FlaskConical, Lock, RotateCcw, ShieldCheck } from "lucide-react";
+import Link from "next/link";
 import { Price } from "@/components/common/price";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
+import { cancellationPolicy } from "@/config/content";
+import { routes } from "@/config/nav";
 import { listedPaymentMethodLabels } from "@/config/payments";
 import { cn } from "@/lib/utils";
 import type { CheckoutQuote } from "@/server/actions/checkout";
@@ -75,6 +78,24 @@ export function OrderSummary({
           </AlertDescription>
         </Alert>
       )}
+
+      {/* 最終確認画面の表示義務（特商法 第12条の6）: 解除に関する事項を確定ボタンの直前に出す */}
+      <div className="bg-muted/50 space-y-1 rounded-lg p-3 text-xs leading-relaxed" data-testid="cancellation-policy">
+        <p className="flex items-center gap-1.5 font-medium">
+          <RotateCcw className="size-3.5" />
+          キャンセル・返品について
+        </p>
+        <p className="text-muted-foreground">{cancellationPolicy}</p>
+        <p>
+          <Link href={routes.legal.tokushoho} target="_blank" className="text-primary underline-offset-4 hover:underline">
+            特定商取引法に基づく表記
+          </Link>
+          {" ・ "}
+          <Link href={routes.legal.terms} target="_blank" className="text-primary underline-offset-4 hover:underline">
+            利用規約
+          </Link>
+        </p>
+      </div>
 
       <Button type="button" size="lg" className="h-12 w-full rounded-full text-base" disabled={!canPlace || placing} onClick={onPlace}>
         {placing ? <Spinner /> : <Lock />}

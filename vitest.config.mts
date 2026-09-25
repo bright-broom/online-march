@@ -7,7 +7,7 @@ export default defineConfig({
     alias: { "server-only": fileURLToPath(new URL("./test/server-only.ts", import.meta.url)) },
   },
   test: {
-    include: ["src/**/*.test.ts", "test/**/*.test.ts"],
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx", "test/**/*.test.ts"],
     environment: "node",
     env: { PGLITE_DIR: "memory://" },
     testTimeout: 60_000,

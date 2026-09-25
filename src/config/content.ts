@@ -162,6 +162,12 @@ export const guideContent = {
   ],
 } as const;
 
+/**
+ * 解除（キャンセル・返品）に関する事項。特商法表記・ご利用ガイド・注文の最終確認画面・Stripe の決済画面で同じ文を出す。
+ * 最終確認画面での表示は特定商取引法 第12条の6 の義務（#1）。文言を変えるときはここだけを直す。
+ */
+export const cancellationPolicy = guideContent.sections.find((s) => s.id === "cancel")!.body;
+
 export const faqContent = [
   {
     q: "いつ届きますか？",

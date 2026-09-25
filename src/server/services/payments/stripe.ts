@@ -1,5 +1,6 @@
 import "server-only";
 import Stripe from "stripe";
+import { cancellationPolicy } from "@/config/content";
 import { feeConfig } from "@/config/fees";
 import { paymentConfig } from "@/config/payments";
 import { routes } from "@/config/nav";
@@ -67,6 +68,8 @@ export async function createCheckoutSession(p: {
       // Google Pay / PayPay / コンビニ払い …）が自動で出る。ここで固定すると、未有効化の手段を送った時点で
       // Checkout 作成そのものが失敗し、全員が決済できなくなる。
       payment_method_options: { konbini: { expires_after_days: paymentConfig.konbini.expiresAfterDays } },
+      // 支払いボタンの直前にも解除（キャンセル・返品）の事項を出す。ここが実際に申込みが確定する画面のため（特商法 第12条の6, #1）
+      custom_text: { submit: { message: `キャンセル・返品について：${cancellationPolicy} 詳しくは ${siteUrl}${routes.legal.tokushoho} をご覧ください。` } },
       success_url: `${siteUrl}${routes.checkoutSuccess}?order=${p.orderId}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${siteUrl}${routes.cart}?canceled=1`,
       expires_at: Math.floor(Date.now() / 1000) + paymentConfig.sessionTtlMinutes * 60,
