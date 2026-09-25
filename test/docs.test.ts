@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
  * 誰も気づかないまま腐るので、CI で落とす。
  */
 const root = path.resolve(__dirname, "..");
-const docs = ["README.md", "AGENTS.md", ...readdirSync(path.join(root, "docs")).filter((f) => f.endsWith(".md")).map((f) => `docs/${f}`)];
+const docs = ["README.md", "AGENTS.md", ".github/copilot-instructions.md", ...readdirSync(path.join(root, "docs")).filter((f) => f.endsWith(".md")).map((f) => `docs/${f}`)];
 
 /** コードブロックの中はリンクではないので除く */
 function stripCode(md: string) {

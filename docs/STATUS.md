@@ -1,4 +1,4 @@
-# STATUS — 現況と引き継ぎ（2026-09-23 時点）
+# STATUS — 現況と引き継ぎ（2026-09-26 時点）
 
 **このファイルは「いま何がどこまで出来ていて、次に何をすべきか」だけを書く。**
 仕組みの説明は各 doc（Doc map は `AGENTS.md`）にあり、ここでは重複させない。
@@ -9,8 +9,11 @@
 | 項目 | 値 |
 | --- | --- |
 | 公開 URL | https://awaji-marche.vercel.app |
-| ホスティング | Vercel（プロジェクト `awaji-marche`、Functions リージョン `sin1` = シンガポール） |
-| DB | Neon Postgres `ap-southeast-1`（シンガポール）。接続は Vercel の環境変数 `DATABASE_URL` |
+| リポジトリ | GitHub `bright-broom/online-march`（**非公開**。2026-09-24 に `online-march-` から改名。旧URLは転送される）。`main` への push が本番デプロイ |
+| CI | GitHub Actions `.github/workflows/ci.yml`（typecheck・lint・vitest・マイグレーション整合・本番ビルド）。非公開なので未ログインの API からは見えない → `gh run list` |
+| 残作業の管理 | GitHub Issues（→ 2節）。`gh issue list --label P0` |
+| ホスティング | Vercel（チーム `brightbroom-projects`、プロジェクト `awaji-marche`、Functions リージョン `sin1` = シンガポール）。このリポジトリにつながる Vercel プロジェクトはこれだけ |
+| DB | Neon Postgres `ap-southeast-1`（シンガポール）。プロジェクト `awaji-marche-sg`（`wild-surf-10919519`）、ブランチ `production`（`br-shy-dust-azqn91zm`）。接続は Vercel の環境変数 `DATABASE_URL`。停止まで5分（無料枠の既定）、起動は 0.3〜0.5s |
 | 画像 | Vercel Blob（公開ストア） |
 | バックアップ | Vercel Blob の**非公開**ストア。毎日 cron `backup-db`、14日保持、書き戻し検証つき |
 | 決済 | Stripe **サンドボックス「marché」**（`acct_1UHFtZQ28RjykPAq`）。まだ live キーではない |
@@ -27,7 +30,7 @@
 `owner-decision` オーナー・専門家の判断待ち）。コードで直せる P0（#1〜#5）は対応済み。この節はオーナー作業の写し。
 
 運営画面 **/admin/settings →「本番公開チェック」** が env とデータと Stripe API から自動判定している。
-**この画面が正である。** 以下はその写し（2026-09-23 時点）。
+**この画面が正である。** 以下はその写し（2026-09-26 時点）。
 
 | 項目 | 状態 | 次の一手 |
 | --- | --- | --- |
@@ -41,9 +44,10 @@
 | **売主は誰か（特商法の表示）** | 利用規約は「売買契約は購入者と**各生産者**の間」、特商法表記の販売事業者は**運営事務局**で食い違っている | どちらのモデルにするか専門家と決める。生産者が売主なら生産者ごとに氏名・住所・電話の表示が要る（食べチョク等と同じ）。住所・電話は出店申請で集めているが農園ページには代表者名しか出していない。決まればコードで対応する |
 | 運営アカウント | デモの `admin@demo.awaji` のみ | 本人のメールで会員登録 → `npm run admin:promote -- --email <メール>` → ログインすると**二段階認証の設定画面**へ（運営は必須。バックアップコードは必ず保管）。**デモ削除前にやらないと /admin に入れなくなる** |
 | 検索エンジンへの公開 | 準備中のため `noindex`（自動） | デモモードを無効にし本番キーを入れると自動で公開される。作業不要 |
-| Vercel Analytics | 未使用 | 使うなら `next.config.ts` の CSP `script-src` に `https://va.vercel-scripts.com` を追加 |
+| Vercel Analytics / Speed Insights | コンポーネントは `src/app/layout.tsx` に組み込み済み（本番は同一オリジン配信なので CSP 変更不要）。Vercel ダッシュボード側で有効化されているかは未確認 | 使うならダッシュボードで有効化 |
 
-コード側でやり残していると分かっているものは**無い**。上の表が埋まれば公開できる状態。
+コード側の残りは GitHub Issues の `P1`（公開後すぐ: エラー監視 #12、精算 #13・#14、出店審査 #15 ほか）と `P2`。
+公開の可否を決めるのは上の表（オーナー作業）と Issues の `P0`。
 チェック自体は「鍵があるか」ではなく「実際に動いているか」を見る（自動処理の最終成功・バックアップが48時間以内・
 デモ以外の運営アカウント・公開URL）。`server/queries/go-live.ts`、回帰テスト `queries/__tests__/go-live.test.ts`。
 
@@ -53,6 +57,8 @@
 
 | 何を | いつ | 結果 |
 | --- | --- | --- |
+| P0 の修正 #1〜#5（最終確認画面の表示・在庫の差分反映・アップロード検証・領収書・新商品のお知らせ） | 2026-09-26 | CI 成功・本番デプロイ Ready（`8cc8eaa`）、マイグレーション 0009 をビルドで適用、Issue は自動で閉じた。**画面の目視はログインが要るため未実施**（テストで確認） |
+| パスワード再設定・二段階認証の画面（`/forgot-password` `/reset-password` `/two-factor` `/two-factor/setup`） | 2026-09-24 | 表示のみ OK（200）。マイグレーション 0008 がビルドで適用されたことをログで確認。**メールの到達は Resend 未設定のため未確認** |
 | コールドスタート（放置15分後の初回。`/api/health` で内訳） | 2026-09-24 | 1.76s（起動 0.46s ＋ DB 0.63s）。修正前は 5.9〜6.5s。/checkout 初回 3.0s（修正前 約9s） |
 | カード決済の通し（注文→webhook→出荷→配達→月次締め→Connect送金） | 2026-09-20 | OK。webhook は本番ログで着信を確認（成功画面の保険ではないことまで確認） |
 | PayPay 決済 | 2026-09-21 | OK。`payment_method='paypay'` を記録、マイページに「お支払い方法：PayPay」 |
@@ -70,13 +76,18 @@
 
 ### 4.1 変更 → 本番までの順序
 
-1. `npm run typecheck` / `npm run lint` / `npx vitest run` をローカルで通す
-2. **スキーマを変えたら、先に本番DBへマイグレーションを当てる**（列追加は後方互換なので先に当てて安全）
-   → 新しい列を読むコードが、列の無いDBに当たる事故を防ぐ
-3. commit → push（`main` に push すると Vercel が本番デプロイ）
-4. デプロイ完了後、**本番URLで実際に触って確認**
-5. 作ったテストデータを消す（→ 5節）
-6. この doc の3節を更新
+1. `npm run typecheck` / `npm run lint -- --max-warnings 0` / `npx vitest run` をローカルで通す
+   （スキーマを変えたら `npm run db:generate` し、`npx drizzle-kit generate --name ci-check` で差分が出ないこと＝CI と同じ確認）
+2. **スキーマの変更は「足す」だけにする**（列・テーブル・enum 値の追加）。本番ビルドが `db:migrate` を先に実行するので
+   （`VERCEL_ENV=production` のときだけ。Preview ビルドは当てない — `scripts/migrate-policy.ts`）、新しいコードが動き出す前に
+   本番DBに反映される。**消す・名前を変える変更**は、古いコードが動いている間に壊れるので、「足す → コードを切り替える → 次のデプロイで消す」の2段階にする。
+   手元から本番に当てられる環境なら、従来どおり push より先に `npm run db:migrate` してもよい
+3. commit（書き方は `AGENTS.md`）→ push（`main` に push すると Vercel が本番デプロイ。コミットの `Closes #n` で Issue が閉じる）
+4. **デプロイを確認する**: `npx vercel list awaji-marche --scope brightbroom-projects` で Ready を見る（作られていなければ 6節）。
+   ビルドログは `npx vercel inspect <URL> --logs --scope brightbroom-projects`（`[db:migrate] done` が出ているか）。CI は `gh run list`
+5. **本番URLで実際に触って確認**（`/api/health` でも稼働と DB の往復を見られる）
+6. 作ったテストデータを消す（→ 5節）
+7. この doc の3節・7節を更新
 
 ### 4.2 テストは「壊して落ちること」まで確認する
 
@@ -88,7 +99,16 @@
 `farm-pause` / `account-closure` / `sales-csv` / `deferred-payment`）。
 
 > **注意**: 元に戻すときに `git checkout -- <file>` を使わないこと。未コミットの変更ごと消える（実際に一度消した）。
-> `cp <file> "$TMPDIR/x.bak"` を取ってから壊し、`cp` で戻す。
+> `cp <file> "$TMPDIR/x.bak"` を取ってから壊し、`cp` で戻す。戻したら `cmp` で元と同じことを確かめる。
+
+壊し方の実例（2026-09-24〜25 に実施）: 返金の一本化で「生産者キャンセルで返金しない」「農園の絞り込みを外す」、
+二段階認証で「ページのガードを外す」「Action のガードを外す」「デモの除外を外す」、在庫で「上書きに戻す」「0未満の切り捨てを外す」。
+1つの変更で複数の守りがあるなら、**守りごとに**壊して、それぞれ別のテストが赤くなることを見る。
+
+- 複数のテストファイルを渡すとき、zsh は `$T` を空白で分割しない。`T=(a.test.ts b.test.ts); npx vitest run "${T[@]}"` と配列にする
+  （分割されないとテストが1本も走らず、何を壊しても「赤くならない」ように見える）
+- 置き換えは `sed` より Python の `str.replace` が確実（BSD sed は GNU と文法が違い、黙って何も変えないことがある）。
+  置き換えの前に「その文字列が本当にあるか」を assert する
 
 ### 4.3 テストの書き方
 
@@ -96,8 +116,29 @@
 - DB を使うテストは PGlite（`memory://`）で、シード済みデータをそのまま使う
 - ファイルごとに独立した DB が立つので、ユーザーや農園を作って壊して構わない
 - 認可は `src/server/actions/__tests__/authorization.test.ts` に1ケース足す（アクションを追加したら必ず）
+- 置き場所: `src/**/*.test.ts`・`src/**/*.test.tsx`・`test/**/*.test.ts`（`vitest.config.mts#include`）。リポジトリ全体に関わるもの（docs・next.config・スクリプト）は `test/`
+
+よく使うモック（既存テストに実例がある）:
+
+| 目的 | 書き方 | 実例 |
+| --- | --- | --- |
+| ログイン中のユーザーを決める | `vi.mock("@/server/auth/session", () => ({ getSessionUser: async () => currentUser }))`。`twoFactorEnabled` も入れる（運営は未設定だと止まる） | `actions/__tests__/authorization.test.ts` |
+| メールを送らずに中身を見る | `vi.mock("@/server/services/email", () => ({ sendEmail }))` | `services/__tests__/cancel-refund.test.ts` |
+| Stripe を呼ばない | `vi.mock("@/server/services/payments/stripe", …)`（サービス単位）または `vi.mock("stripe", …)`（SDK 単位, 送るパラメータを見たいとき） | `refund-race.test.ts`, `components/checkout/__tests__/final-confirmation.test.tsx` |
+| Better Auth を本物で通す | `auth.api.*` を直接呼ぶ。`asResponse: true` だと失敗は例外でなく 401 などの Response で返る。Set-Cookie を次の呼び出しの `cookie` に渡す | `auth/__tests__/password-reset.test.ts`, `two-factor.test.ts` |
+| 画面の部品に文言があるか | `renderToStaticMarkup(createElement(Component, props))`（`.test.tsx`） | `final-confirmation.test.tsx` |
+| `redirect()` の行き先 | `redirect` を throw するモックにして、行き先を例外メッセージで見る | `auth/__tests__/two-factor-guard.test.ts` |
+
+落とし穴:
+- **`example.jp` / `example.com` はデモ用ドメイン**（`src/config/demo.ts`）。デモ扱いでメールを送らない・二段階認証の対象外などになるので、
+  「本物のユーザー」を作るテストでは `@awaji-test.jp` のようなドメインを使う
+- `beforeEach(() => mock.mockClear())` のように**関数を返すと、Vitest はそれを後片付けとして呼ぶ**。`beforeEach(() => { mock.mockClear(); })` と波括弧で書く
+- `console.log` はテスト出力に出ないことがある。値を見たいときは `expect(JSON.stringify(x)).toBe("")` のように失敗メッセージに出す
 
 ## 5. 本番のテストデータを消す
+
+> **新しく clone した環境には `.deploy/` は無い**（gitignore 済みで、最初に作業した PC にだけある）。無い場合は、下の手順と
+> 基準値を見て同じことを SQL で行うか、秘密情報を含まない部分を `scripts/` に移してから使う。
 
 `.deploy/`（**gitignore 済み・秘密情報を含む**）に使い捨てスクリプトを置いている。テンプレは
 `.deploy/cleanup-golden-route.mjs`。注文コードを書き換えて `--apply` なしで内容を確認 → `--apply` で削除する。
@@ -113,11 +154,20 @@
 
 ## 6. この環境（AI エージェント）でハマる点
 
+エージェントは多くの場合サンドボックスの中で動く。**サンドボックスの外（オーナーのターミナル・ログイン済みの CLI）でしかできないこと**がある。
+その場合は、実行するコマンドを1行で示してオーナーに頼むか、ツールがあればオーナーのターミナルで実行する。
+
 | 症状 | 理由と回避 |
 | --- | --- |
-| Neon に接続できない（`fetch failed` / TLS エラー） | サンドボックスから本番DBへ出られない。**Desktop Commander の `start_process`** かユーザーのターミナル経由で実行する |
-| `git push` が proxy 認証で失敗 | 同上。push も sandbox 外（Desktop Commander）から実行する |
-| `npm run build` が Google Fonts の取得で失敗 | サンドボックスのネットワーク制限。**ローカル build は通らなくて正常**。Vercel 側のビルドで確認する（完了条件は typecheck / lint / vitest） |
+| Neon に接続できない（`fetch failed` / TLS エラー） | サンドボックスから本番DBへ出られない。オーナーのターミナル経由で実行する。Neon の MCP がつながっていれば読み取りはそちらでもできる |
+| `git push` が失敗する（proxy 認証・SSH 鍵なし） | push はサンドボックスの外から。これまではオーナーが `git push origin main` を実行してきた |
+| GitHub の API・Issues が 404 | リポジトリが非公開のため。オーナーのターミナルの `gh`（ログイン済み）で `gh issue list` / `gh run list` |
+| Vercel の状態を見たい | オーナーのターミナルで `npx vercel list/inspect … --scope brightbroom-projects`。手元のフォルダが未リンクなら `npx vercel link --yes --project awaji-marche --scope brightbroom-projects`（**`vercel` を引数なしで実行しない**: 対話で新しいプロジェクトが作られうる） |
+| `npm` が `EPERM`（`~/.npm/_cacache`） | サンドボックスがホームの npm キャッシュを書けない。`export npm_config_cache="$TMPDIR/npmcache" npm_config_logs_dir="$TMPDIR/npmlogs"` |
+| 依存を追加すると CI の `npm ci` が落ちる | npm 11.6.2 でも `install`（`--package-lock-only` やクリーンな場所でも）は依存を解き直し、CI に必要な optional の `@emnapi/*` を lockfile から消す。**追加するパッケージの項目だけを既存の lockfile に足す**（version・resolved・integrity は別の場所で解決した lockfile から写す）→ `npx -y npm@11.6.2 ci --dry-run --ignore-scripts` が通ることを確認（`uqr` 追加時の手順, 2026-09-25） |
+| `git clone` が失敗（hooks や config を書けない） | サンドボックスの書き込み制限。`git clone --template= …` で hooks のコピーを省く。それでも `.git/config` を書けない場所なら `$TMPDIR` に clone する |
+| `npm run build` が失敗 | Google Fonts の取得がネットワーク制限で落ちる。`NEXT_FONT_GOOGLE_MOCKED_RESPONSES` で回避しても、Turbopack がフォント処理で子プロセスを起動できず落ちる。**ローカル build は通らなくて正常**。Vercel 側のビルドで確認する（完了条件は typecheck / lint / vitest） |
+| 開発サーバーを見たい | `npm run dev -- -p 3100`（`.claude/launch.json` の `web`）。PGlite の DB はプロセス1つだけが持つ（ADR #8）ので、テストを並行で走らせても本体の `.data/pglite` には触れない |
 | 本番の env を読みたい | `.deploy/env.sg` に `DATABASE_URL` がある。`set -a && source .deploy/env.sg && set +a` で読み込む（`source` だけでは export されない） |
 | `STRIPE_SECRET_KEY` を手元で使いたい | **取得できない**（Vercel で Sensitive 指定のため pull できない）。Stripe API を叩く確認は、本番に置いた運営画面（/admin/settings の決済手段）経由で行う |
 | push したのに本番が古いまま | Vercel の Git 連携がデプロイを作らないことがある（2026-09-24 に `22a066a` で発生）。`npx vercel list awaji-marche --scope brightbroom-projects` で確認し、無ければ `npx vercel deploy --prod --scope brightbroom-projects`。旧プロジェクト `online-march`（2026-09-19 作成・一度も成功せず・本番級の秘密情報を保持）は 2026-09-24 に削除済み |
