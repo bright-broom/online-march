@@ -123,7 +123,7 @@ describe("executeDuePayouts", () => {
       if (p.accountId === "acct_broken") throw new Error("balance_insufficient");
       return { id: `tr_${p.accountId}` };
     });
-    const deps = { isReady: async (id: string) => id !== "acct_revoked", availableBalance: async () => 10_000, transfer };
+    const deps = { isReady: async (id: string) => id !== "acct_revoked", availableBalance: async () => 10_000, findTransfer: async () => null, transfer };
     const r = await executeDuePayouts(now, deps);
 
     expect(r.transferred).toBe(1);
@@ -186,7 +186,7 @@ describe("executeDuePayouts: concurrent runs", () => {
       .insert(s.payouts)
       .values({ farmId: farm.id, periodStart: "2026-07-01", periodEnd: "2026-07-31", grossSales: 1234, shippingFees: 0, commission: 0, amount: 1234, orderCount: 1, scheduledFor: toYmd(now) })
       .returning();
-    const deps = { isReady: async () => true, availableBalance: async () => 10_000, transfer: async () => ({ id: "tr_same" }) }; // Stripe returns the same transfer for the same key
+    const deps = { isReady: async () => true, availableBalance: async () => 10_000, findTransfer: async () => null, transfer: async () => ({ id: "tr_same" }) }; // Stripe returns the same transfer for the same key
     const [a, b] = await Promise.all([executeDuePayouts(now, deps), executeDuePayouts(now, deps)]);
 
     expect(a.transferred + b.transferred).toBe(1);
@@ -211,7 +211,7 @@ describe("executeDuePayouts: platform balance", () => {
     const adminNotesBefore = (await db.select().from(s.notifications).where(eq(s.notifications.userId, admin.id))).length;
 
     const transfer = vi.fn(async () => ({ id: "tr_small" }));
-    const r = await executeDuePayouts(now, { isReady: async () => true, availableBalance: async () => 1000, transfer });
+    const r = await executeDuePayouts(now, { isReady: async () => true, availableBalance: async () => 1000, findTransfer: async () => null, transfer });
 
     expect(r.transferred).toBe(1);
     expect(r.unfunded).toHaveLength(1);
@@ -227,7 +227,7 @@ describe("executeDuePayouts: platform balance", () => {
     expect(adminNotes.at(-1)!.title).toBe("送金できなかった精算があります");
 
     // funded on a later run: the transfer goes through and the error is cleared
-    const r2 = await executeDuePayouts(now, { isReady: async () => true, availableBalance: async () => 9000, transfer: async () => ({ id: "tr_big" }) });
+    const r2 = await executeDuePayouts(now, { isReady: async () => true, availableBalance: async () => 9000, findTransfer: async () => null, transfer: async () => ({ id: "tr_big" }) });
     expect(r2.transferred).toBe(1);
     expect(await db.query.payouts.findFirst({ where: eq(s.payouts.id, big.id) })).toMatchObject({ status: "paid", stripeTransferId: "tr_big", transferError: null });
   });

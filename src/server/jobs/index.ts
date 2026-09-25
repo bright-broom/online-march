@@ -232,7 +232,7 @@ export const jobs = {
       const stripe = features.stripe ? await import("@/server/services/payments/stripe") : null;
       const { transferred, awaitingManual, failures, unfunded } = await executeDuePayouts(
         now,
-        stripe && { isReady: stripe.fetchPayoutReady, availableBalance: stripe.fetchAvailableBalance, transfer: stripe.transferToFarm },
+        stripe && { isReady: stripe.fetchPayoutReady, availableBalance: stripe.fetchAvailableBalance, transfer: stripe.transferToFarm, findTransfer: stripe.findPayoutTransfer },
       );
       expireTags(tags.analytics);
       // surface problems as a failed run (visible on /admin/automation) after every other farm has been paid

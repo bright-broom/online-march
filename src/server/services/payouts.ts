@@ -1,8 +1,8 @@
 import "server-only";
-import { and, eq, lte } from "drizzle-orm";
+import { and, eq, lte, ne } from "drizzle-orm";
 import { routes } from "@/config/nav";
 import { db } from "@/db";
-import { farms, payouts } from "@/db/schema";
+import { farms, payouts, type Payout } from "@/db/schema";
 import { toYmd } from "@/lib/dates";
 import { formatYen } from "@/lib/format";
 import { notify } from "./notify";
@@ -14,7 +14,11 @@ export type PayoutTransferDeps = {
   /** Platform balance available for transfers (JPY). */
   availableBalance: () => Promise<number>;
   transfer: (p: { accountId: string; amount: number; payoutId: string; description: string }) => Promise<{ id: string }>;
+  /** The transfer Stripe already holds for this payout (a run whose DB write failed, or one older than the idempotency window). */
+  findTransfer: TransferLookup;
 };
+
+type TransferLookup = (p: { accountId: string; payoutId: string }) => Promise<{ id: string } | null>;
 
 /**
  * Sends every pending payout whose scheduled day has come. One failing transfer must not block the other farms,
@@ -22,7 +26,8 @@ export type PayoutTransferDeps = {
  *
  * Payouts larger than the remaining platform balance are skipped *without* calling Stripe: a rejected transfer
  * would pin its idempotency key (payoutId) to that error for ~24h, delaying the retry by a further day.
- * The transfer's idempotency key still makes a retry after a failed DB write safe.
+ * A payout whose transfer already exists in Stripe is recorded instead of sent again: the idempotency key alone
+ * protects a retry only for ~24h, and the daily run retries a failed DB write a day later.
  */
 export async function executeDuePayouts(now: Date, deps: PayoutTransferDeps | null) {
   const due = await db
@@ -41,6 +46,11 @@ export async function executeDuePayouts(now: Date, deps: PayoutTransferDeps | nu
       continue;
     }
     try {
+      const sent = await deps.findTransfer({ accountId: f.stripeAccountId, payoutId: p.id });
+      if (sent) {
+        if (await recordTransfer(p, f.ownerId, sent.id, now)) transferred++;
+        continue;
+      }
       if (!(await deps.isReady(f.stripeAccountId))) {
         await db.update(farms).set({ stripeOnboarded: false }).where(eq(farms.id, f.id));
         awaitingManual++;
@@ -54,14 +64,7 @@ export async function executeDuePayouts(now: Date, deps: PayoutTransferDeps | nu
       const t = await deps.transfer({ accountId: f.stripeAccountId, amount: p.amount, payoutId: p.id, description: `${p.periodStart}〜${p.periodEnd} 売上精算` });
       balance -= p.amount;
       // an overlapping run gets the same transfer back (idempotency key) — only the first one records and notifies
-      const [marked] = await db
-        .update(payouts)
-        .set({ status: "paid", paidAt: now, stripeTransferId: t.id, transferError: null, transferAttemptedAt: now })
-        .where(and(eq(payouts.id, p.id), eq(payouts.status, "pending")))
-        .returning({ id: payouts.id });
-      if (!marked) continue;
-      await notify({ userId: f.ownerId, type: "payout", title: "売上のお振込が完了しました", body: `${p.periodEnd.slice(0, 7)}分｜${formatYen(p.amount)}`, href: routes.farmer.payouts });
-      transferred++;
+      if (await recordTransfer(p, f.ownerId, t.id, now)) transferred++;
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       console.error(`[payouts] transfer failed for payout ${p.id}`, e);
@@ -71,6 +74,59 @@ export async function executeDuePayouts(now: Date, deps: PayoutTransferDeps | nu
   }
   if (failures.length || unfunded.length) await alertOperators(failures, unfunded);
   return { transferred, awaitingManual, failures, unfunded };
+}
+
+async function recordTransfer(p: Payout, ownerId: string, transferId: string, now: Date) {
+  const [marked] = await db
+    .update(payouts)
+    .set({ status: "paid", paidAt: now, stripeTransferId: transferId, transferError: null, transferAttemptedAt: now })
+    .where(and(eq(payouts.id, p.id), ne(payouts.status, "paid")))
+    .returning({ id: payouts.id });
+  if (marked) await notifyPaid(p, ownerId);
+  return Boolean(marked);
+}
+
+const notifyPaid = (p: Payout, ownerId: string) =>
+  notify({ userId: ownerId, type: "payout", title: "売上のお振込が完了しました", body: `${p.periodEnd.slice(0, 7)}分｜${formatYen(p.amount)}`, href: routes.farmer.payouts });
+
+export type ManualPayoutResult =
+  | { kind: "not_found" }
+  /** Stripe sends this one automatically and has not reported a failure — a bank transfer now could pay twice. */
+  | { kind: "automatic" }
+  /** Stripe had already sent it; only our record was missing. No bank transfer is needed. */
+  | { kind: "already_transferred"; transferId: string }
+  | { kind: "marked" };
+
+/**
+ * 運営の「振込済みにする」(bank transfer outside Stripe). Refused for a farm Stripe pays automatically unless its last
+ * transfer failed, and even then Stripe is asked first: a transfer that went through while our DB write failed also
+ * leaves an error on the payout. Marking it paid takes it out of the daily automatic run.
+ * `findTransfer` is null when Stripe is not configured (demo): every payout is then paid by hand.
+ */
+export async function markPayoutPaidManually(payoutId: string, now: Date, findTransfer: TransferLookup | null): Promise<ManualPayoutResult> {
+  const [row] = await db
+    .select({ p: payouts, f: farms })
+    .from(payouts)
+    .innerJoin(farms, eq(farms.id, payouts.farmId))
+    .where(and(eq(payouts.id, payoutId), ne(payouts.status, "paid")));
+  if (!row) return { kind: "not_found" };
+  const { p, f } = row;
+  if (findTransfer && f.stripeAccountId) {
+    if (f.stripeOnboarded && !p.transferError) return { kind: "automatic" };
+    const sent = await findTransfer({ accountId: f.stripeAccountId, payoutId: p.id });
+    if (sent) {
+      await recordTransfer(p, f.ownerId, sent.id, now);
+      return { kind: "already_transferred", transferId: sent.id };
+    }
+  }
+  const [marked] = await db
+    .update(payouts)
+    .set({ status: "paid", paidAt: now })
+    .where(and(eq(payouts.id, p.id), ne(payouts.status, "paid")))
+    .returning({ id: payouts.id });
+  if (!marked) return { kind: "not_found" };
+  await notifyPaid(p, f.ownerId);
+  return { kind: "marked" };
 }
 
 async function recordFailure(payoutId: string, message: string, now: Date) {
