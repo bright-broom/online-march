@@ -268,3 +268,14 @@ export async function transferToFarm(p: { accountId: string; amount: number; pay
     metadata: { payoutId: p.payoutId },
   }, { idempotencyKey: `payout-transfer:${p.payoutId}` }); // a retry after a failed DB write must not pay twice
 }
+
+/**
+ * The transfer already sent for a payout, if any. The idempotency key above only lasts ~24h, so before a later retry
+ * or a manual bank transfer we ask Stripe itself. A fully reversed transfer returned the money and does not count.
+ */
+export async function findPayoutTransfer(p: { accountId: string; payoutId: string }) {
+  for await (const t of getStripe().transfers.list({ destination: p.accountId, limit: 100 })) {
+    if (t.metadata?.payoutId === p.payoutId && t.amount_reversed < t.amount) return { id: t.id };
+  }
+  return null;
+}

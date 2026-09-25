@@ -1,40 +1,43 @@
 "use server";
-import { and, eq, ne } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { refresh, updateTag } from "next/cache";
 import { z } from "zod";
-import { routes } from "@/config/nav";
 import { db } from "@/db";
-import { farms, payouts, platformSettings } from "@/db/schema";
+import { payouts, platformSettings } from "@/db/schema";
 import { tags } from "@/lib/cache-tags";
-import { formatYen } from "@/lib/format";
+import { features } from "@/lib/env";
 import { platformCommissionSchema } from "@/lib/validators/admin";
 import { assertRole } from "@/server/auth/guards";
 import { expireTags } from "@/server/cache";
 import { isJobName, runJob } from "@/server/jobs";
 import type { PlatformSettings } from "@/server/queries/settings";
-import { notify } from "@/server/services/notify";
+import { markPayoutPaidManually } from "@/server/services/payouts";
 import { ActionError, formToObject, parseInput, runAction, type ActionResult } from "./_utils";
 
 /* ───────── Payouts ───────── */
 
-/** Manual bank transfer done outside Stripe → mark the payout as paid. */
-export async function markPayoutPaid(input: { payoutId: string }): Promise<ActionResult> {
+/**
+ * Manual bank transfer done outside Stripe → mark the payout as paid. The service refuses farms Stripe pays
+ * automatically and records an existing Stripe transfer instead of letting the operator pay twice (#13).
+ */
+export async function markPayoutPaid(input: { payoutId: string }): Promise<ActionResult<{ alreadyTransferred: boolean }>> {
   return runAction(async () => {
     await assertRole("admin");
     const { payoutId } = parseInput(z.object({ payoutId: z.uuid() }), input);
-    const now = new Date();
-    const [p] = await db
-      .update(payouts)
-      .set({ status: "paid", paidAt: now })
-      .where(and(eq(payouts.id, payoutId), ne(payouts.status, "paid")))
-      .returning();
-    if (!p) throw new ActionError("振込予定の精算が見つかりません（すでに振込済みの可能性があります）");
-    const farm = await db.query.farms.findFirst({ where: eq(farms.id, p.farmId), columns: { ownerId: true } });
-    if (farm) {
-      await notify({ userId: farm.ownerId, type: "payout", title: "売上のお振込が完了しました", body: `${p.periodEnd.slice(0, 7)}分｜${formatYen(p.amount)}`, href: routes.farmer.payouts });
+    const stripe = features.stripe ? await import("@/server/services/payments/stripe") : null;
+    let result;
+    try {
+      result = await markPayoutPaidManually(payoutId, new Date(), stripe && stripe.findPayoutTransfer);
+    } catch (e) {
+      console.error("[payouts] manual mark failed", e);
+      throw new ActionError("Stripe の送金記録を確認できませんでした。時間をおいて再度お試しください（振込はまだ行わないでください）");
     }
+    if (result.kind === "not_found") throw new ActionError("振込予定の精算が見つかりません（すでに振込済みの可能性があります）");
+    if (result.kind === "automatic") throw new ActionError("この生産者には Stripe から自動で送金されます。送金の失敗が記録されたときだけ手動で記録できます");
+    const [p] = await db.select({ farmId: payouts.farmId }).from(payouts).where(eq(payouts.id, payoutId));
     expireTags(tags.analytics, tags.farmAnalytics(p.farmId));
     refresh();
+    return { alreadyTransferred: result.kind === "already_transferred" };
   }, "振込済みにしました");
 }
 

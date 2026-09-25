@@ -24,6 +24,7 @@ import {
 } from "@/db/schema";
 import { tags } from "@/lib/cache-tags";
 import { addDays, fromYmd, monthKey, toYmd, type YMD } from "@/lib/dates";
+import { features } from "@/lib/env";
 import { zoneOf } from "@/lib/shipping";
 import { isJobName, jobs } from "@/server/jobs";
 import type { PeriodDays } from "@/lib/validators/admin";
@@ -546,7 +547,7 @@ export type AdminUserRow = Awaited<ReturnType<typeof getAdminUsers>>["rows"][num
 
 export async function getAdminPayouts(now: Date) {
   const rows = await db
-    .select({ p: payouts, farmName: farms.name, farmId: farms.id, stripeOnboarded: farms.stripeOnboarded })
+    .select({ p: payouts, farmName: farms.name, farmId: farms.id, stripeOnboarded: farms.stripeOnboarded, stripeAccountId: farms.stripeAccountId })
     .from(payouts)
     .innerJoin(farms, eq(farms.id, payouts.farmId))
     .orderBy(desc(payouts.periodEnd), farms.name);
@@ -573,7 +574,17 @@ export async function getAdminPayouts(now: Date) {
   for (const it of items) if (it.payoutId) (byPayout.get(it.payoutId) ?? byPayout.set(it.payoutId, []).get(it.payoutId)!).push(it);
 
   const month = monthKey(now);
-  const list = rows.map(({ p, farmName, farmId, stripeOnboarded }) => ({ ...p, farmName, farmId, stripeOnboarded, items: byPayout.get(p.id) ?? [] }));
+  const list = rows.map(({ p, farmName, farmId, stripeOnboarded, stripeAccountId }) => ({
+    ...p,
+    farmName,
+    farmId,
+    stripeOnboarded,
+    /** Stripe sends this farm's payouts by itself; a manual bank transfer is only for a recorded failure (#13). */
+    autoTransfer: features.stripe && stripeOnboarded && Boolean(stripeAccountId),
+    /** Stripe may already hold a transfer for this farm, so the manual mark checks Stripe first. */
+    hasStripeAccount: features.stripe && Boolean(stripeAccountId),
+    items: byPayout.get(p.id) ?? [],
+  }));
   const summary = {
     scheduledTotal: list.filter((p) => p.status !== "paid").reduce((a, p) => a + p.amount, 0),
     scheduledCount: list.filter((p) => p.status !== "paid").length,

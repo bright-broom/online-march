@@ -72,13 +72,18 @@ export function PayoutsTable({ rows }: { rows: AdminPayoutRow[] }) {
       cell: ({ row: { original: p } }) => (
         <div className="flex items-center justify-end gap-1">
           <Button variant="ghost" size="sm" onClick={() => setDetail(p)}><FileText />詳細</Button>
-          {p.status !== "paid" && (
+          {p.status !== "paid" && (!p.autoTransfer || p.transferError) && (
             <ConfirmAction
               trigger={<Button variant="outline" size="sm"><Landmark />振込済みにする</Button>}
               title="振込済みにしますか？"
-              description={`${p.farmName} へ ${formatYen(p.amount)} を銀行振込したことを記録します。生産者に通知されます。`}
+              description={
+                p.hasStripeAccount
+                  ? `Stripe に ${p.farmName} への送金記録がないことを確かめてから記録し、以後の自動送金を止めます。銀行振込はこの記録のあとに行ってください。生産者に通知されます。`
+                  : `${p.farmName} へ ${formatYen(p.amount)} を銀行振込したことを記録します。生産者に通知されます。`
+              }
               confirmLabel="振込済みにする"
               action={() => markPayoutPaid({ payoutId: p.id })}
+              successMessage={(d) => (d.alreadyTransferred ? "Stripe で送金済みでした。記録だけを合わせました（銀行振込は不要です）" : "振込済みにしました")}
             />
           )}
         </div>

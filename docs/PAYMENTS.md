@@ -108,6 +108,7 @@ success ページでも session を確認して `markOrderPaid` を呼ぶ（webh
 - 未完了は v2 Account Links（`account_onboarding`）。登録済みの「登録内容を確認・変更」は Express ダッシュボードの
   ログインリンク（`accounts.createLoginLink`）。Express アカウントには `account_update` リンクを作れない。
 未登録の農家の精算は `pending` のまま → 運営が /admin/payouts で銀行振込し「振込済み」にする運用も可。
+Stripe で自動送金する農家には「振込済みにする」を出さない（送金の失敗が記録されたときだけ出す。→ 下の「手動の振込済み」）。
 
 ## 返金・キャンセル
 
@@ -143,6 +144,15 @@ success ページでも session を確認して `markOrderPaid` を呼ぶ（webh
   紐付けは `payoutId IS NULL`（相殺は `clawbackPayoutId IS NULL`）の行だけを対象にする。件数が合わなければ先行した実行が
   確定済みとみなしてロールバック（同じ注文から精算が2件でき、二重送金になるのを防ぐ）。送金後の `paid` 更新も `status='pending'`
   条件付きで、重なった実行は Stripe から同じ Transfer（同じ idempotency key）を受け取るだけで記録・通知は1回。
+- **既存の送金の確認（`stripe.ts#findPayoutTransfer`）**: 送金の idempotency key が効くのは約24時間だけ。Stripe の送金が通ったのに
+  DB の記録が失敗すると、精算は pending のまま `transferError` まで残り、翌日の再試行では新しい送金が作られてしまう。
+  そこで送金の前に、その農家あての Transfer から `metadata.payoutId` が一致するもの（全額取り消し済みは除く）を探し、
+  あればそれを記録して送り直さない。
+- **手動の振込済み（`services/payouts.ts#markPayoutPaidManually`, #13）**: Stripe 登録済み（`stripeOnboarded`）の農家は
+  送金失敗（`transferError`）が記録されていない限り拒否。失敗が記録されていても、Stripe アカウントがある農家は
+  先に Stripe に送金を問い合わせ、あればそれを記録するだけ（「銀行振込は不要」と表示）。Stripe に確かめられないときは記録しない。
+  記録すると `paid` になり自動送金の対象から外れるので、**銀行振込は記録のあとに行う**（確認ダイアログにも書いてある）。
+  Stripe 未設定（デモ）ではすべて手動。回帰テスト `services/__tests__/manual-payout.test.ts`, `payout-transfer-lookup.test.ts`。
 - **Idempotency key**: Checkout Session / クーポン（`orderId`）、返金（`order:` / `farm-order:`）、農家への送金（`payoutId`）。
   リトライや DB 書込失敗後の再実行で二重返金・二重送金にならない。
 - **コンビニ払い等の非同期決済**: 支払い番号発行後は `checkout.session.completed`（payment_status=unpaid）→ 入金で

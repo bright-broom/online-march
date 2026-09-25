@@ -94,7 +94,7 @@ describe("golden route: a customer pays and the farmer gets the money", () => {
     await db.update(s.farms).set({ stripeAccountId: "acct_golden", stripeOnboarded: true }).where(eq(s.farms.id, farmOrder.farmId));
     expect(payout.scheduledFor!.endsWith(String(feeConfig.payout.payoutDay))).toBe(true); // 翌月15日払い
     const transfer = vi.fn(async () => ({ id: "tr_golden" }));
-    const result = await executeDuePayouts(payoutDay, { isReady: async () => true, availableBalance: async () => 10_000_000, transfer });
+    const result = await executeDuePayouts(payoutDay, { isReady: async () => true, availableBalance: async () => 10_000_000, findTransfer: async () => null, transfer });
 
     expect(result.failures).toHaveLength(0);
     expect(transfer).toHaveBeenCalledWith(expect.objectContaining({ accountId: "acct_golden", amount: payout.amount, payoutId: payout.id }));
