@@ -7,6 +7,7 @@ import { ReceiptView } from "@/components/mypage/receipt-view";
 import { Button } from "@/components/ui/button";
 import { routes } from "@/config/nav";
 import { paymentMethodLabel } from "@/config/payments";
+import { receiptAmounts } from "@/lib/receipt";
 import { requireRole } from "@/server/auth/guards";
 import { getOrderSummary, getProfile } from "@/server/queries/account";
 
@@ -21,17 +22,20 @@ export default async function ReceiptPage({ params }: PageProps<"/mypage/orders/
   const [order, profile] = await Promise.all([getOrderSummary(user.id, id), getProfile(user.id)]);
   if (!order) notFound();
 
+  const amounts = receiptAmounts(order);
+
   return (
     <>
       <Button asChild variant="ghost" size="sm" className="no-print text-muted-foreground mb-4 -ml-2">
         <Link href={routes.mypage.order(order.id)}><ArrowLeft />注文詳細に戻る</Link>
       </Button>
-      {order.status === "paid" && order.paidAt ? (
+      {amounts && order.paidAt ? (
         <ReceiptView
           data={{
             code: order.code,
             issuedAt: order.paidAt,
-            total: order.total,
+            total: amounts.received,
+            refunded: amounts.refunded,
             subtotal: order.subtotal,
             shippingTotal: order.shippingTotal,
             discountTotal: order.discountTotal,
@@ -43,7 +47,7 @@ export default async function ReceiptPage({ params }: PageProps<"/mypage/orders/
         <EmptyState
           icon={ReceiptText}
           title="領収書を発行できません"
-          description="お支払いが完了したご注文のみ領収書を発行できます（キャンセル・返金済みのご注文は対象外です）。"
+          description="お支払いが完了したご注文のみ領収書を発行できます（キャンセル・全額返金済みのご注文は対象外です）。"
           className="bg-card rounded-xl border"
         />
       )}

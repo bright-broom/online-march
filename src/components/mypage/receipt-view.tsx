@@ -23,7 +23,10 @@ const printCss = `
 export type ReceiptData = {
   code: string;
   issuedAt: Date | string;
+  /** お受け取りした額（支払額 − 返金額）。宛名の下の金額と合計欄に出す */
   total: number;
+  /** 一部返金した額（0なら行を出さない） */
+  refunded: number;
   subtotal: number;
   shippingTotal: number;
   discountTotal: number;
@@ -87,7 +90,10 @@ export function ReceiptView({ data }: { data: ReceiptData }) {
               {data.discountTotal > 0 && (
                 <tr><td className="text-muted-foreground">割引</td><td className="num text-right">−¥{formatNumber(data.discountTotal)}</td></tr>
               )}
-              <tr className="border-t font-medium"><td className="pt-2">合計</td><td className="num pt-2 text-right">¥{formatNumber(data.total)}</td></tr>
+              {data.refunded > 0 && (
+                <tr><td className="text-muted-foreground">返金</td><td className="num text-right">−¥{formatNumber(data.refunded)}</td></tr>
+              )}
+              <tr className="border-t font-medium"><td className="pt-2">{data.refunded > 0 ? "合計（返金後）" : "合計"}</td><td className="num pt-2 text-right">¥{formatNumber(data.total)}</td></tr>
               <tr><td className="text-muted-foreground text-xs" colSpan={2}>お支払い方法：{data.paymentLabel}</td></tr>
             </tbody>
           </table>
