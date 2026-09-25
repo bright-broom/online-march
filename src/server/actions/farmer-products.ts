@@ -1,5 +1,5 @@
 "use server";
-import { and, asc, eq, inArray, lt, max } from "drizzle-orm";
+import { and, asc, eq, inArray, lt, max, sql } from "drizzle-orm";
 import { updateTag } from "next/cache";
 import { db } from "@/db";
 import { orderItems, productImages, productVariants, products } from "@/db/schema";
@@ -92,7 +92,13 @@ export async function saveProduct(_prev: unknown, formData: FormData): Promise<A
           sortOrder: i,
         };
         if (v.id && currentIds.has(v.id)) {
-          await tx.update(productVariants).set(values).where(and(eq(productVariants.id, v.id), eq(productVariants.productId, productId)));
+          // 在庫は「開いた時点からの増減」だけを反映する。フォームの値で上書きすると、編集中に売れた分が在庫に戻って
+          // 売り越す（#2）。開いた時点の値を持たない古いフォームだけ従来どおり上書き
+          const stock = v.stockBase == null ? v.stock : sql`greatest(${productVariants.stock} + ${v.stock - v.stockBase}, 0)`;
+          await tx
+            .update(productVariants)
+            .set({ ...values, stock })
+            .where(and(eq(productVariants.id, v.id), eq(productVariants.productId, productId)));
           keep.add(v.id);
         } else {
           await tx.insert(productVariants).values({ ...values, productId });

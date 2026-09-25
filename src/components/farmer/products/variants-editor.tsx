@@ -19,6 +19,8 @@ export type VariantRow = {
   price: string;
   compareAtPrice: string;
   stock: string;
+  /** 編集画面を開いた時点の在庫（既存の規格のみ）。保存では差分だけを反映する（開いている間に売れた分を消さない） */
+  stockBase?: number;
   sku: string;
 };
 
@@ -40,6 +42,7 @@ export function toVariantRows(list: VariantInitial[]): VariantRow[] {
       price: String(v.price),
       compareAtPrice: v.compareAtPrice != null ? String(v.compareAtPrice) : "",
       stock: String(v.stock),
+      stockBase: v.id ? v.stock : undefined,
       sku: v.sku,
     };
   });
@@ -63,6 +66,7 @@ export function serializeVariants(rows: VariantRow[]) {
     price: intOf(r.price),
     compareAtPrice: r.compareAtPrice.trim() ? intOf(r.compareAtPrice) : null,
     stock: intOf(r.stock),
+    stockBase: r.id ? r.stockBase : undefined,
     sku: r.sku.trim(),
   }));
 }

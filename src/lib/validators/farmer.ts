@@ -37,6 +37,8 @@ export const variantInputSchema = z
     price: z.coerce.number().int("整数で入力してください").min(1, "価格を入力してください").max(1_000_000, "価格が大きすぎます"),
     compareAtPrice: optionalInt(1, 1_000_000, "通常価格が正しくありません"),
     stock: z.coerce.number().int("整数で入力してください").min(0, "0以上で入力してください").max(99_999, "在庫数が大きすぎます"),
+    /** 編集画面を開いた時点の在庫。あれば保存時に差分だけを反映する（farmer-products.ts#saveProduct） */
+    stockBase: z.coerce.number().int().min(0).max(99_999).optional(),
     sku: z.string().trim().max(40, "40文字以内").optional().default(""),
   })
   .refine((v) => v.compareAtPrice == null || v.compareAtPrice > v.price, {
