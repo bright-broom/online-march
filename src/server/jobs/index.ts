@@ -174,9 +174,11 @@ export const jobs = {
       const monthStart = startOfMonthYmd(now);
       const payoutDay = `${monthStart.slice(0, 8)}${String(feeConfig.payout.payoutDay).padStart(2, "0")}`;
       const periodEnd = addDays(monthStart, -1);
-      const activeFarms = await db.select().from(farms).where(eq(farms.status, "active"));
+      // Every farm, not only active ones: a suspended farm still ships its open orders and is owed for them, and its
+      // refund clawbacks must be deducted too (#14). Farms with nothing to settle are skipped below.
+      const allFarms = await db.select().from(farms);
       let created = 0;
-      for (const farm of activeFarms) {
+      for (const farm of allFarms) {
         const cutoff = new Date(`${monthStart}T00:00:00+09:00`);
         const rows = await db
           .select()

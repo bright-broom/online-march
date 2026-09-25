@@ -10,7 +10,7 @@ const copy: Record<Exclude<FarmStatus, "active">, { icon: typeof Clock; body: st
   },
   suspended: {
     icon: ShieldAlert,
-    body: "現在ショップは停止されており、ストアに表示されていません。詳しくは運営までお問い合わせください。進行中のご注文の発送は引き続き行えます。",
+    body: "現在ショップは停止されており、ストアに表示されていません。詳しくは運営までお問い合わせください。進行中のご注文の発送は引き続き行え、その売上は通常どおり精算されます。",
   },
 };
 

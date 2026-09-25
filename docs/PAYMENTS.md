@@ -130,6 +130,8 @@ Stripe で自動送金する農家には「振込済みにする」を出さな�
 - 精算締め後の返金は **翌月の精算で自動相殺**（clawback）：`close-payouts` が「精算済み（payoutId あり）かつ返金済み・未相殺」の
   farm_orders の `payoutAmount` を差し引き、`payouts.refundAdjustment` に記録、`farm_orders.clawbackPayoutId` で二重控除を防ぐ。
   差引後が最低振込額未満（マイナス含む）なら全額翌月へ繰越。
+- **締めの対象は全農家**（停止中を含む, #14）。停止はストアに出さないだけで進行中の注文の出荷は続くため、その売上と返金の相殺も
+  通常どおり精算する。回帰テスト `jobs/suspended-farm-payout.test.ts`。
 
 ## 安全性（二重処理・非同期決済）
 
