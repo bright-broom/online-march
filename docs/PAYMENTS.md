@@ -94,6 +94,12 @@ Stripe は送信先ごとに署名シークレットが別。同じ URL に「�
 
 success ページでも session を確認して `markOrderPaid` を呼ぶ（webhook 遅延対策、冪等なので二重実行可）。
 
+**決済画面で「戻る」を押したとき（#17）**: `cancel_url` は `/cart?canceled_order=<注文ID>`（`config/payments.ts#checkoutCanceledParam`）。
+カートの `CheckoutCanceledNotice` が `actions/checkout.ts#cancelAbandonedCheckout` → `services/orders.ts#abandonCheckout` を呼び、
+期限（60分）を待たずに注文を取り消して在庫とクーポンを戻す。取り消す前に `resolveStaleCheckout` で Stripe の決済画面を閉じる
+（別タブで後から払われないように）。そこで支払い済み・コンビニ払いの番号発行済みと分かった注文は取り消さず、そう案内する。
+案内文は `config/payments.ts#checkoutCanceledCopy`。回帰テスト `services/__tests__/abandon-checkout.test.ts`・`authorization.test.ts`。
+
 ## Connect オンボーディング
 
 /farmer/payouts →「振込先を登録」→ `createConnectOnboardingLink` → 完了後 `/api/farmer/stripe-return` が

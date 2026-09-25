@@ -60,3 +60,14 @@ export const listedPaymentMethodLabels = paymentConfig.methods.filter((m) => m.l
 if (paymentConfig.konbini.expiresAfterDays >= shippingPolicy.asyncPaymentTtlDays) {
   throw new Error("konbini.expiresAfterDays must be shorter than shippingPolicy.asyncPaymentTtlDays");
 }
+
+/** Stripe の決済画面で「戻る」を押したときの戻り先（/cart）に付けるクエリ。値は注文ID（#17） */
+export const checkoutCanceledParam = "canceled_order";
+
+/** 決済画面から戻ってきたときにカートに出す案内（#17）。キーは AbandonedCheckout["kind"] */
+export const checkoutCanceledCopy = {
+  cancelled: { title: "お支払いを中断しました", body: "ご注文は取り消しました（お代金はいただいていません）。カートの商品はそのまま残っていますので、もう一度ご注文いただけます。" },
+  paid: { title: "お支払いは完了しています", body: "ご注文を受け付けました。確定までに少し時間がかかることがあります。ご注文の状況は注文履歴でご確認いただけます。" },
+  awaiting_payment: { title: "お支払い番号を発行済みです", body: "期限までにコンビニでお支払いください。お支払いが確認できるとご注文が確定します。支払い番号は注文履歴でもご確認いただけます。" },
+  not_pending: { title: "お支払いを中断しました", body: "カートの商品はそのまま残っています。ご注文の状況は注文履歴でご確認いただけます。" },
+} as const;

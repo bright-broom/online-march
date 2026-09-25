@@ -25,6 +25,7 @@ import {
   type FarmOrder,
   type FarmOrderStatus,
   type GiftOption,
+  type Order,
   type ShipmentEventType,
 } from "@/db/schema";
 import { tags } from "@/lib/cache-tags";
@@ -552,11 +553,15 @@ async function releaseCoupon(exec: Pick<Database, "update">, code: string) {
 }
 
 /** Expire an unpaid order: cancel all farm orders & restore stock. */
-export async function expireUnpaidOrder(orderId: string, now: Date) {
+export async function expireUnpaidOrder(
+  orderId: string,
+  now: Date,
+  opts: { source: TransitionOptions["source"]; note: string } = { source: "cron", note: "お支払い期限切れのためキャンセルしました" },
+) {
   // 先に読む: 下の transition が最後の出荷単位を閉じた時点で、親の注文も cancelled になる
   const before = await db.query.orders.findFirst({ where: eq(orders.id, orderId) });
   const fos = await db.select().from(farmOrders).where(and(eq(farmOrders.orderId, orderId), eq(farmOrders.status, "pending_payment")));
-  for (const fo of fos) await transitionFarmOrder(fo.id, "cancelled", { source: "cron", now, note: "お支払い期限切れのためキャンセルしました" });
+  for (const fo of fos) await transitionFarmOrder(fo.id, "cancelled", { source: opts.source, now, note: opts.note });
   const [expired] = await db
     .update(orders)
     .set({ status: "cancelled", cancelledAt: now })
@@ -568,6 +573,35 @@ export async function expireUnpaidOrder(orderId: string, now: Date) {
   if (before?.status === "pending_payment" && before.paymentDueAt) {
     await sendEmail(emailTemplates.paymentExpired({ to: before.email, name: before.shippingAddress.recipientName, orderId, code: before.code }));
   }
+}
+
+export type AbandonedCheckout =
+  /** 取り消して在庫・クーポンを戻した（または、もう支払い待ちではなかった） */
+  | { kind: "cancelled" }
+  /** 決済画面を離れる前に支払いが済んでいた。Webhook（取りこぼしは cancel-unpaid）が確定させる */
+  | { kind: "paid" }
+  /** コンビニ払いの番号を受け取っている。期限まで入金を待つ */
+  | { kind: "awaiting_payment" }
+  | { kind: "not_pending" };
+
+/**
+ * お客さまが Stripe の決済画面から「戻る」で帰ってきた注文（#17）。期限（60分）まで在庫とクーポンを押さえたままにせず、
+ * すぐ取り消す。先に Stripe の決済画面を閉じる（`resolve` が open の session を expire する）ので、別タブから後で払われることはない。
+ * `resolve` は Stripe 未設定（デモ）なら null。
+ */
+export async function abandonCheckout(
+  order: Pick<Order, "id" | "status" | "stripeSessionId">,
+  now: Date,
+  resolve: ((sessionId: string) => Promise<{ kind: "paid" | "awaiting_async" | "expired" }>) | null,
+): Promise<AbandonedCheckout> {
+  if (order.status !== "pending_payment") return { kind: "not_pending" };
+  if (resolve && order.stripeSessionId) {
+    const r = await resolve(order.stripeSessionId);
+    if (r.kind === "paid") return { kind: "paid" };
+    if (r.kind === "awaiting_async") return { kind: "awaiting_payment" };
+  }
+  await expireUnpaidOrder(order.id, now, { source: "customer", note: "お客さまが決済画面でお支払いをやめたため取り消しました" });
+  return { kind: "cancelled" };
 }
 
 /* ───────────────────────── Reviews ───────────────────────── */

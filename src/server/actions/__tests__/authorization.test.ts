@@ -20,6 +20,8 @@ const account = await import("../account");
 const adminOps = await import("../admin-ops");
 const messages = await import("../messages");
 const reviews = await import("../reviews");
+const checkout = await import("../checkout");
+const { createOrder } = await import("@/server/services/orders");
 
 const signIn = async (email: string, role: "customer" | "farmer" | "admin") => {
   const u = (await db.query.user.findFirst({ where: eq(s.user.email, email) }))!;
@@ -68,6 +70,19 @@ describe("cross-tenant authorization", () => {
     const after = (await db.query.farmOrders.findFirst({ where: eq(s.farmOrders.id, victim.id) }))!;
     expect(after.status).toBe(victim.status);
     expect(after.trackingNumber).toBe(victim.trackingNumber);
+  });
+
+  it("a customer cannot abandon somebody else's unpaid checkout", async () => {
+    const other = (await db.query.user.findFirst({ where: eq(s.user.email, "sato@example.jp") }))!;
+    const product = (await db.query.products.findFirst({ where: eq(s.products.slug, "awa-tsurigoya-tarzan"), with: { variants: true } }))!;
+    const address = { recipientName: "テスト", postalCode: "5300001", prefecture: "大阪府", city: "大阪市", line1: "1", phone: "0600000000" };
+    const { order } = await createOrder({ userId: other.id, email: other.email, lines: [{ variantId: product.variants[0].id, quantity: 1 }], address, paymentProvider: "stripe", now: new Date() });
+    await signIn("customer@demo.awaji", "customer");
+
+    const res = await checkout.cancelAbandonedCheckout({ orderId: order.id });
+
+    expect(res.ok).toBe(false);
+    expect((await db.query.orders.findFirst({ where: eq(s.orders.id, order.id) }))!.status).toBe("pending_payment");
   });
 
   it("a customer cannot cancel somebody else's order", async () => {

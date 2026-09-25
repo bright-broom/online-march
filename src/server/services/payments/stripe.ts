@@ -2,7 +2,7 @@ import "server-only";
 import Stripe from "stripe";
 import { cancellationPolicy } from "@/config/content";
 import { feeConfig } from "@/config/fees";
-import { paymentConfig } from "@/config/payments";
+import { checkoutCanceledParam, paymentConfig } from "@/config/payments";
 import { routes } from "@/config/nav";
 import { siteConfig } from "@/config/site";
 import { env, features, siteUrl } from "@/lib/env";
@@ -71,7 +71,8 @@ export async function createCheckoutSession(p: {
       // 支払いボタンの直前にも解除（キャンセル・返品）の事項を出す。ここが実際に申込みが確定する画面のため（特商法 第12条の6, #1）
       custom_text: { submit: { message: `キャンセル・返品について：${cancellationPolicy} 詳しくは ${siteUrl}${routes.legal.tokushoho} をご覧ください。` } },
       success_url: `${siteUrl}${routes.checkoutSuccess}?order=${p.orderId}&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${siteUrl}${routes.cart}?canceled=1`,
+      // 「戻る」で帰ってきたら、その注文をすぐ取り消して在庫とクーポンを戻す（#17, cart の CheckoutCanceledNotice）
+      cancel_url: `${siteUrl}${routes.cart}?${checkoutCanceledParam}=${p.orderId}`,
       expires_at: Math.floor(Date.now() / 1000) + paymentConfig.sessionTtlMinutes * 60,
     },
     { idempotencyKey: `checkout-session:${p.orderId}` },
