@@ -16,6 +16,7 @@ import {
   Megaphone,
   MessageCircle,
   Package,
+  ScrollText,
   Settings,
   ShoppingBag,
   Star,
@@ -99,6 +100,7 @@ export const routes = {
     coupons: "/admin/coupons",
     announcements: "/admin/announcements",
     automation: "/admin/automation",
+    audit: "/admin/audit",
     settings: "/admin/settings",
   },
 } as const;
@@ -220,6 +222,7 @@ export const adminNav: NavGroup[] = [
       { title: "クーポン", href: routes.admin.coupons, icon: BadgePercent },
       { title: "お知らせ", href: routes.admin.announcements, icon: Megaphone },
       { title: "配送自動化", href: routes.admin.automation, icon: Bot },
+      { title: "操作記録", href: routes.admin.audit, icon: ScrollText },
       { title: "プラットフォーム設定", href: routes.admin.settings, icon: Settings },
     ],
   },

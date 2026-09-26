@@ -521,6 +521,29 @@ export const jobRuns = pgTable(
   (t) => [index("job_runs_job_idx").on(t.job, t.startedAt)],
 );
 
+/**
+ * 運営の操作記録（#19）。誰が・いつ・何に・何をしたか。消さない・書き換えない（追記だけ）。
+ * actorEmail は操作した時点の控え（あとで退会・アドレス変更しても誰の操作か分かるように）。
+ */
+export const adminAuditLogs = pgTable(
+  "admin_audit_logs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    actorId: text("actor_id").references(() => user.id, { onDelete: "set null" }),
+    actorEmail: text("actor_email").notNull(),
+    /** config/audit.ts#auditActions のキー */
+    action: text("action").notNull(),
+    targetType: text("target_type"),
+    targetId: text("target_id"),
+    /** 画面に出す一文（例: 「阿波ファーム の手数料率を 10% → 8% に変更」） */
+    summary: text("summary").notNull(),
+    /** 変更前後の値など。金額・率は整数のまま */
+    detail: jsonb("detail").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt,
+  },
+  (t) => [index("admin_audit_logs_created_idx").on(t.createdAt), index("admin_audit_logs_target_idx").on(t.targetType, t.targetId)],
+);
+
 /* ─────────────── relations (for db.query.*) ─────────────── */
 
 export const farmsRelations = relations(farms, ({ one, many }) => ({
@@ -604,4 +627,5 @@ export type FarmOrderStatus = (typeof farmOrderStatus.enumValues)[number];
 export type Carrier = (typeof carrier.enumValues)[number];
 export type ShipmentEventType = (typeof shipmentEventType.enumValues)[number];
 export type PayoutStatus = (typeof payoutStatus.enumValues)[number];
+export type AdminAuditLog = typeof adminAuditLogs.$inferSelect;
 export type NotificationType = (typeof notificationType.enumValues)[number];

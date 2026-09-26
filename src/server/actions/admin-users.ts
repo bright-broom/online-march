@@ -2,11 +2,14 @@
 import { and, count, eq } from "drizzle-orm";
 import { refresh } from "next/cache";
 import { db } from "@/db";
+
+const roleLabel = { customer: "購入者", farmer: "生産者", admin: "運営" } as const;
 import { session, user } from "@/db/schema";
 import { tags } from "@/lib/cache-tags";
 import { userRoleSchema } from "@/lib/validators/admin";
 import { assertRole } from "@/server/auth/guards";
 import { expireTags } from "@/server/cache";
+import { recordAudit } from "@/server/services/audit";
 import { ActionError, parseInput, runAction, type ActionResult } from "./_utils";
 
 /**
@@ -27,6 +30,11 @@ export async function setUserRole(input: { userId: string; role: string }): Prom
       if (admins.n <= 1) throw new ActionError("運営ユーザーが1人以上必要です");
     }
     await db.update(user).set({ role: data.role }).where(and(eq(user.id, target.id), eq(user.role, target.role)));
+    await recordAudit(me, {
+      action: "user.role", target: { type: "user", id: target.id },
+      summary: `${target.email} のロールを ${roleLabel[target.role]} → ${roleLabel[data.role]} に変更`,
+      detail: { from: target.role, to: data.role },
+    });
     const rank = { customer: 0, farmer: 1, admin: 2 } as const;
     if (rank[data.role] < rank[target.role]) await db.delete(session).where(eq(session.userId, target.id));
     expireTags(tags.analytics);

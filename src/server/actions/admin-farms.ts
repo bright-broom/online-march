@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { refresh } from "next/cache";
 import { z } from "zod";
 import { routes } from "@/config/nav";
+import { bpsToPercent } from "@/config/fees";
 import { farmStatusMeta } from "@/config/status";
 import { db } from "@/db";
 import { farms, user } from "@/db/schema";
@@ -12,6 +13,7 @@ import { assertRole } from "@/server/auth/guards";
 import { expireTags } from "@/server/cache";
 import { emailTemplates } from "@/server/services/email/templates";
 import { notify } from "@/server/services/notify";
+import { recordAudit } from "@/server/services/audit";
 import { ActionError, formToObject, parseInput, runAction, type ActionResult } from "./_utils";
 
 const statusInput = z.object({
@@ -30,7 +32,7 @@ function expireFarm(farmId: string) {
  */
 export async function setFarmStatus(input: z.input<typeof statusInput>): Promise<ActionResult<{ status: "active" | "suspended" }>> {
   return runAction(async () => {
-    await assertRole("admin");
+    const me = await assertRole("admin");
     const data = parseInput(statusInput, input);
     const farm = await db.query.farms.findFirst({ where: eq(farms.id, data.farmId), with: { owner: true } });
     if (!farm) throw new ActionError("生産者が見つかりません");
@@ -47,6 +49,12 @@ export async function setFarmStatus(input: z.input<typeof statusInput>): Promise
       if (data.status === "active" && farm.owner.role === "customer") {
         await tx.update(user).set({ role: "farmer" }).where(eq(user.id, farm.ownerId));
       }
+    });
+
+    const verb = data.status === "active" ? (farm.status === "pending" ? "承認" : "再開") : farm.status === "pending" ? "却下" : "停止";
+    await recordAudit(me, {
+      action: "farm.status", target: { type: "farm", id: farm.id },
+      summary: `${farm.name} を${verb}`, detail: { from: farm.status, to: data.status, reason: data.reason ?? null },
     });
 
     // side effects after commit
@@ -83,10 +91,11 @@ const featureInput = z.object({ farmId: z.uuid(), featured: z.boolean() });
 
 export async function setFarmFeatured(input: z.input<typeof featureInput>): Promise<ActionResult> {
   return runAction(async () => {
-    await assertRole("admin");
+    const me = await assertRole("admin");
     const data = parseInput(featureInput, input);
-    const [row] = await db.update(farms).set({ isFeatured: data.featured }).where(eq(farms.id, data.farmId)).returning({ id: farms.id });
+    const [row] = await db.update(farms).set({ isFeatured: data.featured }).where(eq(farms.id, data.farmId)).returning({ id: farms.id, name: farms.name });
     if (!row) throw new ActionError("生産者が見つかりません");
+    await recordAudit(me, { action: "farm.featured", target: { type: "farm", id: row.id }, summary: `${row.name} をおすすめ${data.featured ? "に設定" : "から外す"}`, detail: { featured: data.featured } });
     expireFarm(row.id);
     refresh();
   }, input.featured ? "おすすめ生産者に設定しました" : "おすすめを解除しました");
@@ -95,10 +104,17 @@ export async function setFarmFeatured(input: z.input<typeof featureInput>): Prom
 /** Per-farm commission override. Empty = platform default. Past orders keep their stored rate. */
 export async function setFarmCommission(_prev: unknown, formData: FormData): Promise<ActionResult<{ bps: number | null }>> {
   return runAction(async () => {
-    await assertRole("admin");
+    const me = await assertRole("admin");
     const data = parseInput(farmCommissionSchema, formToObject(formData));
+    const before = await db.query.farms.findFirst({ where: eq(farms.id, data.farmId), columns: { name: true, commissionRateBps: true } });
     const [row] = await db.update(farms).set({ commissionRateBps: data.ratePercent }).where(eq(farms.id, data.farmId)).returning({ id: farms.id });
-    if (!row) throw new ActionError("生産者が見つかりません");
+    if (!row || !before) throw new ActionError("生産者が見つかりません");
+    const rate = (bps: number | null) => (bps === null ? "標準" : `${bpsToPercent(bps)}%`);
+    await recordAudit(me, {
+      action: "farm.commission", target: { type: "farm", id: row.id },
+      summary: `${before.name} の手数料率を ${rate(before.commissionRateBps)} → ${rate(data.ratePercent)} に変更`,
+      detail: { fromBps: before.commissionRateBps, toBps: data.ratePercent },
+    });
     expireFarm(row.id);
     refresh();
     return { bps: data.ratePercent };

@@ -16,7 +16,11 @@ user 1─* orders 1─* farm_orders *─1 farms
 reviews (user, product, farm, farm_order)   favorites (user, product)   farm_follows (user, farm)
 messages (farm, customer, sender)           notifications (user)        coupons / announcements
 platform_settings (key/value)               job_runs (automation log)
+admin_audit_logs (actor user, action, target, summary, detail)  ← 運営の操作記録。追記のみ
 ```
+
+`admin_audit_logs`（#19）: 運営が行った変更の操作を1件ずつ残す。`action` は `config/audit.ts#auditActions` のキー、
+`actorEmail` は操作時点の控え（`actorId` は退会しても `set null` で行は残る）。消す・書き換える経路は作らない。
 
 ## 退会（アカウント削除）
 

@@ -86,7 +86,7 @@ async function Shell({ children }: { children: React.ReactNode }) {
 | auth | `/login` `/signup` `/two-factor` `/two-factor/setup` `/forgot-password` `/reset-password`（パスワード再設定。メールのリンクは `/api/auth/reset-password/:token` を経由して `?token=` 付きで戻る）。メールアドレスの確認・変更（#16）はメールのリンクが `/api/auth/verify-email?token=` を経由してアカウント設定（`/mypage/settings` / `/farmer/account`）に `?email=done`、失敗時は `?error=` 付きで戻る。変更は新しいアドレスでリンクを開いたときに行われ、確認前でもログインはできる。デモアカウントは変更不可 |
 | mypage | `/mypage` `orders` `orders/[id]` `orders/[id]/receipt` `favorites` `addresses` `reviews` `messages` `notifications` `settings`（退会もここ） |
 | farmer | `/farmer` `products` `products/new` `products/[id]` `orders` `orders/[id]` `orders/[id]/slip` `shipping` `reviews` `messages` `payouts` `shop` `settings`（お休み設定もここ） `account` |
-| admin | `/admin` `farms` `farms/[id]` `products` `orders` `orders/[id]` `users` `payouts` `coupons` `announcements` `automation` `settings` |
+| admin | `/admin` `farms` `farms/[id]` `products` `orders` `orders/[id]` `users` `payouts` `coupons` `announcements` `automation` `audit`（操作記録, #19） `settings` |
 | api | `/api/auth/[...all]` `/api/upload` `/api/cron/[job]` `/api/webhooks/stripe` `/api/webhooks/stripe/accounts`（v2 thin） `/api/farmer/stripe-return` `/api/farmer/labels`（送り状CSV） `/api/farmer/sales`（売上明細CSV） |
 
 パスは必ず `routes`（config/nav.ts）から生成する。

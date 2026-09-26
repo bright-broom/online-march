@@ -46,7 +46,7 @@
 | 検索エンジンへの公開 | 準備中のため `noindex`（自動） | デモモードを無効にし本番キーを入れると自動で公開される。作業不要 |
 | Vercel Analytics / Speed Insights | コンポーネントは `src/app/layout.tsx` に組み込み済み（本番は同一オリジン配信なので CSP 変更不要）。Vercel ダッシュボード側で有効化されているかは未確認 | 使うならダッシュボードで有効化 |
 
-コード側の残りは GitHub Issues の `P1`（公開後すぐ: 監査ログ #19、振込先口座 #20 ほか。#13 は対応済み、#12・#14〜#17 は PR #23 で対応中）と `P2`。
+コード側の残りは GitHub Issues の `P1`（公開後すぐ: 振込先口座 #20 ほか。#13 は対応済み、#12・#14〜#17・#19 は PR #23 で対応中）と `P2`。
 公開の可否を決めるのは上の表（オーナー作業）と Issues の `P0`。
 チェック自体は「鍵があるか」ではなく「実際に動いているか」を見る（自動処理の最終成功・バックアップが48時間以内・
 デモ以外の運営アカウント・公開URL）。`server/queries/go-live.ts`、回帰テスト `queries/__tests__/go-live.test.ts`。
@@ -204,3 +204,4 @@
 | 出店審査: 見送り後の再申請（前回の内容入り）・審査中の準備案内・見送り／停止のメール（#15） | `actions/join.ts`, `actions/admin-farms.ts#setFarmStatus`, `shop/join/join-gate.tsx`, `lib/farms.ts`, `email/templates.ts#farmRejected/farmSuspended` | `actions/__tests__/farm-application.test.tsx` |
 | メールアドレスの確認（登録時・未確認の表示と再送）と変更（新しいアドレスで確認してから切り替え・デモは不可）（#16） | `server/auth/auth.ts`（emailVerification・changeEmail）, `components/account/email-settings.tsx`, `email/templates.ts#verifyEmail/changeEmail` | `auth/__tests__/email-change.test.ts` |
 | エラー監視: サーバーエラーを運営のお知らせとメールへ（同じ内容は6時間に1回・1時間5回まで・トークンを残さない）（#12） | `src/instrumentation.ts`, `services/error-report.ts`, `actions/_utils.ts#runAction`, `ops-alerts.ts` | `services/__tests__/error-report.test.ts` |
+| 運営の操作記録（全18操作・誰が／いつ／何を・変更前後・失敗は残さない・/admin/audit）（#19） | `admin_audit_logs`（マイグレーション 0010）, `services/audit.ts`, `config/audit.ts`, `actions/admin-*.ts`, `app/admin/audit` | `actions/__tests__/admin-audit.test.ts`, `test/admin-audit-coverage.test.ts` |

@@ -5,6 +5,7 @@ import { categoryKeys } from "@/config/catalog";
 import { shippingZones, type ShippingZoneKey } from "@/config/shipping";
 import { db } from "@/db";
 import {
+  adminAuditLogs,
   announcements,
   coupons,
   farmOrders,
@@ -631,3 +632,8 @@ export async function getJobRuns(limit = 300) {
   return db.select().from(jobRuns).orderBy(desc(jobRuns.startedAt)).limit(limit);
 }
 export type JobRunRow = Awaited<ReturnType<typeof getJobRuns>>[number];
+
+/** 運営の操作記録（#19）。新しい順。request-time（ページが requireRole の後に呼ぶ） */
+export async function getAuditLogs(limit = 1000) {
+  return db.select().from(adminAuditLogs).orderBy(desc(adminAuditLogs.createdAt)).limit(limit);
+}

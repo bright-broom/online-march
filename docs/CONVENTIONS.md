@@ -42,6 +42,10 @@ export async function updateProduct(_prev: unknown, formData: FormData): Promise
 - 返り値は常に `ActionResult<T>`。例外で UI を落とさない（`ActionError` を throw → `{ok:false}`）。
 - クライアントは `useActionState` + `toast`、または `useTransition` で直接呼ぶ。
 - `redirect()` は runAction の外 or 内で可（unstable_rethrow 済み）。
+- **運営の Action（`actions/admin-*.ts`）は、成功したら `services/audit.ts#recordAudit(me, …)` で操作記録を残す**（#19）。
+  `action` は `config/audit.ts#auditActions` に足す。失敗した操作は記録しない（ガードや `ActionError` の後で呼ぶ）。
+  記録を書かない運営 Action を足すと `test/admin-audit-coverage.test.ts` が落ちる。
+- Action の想定外のエラーは `runAction` が運営に通知する（#12）。利用者向けの失敗は `ActionError` で投げる。
 
 ## トランザクション
 
