@@ -53,6 +53,17 @@ export default async function FarmerOrderPage({ params }: PageProps<"/farmer/ord
   const isOpen = fo.status === "paid" || fo.status === "preparing";
   const requested = cancelRequestPending(fo); // お客さまのキャンセルの依頼（#18）
 
+  const history = (
+    <>
+      <CardHeader>
+        <CardTitle>履歴</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <OrderTimeline events={fo.events} />
+      </CardContent>
+    </>
+  );
+
   return (
     <div>
       <PageHeader
@@ -185,23 +196,18 @@ export default async function FarmerOrderPage({ params }: PageProps<"/farmer/ord
               </dl>
             </CardContent>
           </Card>
+          <Card className="lg:hidden">{history}</Card>
         </div>
 
-        <aside className="space-y-6 lg:sticky lg:top-20 lg:self-start">
+        {/* スマホでは「次にやること」を先頭に（住所や明細の下までスクロールしないと準備・発送できなかった）。履歴は下のまま */}
+        <aside className="order-first flex flex-col gap-6 lg:sticky lg:top-20 lg:order-none lg:self-start">
           {requested && (
             <CancelRequestCard id={fo.id} reason={fo.cancelRequestReason ?? ""} requestedAt={fo.cancelRequestedAt!} allowAnswer={canFarm(access, "cancel")} />
           )}
           <OrderActionPanel
             id={fo.id} status={fo.status} carrier={fo.carrier} trackingNumber={fo.trackingNumber} allowCancel={canFarm(access, "cancel")} cancelRequested={requested}
           />
-          <Card>
-            <CardHeader>
-              <CardTitle>履歴</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <OrderTimeline events={fo.events} />
-            </CardContent>
-          </Card>
+          <Card className="hidden lg:flex">{history}</Card>
         </aside>
       </div>
     </div>
