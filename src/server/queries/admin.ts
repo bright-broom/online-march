@@ -6,6 +6,7 @@ import { shippingZones, type ShippingZoneKey } from "@/config/shipping";
 import { db } from "@/db";
 import {
   adminAuditLogs,
+  farmBankAccounts,
   announcements,
   coupons,
   farmOrders,
@@ -548,9 +549,18 @@ export type AdminUserRow = Awaited<ReturnType<typeof getAdminUsers>>["rows"][num
 
 export async function getAdminPayouts(now: Date) {
   const rows = await db
-    .select({ p: payouts, farmName: farms.name, farmId: farms.id, stripeOnboarded: farms.stripeOnboarded, stripeAccountId: farms.stripeAccountId })
+    .select({
+      p: payouts,
+      farmName: farms.name,
+      farmId: farms.id,
+      stripeOnboarded: farms.stripeOnboarded,
+      stripeAccountId: farms.stripeAccountId,
+      // 振込先口座（#20）: 下4桁まで。全桁は revealFarmBankAccount（操作記録つき）
+      bank: { bankName: farmBankAccounts.bankName, bankCode: farmBankAccounts.bankCode, branchName: farmBankAccounts.branchName, branchCode: farmBankAccounts.branchCode, accountType: farmBankAccounts.accountType, accountNumberLast4: farmBankAccounts.accountNumberLast4, holderKana: farmBankAccounts.holderKana },
+    })
     .from(payouts)
     .innerJoin(farms, eq(farms.id, payouts.farmId))
+    .leftJoin(farmBankAccounts, eq(farmBankAccounts.farmId, farms.id))
     .orderBy(desc(payouts.periodEnd), farms.name);
   const ids = rows.map((r) => r.p.id);
   const items = ids.length
@@ -575,7 +585,7 @@ export async function getAdminPayouts(now: Date) {
   for (const it of items) if (it.payoutId) (byPayout.get(it.payoutId) ?? byPayout.set(it.payoutId, []).get(it.payoutId)!).push(it);
 
   const month = monthKey(now);
-  const list = rows.map(({ p, farmName, farmId, stripeOnboarded, stripeAccountId }) => ({
+  const list = rows.map(({ p, farmName, farmId, stripeOnboarded, stripeAccountId, bank }) => ({
     ...p,
     farmName,
     farmId,
@@ -584,6 +594,7 @@ export async function getAdminPayouts(now: Date) {
     autoTransfer: features.stripe && stripeOnboarded && Boolean(stripeAccountId),
     /** Stripe may already hold a transfer for this farm, so the manual mark checks Stripe first. */
     hasStripeAccount: features.stripe && Boolean(stripeAccountId),
+    bankAccount: bank?.accountNumberLast4 ? bank : null,
     items: byPayout.get(p.id) ?? [],
   }));
   const summary = {

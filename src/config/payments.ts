@@ -71,3 +71,7 @@ export const checkoutCanceledCopy = {
   awaiting_payment: { title: "お支払い番号を発行済みです", body: "期限までにコンビニでお支払いください。お支払いが確認できるとご注文が確定します。支払い番号は注文履歴でもご確認いただけます。" },
   not_pending: { title: "お支払いを中断しました", body: "カートの商品はそのまま残っています。ご注文の状況は注文履歴でご確認いただけます。" },
 } as const;
+
+/** 振込先口座（Stripe を使わない農家, #20）の預金種目 */
+export const bankAccountTypes = { ordinary: "普通", checking: "当座" } as const;
+export type BankAccountType = keyof typeof bankAccountTypes;

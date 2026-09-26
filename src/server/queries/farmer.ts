@@ -4,6 +4,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { catalogLimits } from "@/config/catalog";
 import { shippingZones, type ShippingZoneKey } from "@/config/shipping";
 import { db } from "@/db";
+import { getMaskedBankAccount } from "@/server/services/bank-account";
 import {
   announcements,
   farmOrders,
@@ -673,4 +674,9 @@ export async function getSalesRows(farmId: string, from: YMD, to: YMD) {
     prefecture: address.prefecture,
     items: (items.get(id) ?? []).map((i) => `${i.name}（${i.label}）×${i.qty}`).join(" / "),
   }));
+}
+
+/** 振込先口座（#20）。口座番号は下4桁だけ */
+export async function getFarmBankAccount(farmId: string) {
+  return getMaskedBankAccount(farmId);
 }

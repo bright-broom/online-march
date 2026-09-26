@@ -78,6 +78,13 @@
       "when": 1790383088975,
       "tag": "0010_admin_audit_log",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1790383625199,
+      "tag": "0011_farm_bank_account",
+      "breakpoints": true
     }
   ]
 }

@@ -522,6 +522,30 @@ export const jobRuns = pgTable(
 );
 
 /**
+ * Stripe を使わない農家の振込先口座（#20）。運営が銀行振込するときに見る。1農園1件。
+ * 口座番号は暗号化して保存し（services/bank-account.ts）、画面には下4桁だけ出す。farms とは別テーブルにして、
+ * 農園を読む多くのクエリに口座情報が紛れ込まないようにしている。
+ */
+export const farmBankAccounts = pgTable("farm_bank_accounts", {
+  farmId: uuid("farm_id")
+    .primaryKey()
+    .references(() => farms.id, { onDelete: "cascade" }),
+  bankName: text("bank_name").notNull(),
+  bankCode: text("bank_code").notNull(),
+  branchName: text("branch_name").notNull(),
+  branchCode: text("branch_code").notNull(),
+  /** config/payments.ts#bankAccountTypes */
+  accountType: text("account_type").notNull(),
+  /** AES-256-GCM（鍵は BETTER_AUTH_SECRET から導出）。平文では持たない */
+  accountNumberEnc: text("account_number_enc").notNull(),
+  accountNumberLast4: text("account_number_last4").notNull(),
+  /** 口座名義（全角カナ） */
+  holderKana: text("holder_kana").notNull(),
+  createdAt,
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
  * 運営の操作記録（#19）。誰が・いつ・何に・何をしたか。消さない・書き換えない（追記だけ）。
  * actorEmail は操作した時点の控え（あとで退会・アドレス変更しても誰の操作か分かるように）。
  */

@@ -14,6 +14,7 @@ import { expireTags } from "@/server/cache";
 import { isJobName, jobs, runJob } from "@/server/jobs";
 import { readSettingsUncached, type PlatformSettings } from "@/server/queries/settings";
 import { recordAudit } from "@/server/services/audit";
+import { revealAccountNumber } from "@/server/services/bank-account";
 import { markPayoutPaidManually } from "@/server/services/payouts";
 import { ActionError, formToObject, parseInput, runAction, type ActionResult } from "./_utils";
 
@@ -53,6 +54,28 @@ export async function markPayoutPaid(input: { payoutId: string }): Promise<Actio
     refresh();
     return { alreadyTransferred: result.kind === "already_transferred" };
   }, "振込済みにしました");
+}
+
+/**
+ * 振込先口座の全桁を表示する（#20）。運営が銀行振込するときだけ使う。誰がいつ見たかを操作記録に残す。
+ */
+export async function revealFarmBankAccount(input: { farmId: string }): Promise<ActionResult<{ accountNumber: string }>> {
+  return runAction(async () => {
+    const me = await assertRole("admin");
+    const { farmId } = parseInput(z.object({ farmId: z.uuid() }), input);
+    const farm = await db.query.farms.findFirst({ where: eq(farms.id, farmId), columns: { name: true } });
+    if (!farm) throw new ActionError("生産者が見つかりません");
+    let accountNumber: string | null;
+    try {
+      accountNumber = await revealAccountNumber(farmId);
+    } catch {
+      // BETTER_AUTH_SECRET を変えると復号できない（services/bank-account.ts）
+      throw new ActionError("口座番号を読み出せませんでした。生産者に振込先口座を登録し直してもらってください");
+    }
+    if (!accountNumber) throw new ActionError("振込先口座が登録されていません");
+    await recordAudit(me, { action: "farm.bank_account_reveal", target: { type: "farm", id: farmId }, summary: `${farm.name} の振込先口座番号を表示` });
+    return { accountNumber };
+  });
 }
 
 /* ───────── Automation ───────── */

@@ -8,7 +8,9 @@ import { tags } from "@/lib/cache-tags";
 import { toYmd } from "@/lib/dates";
 import { features } from "@/lib/env";
 import { farmPauseSchema, shippingSettingsSchema, shopFormSchema } from "@/lib/validators/farmer";
+import { bankAccountSchema } from "@/lib/validators/bank-account";
 import { assertFarm } from "@/server/auth/guards";
+import { saveBankAccount } from "@/server/services/bank-account";
 import { ActionError, formToObject, parseInput, runAction, type ActionResult } from "./_utils";
 
 /** ショップページ編集 (public farm profile). */
@@ -21,6 +23,20 @@ export async function saveShop(_prev: unknown, formData: FormData): Promise<Acti
     updateTag(tags.farms);
     refresh();
   }, "ショップページを更新しました");
+}
+
+/**
+ * 振込先口座（#20）。Stripe を使わない農家に運営が銀行振込するための口座。自分の農園の分だけ登録・変更できる。
+ * 口座番号は暗号化して保存し、戻り値にも含めない。
+ */
+export async function saveFarmBankAccount(_prev: unknown, formData: FormData): Promise<ActionResult<{ last4: string }>> {
+  return runAction(async () => {
+    const { farm } = await assertFarm();
+    const data = parseInput(bankAccountSchema, formToObject(formData));
+    await saveBankAccount(farm.id, data);
+    refresh();
+    return { last4: data.accountNumber.slice(-4) };
+  }, "振込先口座を保存しました");
 }
 
 /** 出荷・配送設定. */

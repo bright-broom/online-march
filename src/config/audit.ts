@@ -12,6 +12,7 @@ export const auditActions = {
   "farm.status": "生産者の承認・却下・停止・再開",
   "farm.commission": "生産者の手数料率",
   "farm.featured": "おすすめ生産者",
+  "farm.bank_account_reveal": "振込先口座番号の表示",
   "product.featured": "おすすめ商品",
   "product.archived": "商品の非公開",
   "user.role": "ロールの変更",

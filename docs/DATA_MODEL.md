@@ -17,6 +17,7 @@ reviews (user, product, farm, farm_order)   favorites (user, product)   farm_fol
 messages (farm, customer, sender)           notifications (user)        coupons / announcements
 platform_settings (key/value)               job_runs (automation log)
 admin_audit_logs (actor user, action, target, summary, detail)  ← 運営の操作記録。追記のみ
+farm_bank_accounts (farm 1─1)  ← 振込先口座。口座番号は暗号化・下4桁だけ平文
 ```
 
 `admin_audit_logs`（#19）: 運営が行った変更の操作を1件ずつ残す。`action` は `config/audit.ts#auditActions` のキー、

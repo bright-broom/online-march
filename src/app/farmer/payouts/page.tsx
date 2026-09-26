@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { BarBreakdownChart } from "@/components/charts";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { StatCard } from "@/components/dashboard/stat-card";
+import { BankAccountCard } from "@/components/farmer/payouts/bank-account-card";
 import { PayoutsTable } from "@/components/farmer/payouts/payouts-table";
 import { SalesExportCard } from "@/components/farmer/payouts/sales-export-card";
 import { StripeConnectCard } from "@/components/farmer/payouts/stripe-connect-card";
@@ -13,7 +14,7 @@ import { fromYmd } from "@/lib/dates";
 import { features } from "@/lib/env";
 import { formatDate, formatNumber } from "@/lib/format";
 import { requireFarm } from "@/server/auth/guards";
-import { getFarmMonthlyFinance, getUnsettledSummary, listFarmPayouts } from "@/server/queries/farmer";
+import { getFarmBankAccount, getFarmMonthlyFinance, getUnsettledSummary, listFarmPayouts } from "@/server/queries/farmer";
 import { getPlatformSettings } from "@/server/queries/settings";
 
 export const metadata: Metadata = { title: "売上・精算" };
@@ -23,11 +24,12 @@ export default async function FarmerPayoutsPage({ searchParams }: PageProps<"/fa
   const sp = await searchParams;
   await connection();
   const now = new Date();
-  const [monthly, payouts, summary, settings] = await Promise.all([
+  const [monthly, payouts, summary, settings, bankAccount] = await Promise.all([
     getFarmMonthlyFinance(farm.id),
     listFarmPayouts(farm.id),
     getUnsettledSummary(farm.id, now),
     getPlatformSettings(),
+    getFarmBankAccount(farm.id),
   ]);
   const rateBps = farm.commissionRateBps ?? settings.commissionRateBps;
   const trend = monthly.map((m) => m.gross);
@@ -80,7 +82,10 @@ export default async function FarmerPayoutsPage({ searchParams }: PageProps<"/fa
             />
           </CardContent>
         </Card>
-        <StripeConnectCard stripeEnabled={features.stripe} onboarded={farm.stripeOnboarded} hasAccount={Boolean(farm.stripeAccountId)} />
+        <div className="space-y-6">
+          <StripeConnectCard stripeEnabled={features.stripe} onboarded={farm.stripeOnboarded} hasAccount={Boolean(farm.stripeAccountId)} />
+          <BankAccountCard account={bankAccount} stripeOnboarded={features.stripe && farm.stripeOnboarded} />
+        </div>
       </div>
 
       <section className="space-y-3">

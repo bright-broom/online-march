@@ -113,7 +113,10 @@ success ページでも session を確認して `markOrderPaid` を呼ぶ（webh
   v1 の `capabilities.transfers` / `payouts_enabled` は使わない。v1 で作ったアカウントも同じ acct_ ID で v2 取得できる。
 - 未完了は v2 Account Links（`account_onboarding`）。登録済みの「登録内容を確認・変更」は Express ダッシュボードの
   ログインリンク（`accounts.createLoginLink`）。Express アカウントには `account_update` リンクを作れない。
-未登録の農家の精算は `pending` のまま → 運営が /admin/payouts で銀行振込し「振込済み」にする運用も可。
+未登録の農家の精算は `pending` のまま → 運営が /admin/payouts で銀行振込し「振込済み」にする。
+振込先は生産者が /farmer/payouts の「振込先口座」で登録する（#20, `farm_bank_accounts`）。口座番号は AES-256-GCM で暗号化して保存し
+（`services/bank-account.ts`、鍵は `BETTER_AUTH_SECRET` から導出）、画面には下4桁だけ出す。運営は精算の明細で「全桁を表示」を押したときだけ
+全桁を見られ、その操作は操作記録（`farm.bank_account_reveal`）に残る。回帰テスト `actions/__tests__/bank-account.test.ts`。
 Stripe で自動送金する農家には「振込済みにする」を出さない（送金の失敗が記録されたときだけ出す。→ 下の「手動の振込済み」）。
 
 ## 返金・キャンセル

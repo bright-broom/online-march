@@ -23,7 +23,7 @@ npm run dev        # http://localhost:3000
 | Key | 必須 | 説明 |
 | --- | --- | --- |
 | `DATABASE_URL` | ✅ | Neon（pooled） |
-| `BETTER_AUTH_SECRET` | ✅ | `openssl rand -base64 32` |
+| `BETTER_AUTH_SECRET` | ✅ | `openssl rand -base64 32`。**変えると登録済みの振込先口座番号が読めなくなる**（暗号鍵を兼ねる, #20）。変えたら生産者に口座を登録し直してもらう |
 | `BETTER_AUTH_URL` / `NEXT_PUBLIC_SITE_URL` | ✅ | 本番URL（https://…） |
 | `CRON_SECRET` | ✅ | 任意の長い文字列（Vercel Cron が送信） |
 | `STRIPE_SECRET_KEY` | 本番 | 未設定ならデモ決済。まずテストキー（sk_test_）で検証 |

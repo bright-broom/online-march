@@ -46,7 +46,7 @@
 | 検索エンジンへの公開 | 準備中のため `noindex`（自動） | デモモードを無効にし本番キーを入れると自動で公開される。作業不要 |
 | Vercel Analytics / Speed Insights | コンポーネントは `src/app/layout.tsx` に組み込み済み（本番は同一オリジン配信なので CSP 変更不要）。Vercel ダッシュボード側で有効化されているかは未確認 | 使うならダッシュボードで有効化 |
 
-コード側の残りは GitHub Issues の `P1`（公開後すぐ: 振込先口座 #20 ほか。#13 は対応済み、#12・#14〜#17・#19 は PR #23 で対応中）と `P2`。
+コード側の残りは GitHub Issues の `P1`（コードで直せる P1 は #13 が対応済み、#12・#14〜#17・#19・#20 は PR #23 で対応中）と `P2`。
 公開の可否を決めるのは上の表（オーナー作業）と Issues の `P0`。
 チェック自体は「鍵があるか」ではなく「実際に動いているか」を見る（自動処理の最終成功・バックアップが48時間以内・
 デモ以外の運営アカウント・公開URL）。`server/queries/go-live.ts`、回帰テスト `queries/__tests__/go-live.test.ts`。
@@ -100,6 +100,9 @@
 
 > **注意**: 元に戻すときに `git checkout -- <file>` を使わないこと。未コミットの変更ごと消える（実際に一度消した）。
 > `cp <file> "$TMPDIR/x.bak"` を取ってから壊し、`cp` で戻す。戻したら `cmp` で元と同じことを確かめる。
+> 退避ファイルの名前は**パス全体から作る**（`$(echo $f | tr / _)`）。`basename` だけだと、`services/bank-account.ts` と
+> `validators/bank-account.ts` のような同名ファイルの退避が上書きされ、「戻した」つもりで別の中身を書き込む（2026-09-26 に実際に起きた。
+> そのときは壊していないテストまで赤くなったので気づけた）。
 
 壊し方の実例（2026-09-24〜25 に実施）: 返金の一本化で「生産者キャンセルで返金しない」「農園の絞り込みを外す」、
 二段階認証で「ページのガードを外す」「Action のガードを外す」「デモの除外を外す」、在庫で「上書きに戻す」「0未満の切り捨てを外す」。
@@ -204,4 +207,5 @@
 | 出店審査: 見送り後の再申請（前回の内容入り）・審査中の準備案内・見送り／停止のメール（#15） | `actions/join.ts`, `actions/admin-farms.ts#setFarmStatus`, `shop/join/join-gate.tsx`, `lib/farms.ts`, `email/templates.ts#farmRejected/farmSuspended` | `actions/__tests__/farm-application.test.tsx` |
 | メールアドレスの確認（登録時・未確認の表示と再送）と変更（新しいアドレスで確認してから切り替え・デモは不可）（#16） | `server/auth/auth.ts`（emailVerification・changeEmail）, `components/account/email-settings.tsx`, `email/templates.ts#verifyEmail/changeEmail` | `auth/__tests__/email-change.test.ts` |
 | エラー監視: サーバーエラーを運営のお知らせとメールへ（同じ内容は6時間に1回・1時間5回まで・トークンを残さない）（#12） | `src/instrumentation.ts`, `services/error-report.ts`, `actions/_utils.ts#runAction`, `ops-alerts.ts` | `services/__tests__/error-report.test.ts` |
-| 運営の操作記録（全18操作・誰が／いつ／何を・変更前後・失敗は残さない・/admin/audit）（#19） | `admin_audit_logs`（マイグレーション 0010）, `services/audit.ts`, `config/audit.ts`, `actions/admin-*.ts`, `app/admin/audit` | `actions/__tests__/admin-audit.test.ts`, `test/admin-audit-coverage.test.ts` |
+| 運営の操作記録（全運営操作・誰が／いつ／何を・変更前後・失敗は残さない・/admin/audit）（#19） | `admin_audit_logs`（マイグレーション 0010）, `services/audit.ts`, `config/audit.ts`, `actions/admin-*.ts`, `app/admin/audit` | `actions/__tests__/admin-audit.test.ts`, `test/admin-audit-coverage.test.ts` |
+| Stripe を使わない農家の振込先口座（生産者が登録・暗号化して保存・運営は全桁表示を記録つきで）（#20） | `farm_bank_accounts`（マイグレーション 0011）, `services/bank-account.ts`, `actions/farmer-shop.ts#saveFarmBankAccount`, `actions/admin-ops.ts#revealFarmBankAccount`, `farmer/payouts/bank-account-card.tsx` | `actions/__tests__/bank-account.test.ts` |
