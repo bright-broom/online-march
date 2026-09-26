@@ -1,6 +1,7 @@
 import "server-only";
 import { unstable_rethrow } from "next/navigation";
 import type { z } from "zod";
+import { reportServerError } from "@/server/services/error-report";
 
 /** Uniform return type for every Server Action (consumed by useActionState / toast). */
 export type ActionResult<T = void> =
@@ -45,7 +46,8 @@ export async function runAction<T>(
   } catch (err) {
     unstable_rethrow(err);
     if (err instanceof ActionError) return { ok: false, error: err.message, fieldErrors: err.fieldErrors };
-    console.error("[action]", err);
+    // unexpected: the user sees a generic message, so the operator has to hear about it (#12)
+    await reportServerError(err, { kind: "action", path: "Server Action" });
     return { ok: false, error: "エラーが発生しました。時間をおいて再度お試しください。" };
   }
 }

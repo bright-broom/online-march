@@ -66,6 +66,20 @@ npm run dev        # http://localhost:3000
 - **Vercel Web Analytics / Speed Insights は現在プロジェクト側で無効**（本番でスクリプトが読み込まれていない）。
   有効化したあとブラウザのコンソールに CSP 違反が出た場合は、`script-src` に `https://va.vercel-scripts.com` を追加する。
 
+## エラー監視（#12）
+
+外部の監視サービスは使わず、運営のお知らせとメールで知らせる。
+
+- **ページ表示・Route Handler・Webhook**: `src/instrumentation.ts#onRequestError` が受ける（Node.js ランタイムのみ）。
+- **Server Action**: 想定外のエラーは `runAction` が利用者向けの文言に置き換えるので、そこから報告する（`ActionError` は報告しない）。
+- **自動処理（Cron）**: これまでどおり `SHIPPING.md` の運用アラートで知らせる。
+- 通知は `services/error-report.ts#reportServerError` → `ops-alerts.ts#alertAdmins`（admin 全員へ、お知らせ＋メール）。
+  本文は「どこで・パス・メッセージ・エラーID」。パスのクエリは落とす（トークンを残さない）。
+- 同じ内容は6時間に1回、内容が違っても1時間に5回まで（`serverErrorAlert`）。それ以上は Vercel のログにだけ残る。
+- 詳細は Vercel の **Logs** で `[server-error]` かエラーID（digest）を検索する。エラー画面にも同じエラーIDが出るので、
+  お客さまから問い合わせがあれば ID で突き合わせられる。
+- メールは Resend 設定後に届く。未設定の間は運営画面のお知らせ（ベル）だけ。
+
 ## Runbook: バックアップからの復元
 
 `backup-db`（docs/SHIPPING.md §4）が非公開 Blob に置いた dump を書き戻す。**全テーブルを置き換える破壊的操作**。

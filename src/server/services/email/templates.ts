@@ -81,6 +81,19 @@ export const emailTemplates = {
     };
   },
 
+  /** 運営への障害のお知らせ（#12）。本文は運営画面のお知らせと同じ */
+  opsAlert(p: { to: string; title: string; body: string; href: string }): EmailMessage {
+    return {
+      to: p.to,
+      subject: `【運営】${p.title}`,
+      blocks: [
+        { type: "p", text: p.body },
+        { type: "button", label: "運営画面を開く", href: url(p.href) },
+        { type: "note", text: "同じ内容のお知らせは一定時間まとめて送ります。詳しい内容は Vercel のログをエラーIDで検索してください。" },
+      ],
+    };
+  },
+
   /** 登録時のメールアドレス確認（#16）。確認しなくても使えるが、注文確認やパスワード再設定が届くアドレスか確かめる */
   verifyEmail(p: { to: string; name: string; url: string }): EmailMessage {
     return {
