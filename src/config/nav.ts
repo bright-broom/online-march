@@ -51,6 +51,8 @@ export const routes = {
   guide: "/guide",
   faq: "/faq",
   join: "/join",
+  /** PWA 用アイコン（app/icons/[192|512]/route.tsx） */
+  pwaIcon: (px: 192 | 512) => `/icons/${px}`,
   login: "/login",
   signup: "/signup",
   forgotPassword: "/forgot-password",

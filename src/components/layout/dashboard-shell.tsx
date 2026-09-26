@@ -22,6 +22,13 @@ export async function DashboardShell({
   const [badges, notifications] = await Promise.all([getBadgeCounts(user, farmId), getRecentNotifications(user.id)]);
   return (
     <SidebarProvider>
+      {/* キーボード・読み上げの人が、サイドバーのメニューを毎回たどらずに本文へ行けるように（#21） */}
+      <a
+        href="#main-content"
+        className="bg-primary text-primary-foreground sr-only z-50 rounded-full px-4 py-2 focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
+      >
+        本文へスキップ
+      </a>
       <AppSidebar area={area} user={{ name: user.name, email: user.email, role: user.role }} context={context} badges={badges} />
       <SidebarInset className="min-w-0 print:m-0 print:shadow-none">
         <header className="no-print bg-background/80 sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-b px-4 backdrop-blur-md md:rounded-t-xl">
@@ -36,7 +43,7 @@ export async function DashboardShell({
             <NotificationsPopover items={notifications} unread={badges.unreadNotifications ?? 0} />
           </div>
         </header>
-        <div className="flex-1 p-4 md:p-6 lg:p-8">{children}</div>
+        <div id="main-content" tabIndex={-1} className="flex-1 p-4 outline-none md:p-6 lg:p-8">{children}</div>
       </SidebarInset>
     </SidebarProvider>
   );

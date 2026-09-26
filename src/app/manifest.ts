@@ -14,6 +14,12 @@ export default function manifest(): MetadataRoute.Manifest {
     background_color: siteConfig.themeColor.light,
     theme_color: siteConfig.themeColor.light,
     categories: ["food", "shopping"],
-    icons: [{ src: "/icon", sizes: "64x64", type: "image/png" }],
+    // Android の「ホーム画面に追加」・インストールには 192px と 512px が要る（#21）。地を全面に塗っているので maskable としても使える
+    icons: [
+      { src: "/icon", sizes: "64x64", type: "image/png" },
+      { src: routes.pwaIcon(192), sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: routes.pwaIcon(512), sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: routes.pwaIcon(512), sizes: "512x512", type: "image/png", purpose: "maskable" },
+    ],
   };
 }
