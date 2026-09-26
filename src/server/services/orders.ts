@@ -2,6 +2,7 @@ import "server-only";
 import { and, eq, gte, inArray, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { catalogLimits, REMOVED_VARIANT_SORT } from "@/config/catalog";
 import { calcCommission } from "@/config/fees";
+import { couponOncePerUserCopy } from "@/config/payments";
 import { routes } from "@/config/nav";
 import { shippingPolicy, type DeliveryTimeSlot } from "@/config/shipping";
 import { farmOrderStatusMeta, farmOrderTransitions } from "@/config/status";
@@ -89,7 +90,7 @@ export type CartQuote = {
 };
 
 export async function quoteCart(
-  input: { lines: CartLineInput[]; prefecture: string; desiredDate?: YMD | null; couponCode?: string | null; now: Date },
+  input: { lines: CartLineInput[]; prefecture: string; desiredDate?: YMD | null; couponCode?: string | null; userId?: string | null; now: Date },
   exec: Executor = db,
 ): Promise<CartQuote> {
   const ids = [...new Set(input.lines.map((l) => l.variantId))];
@@ -192,6 +193,7 @@ export async function quoteCart(
     else if (c.endsAt && c.endsAt.getTime() < now) couponError = "クーポンの有効期限が切れています";
     else if (c.maxUses != null && c.usedCount >= c.maxUses) couponError = "クーポンの利用上限に達しました";
     else if (subtotal < c.minSubtotal) couponError = `${c.minSubtotal.toLocaleString()}円以上のご注文で使えます`;
+    else if (c.oncePerUser && (!input.userId || (await hasUsedCoupon(exec, input.userId, c.code)))) couponError = couponOncePerUserCopy.used;
     else {
       coupon = { code: c.code, description: c.description, type: c.type, value: c.value };
       discountTotal = Math.min(subtotal, c.type === "percent" ? Math.floor((subtotal * c.value) / 100) : c.value);
@@ -243,7 +245,7 @@ export async function createOrder(input: CreateOrderInput) {
   const lowStock: { farmOwnerId: string; productId: string; productName: string; variantLabel: string; stock: number }[] = [];
   const result = await db.transaction(async (tx) => {
     const quote = await quoteCart(
-      { lines: input.lines, prefecture: input.address.prefecture, desiredDate: input.desiredDeliveryDate, couponCode: input.couponCode, now: input.now },
+      { lines: input.lines, prefecture: input.address.prefecture, desiredDate: input.desiredDeliveryDate, couponCode: input.couponCode, userId: input.userId, now: input.now },
       tx,
     );
     if (quote.unavailable.length) throw new ActionError("販売を終了した商品がカートに含まれています。カートを確認してください。");
@@ -272,6 +274,12 @@ export async function createOrder(input: CreateOrderInput) {
     // Reserve the coupon use here, not at payment: the limit has to hold against simultaneous checkouts and
     // against a shopper who parks several unpaid orders on the last use. Released again if the order is cancelled.
     if (quote.coupon) {
+      // 「お一人さま1回」: 同じ人の同時の注文が両方とも「まだ使っていない」と読まないよう、人とコードの組で順番待ちにしてから数え直す
+      const c = await tx.query.coupons.findFirst({ where: eq(coupons.code, quote.coupon.code), columns: { oncePerUser: true } });
+      if (c?.oncePerUser) {
+        await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`coupon:${quote.coupon.code}:${input.userId}`}))`);
+        if (await hasUsedCoupon(tx, input.userId, quote.coupon.code)) throw new ActionError(couponOncePerUserCopy.used);
+      }
       const [reserved] = await tx
         .update(coupons)
         .set({ usedCount: sql`${coupons.usedCount} + 1` })
@@ -561,6 +569,16 @@ export async function cancelOrderByCustomer(orderId: string, userId: string, now
   for (const fo of order.farmOrders) {
     if (fo.status !== "cancelled") await transitionFarmOrder(fo.id, "cancelled", { source: "customer", now });
   }
+}
+
+/** その人がこのクーポンを使った注文があるか。キャンセルした注文は数えない（未払い・支払済み・返金済みは数える）。 */
+async function hasUsedCoupon(exec: Pick<Database, "select">, userId: string, code: string) {
+  const [row] = await exec
+    .select({ id: orders.id })
+    .from(orders)
+    .where(and(eq(orders.userId, userId), eq(orders.couponCode, code), ne(orders.status, "cancelled")))
+    .limit(1);
+  return Boolean(row);
 }
 
 /** Gives a reserved coupon use back. Never below zero, so a double call cannot mint extra uses. */

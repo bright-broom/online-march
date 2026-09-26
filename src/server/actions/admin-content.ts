@@ -29,6 +29,7 @@ export async function saveCoupon(_prev: unknown, formData: FormData): Promise<Ac
       value: data.value,
       minSubtotal: data.minSubtotal,
       maxUses: data.maxUses,
+      oncePerUser: data.oncePerUser,
       // business dates are JST: starts at 00:00, ends at 23:59:59.999 of the chosen day
       startsAt: data.startsAt ? fromYmd(data.startsAt) : null,
       endsAt: data.endsAt ? new Date(fromYmd(addDays(data.endsAt, 1)).getTime() - 1) : null,
@@ -44,7 +45,7 @@ export async function saveCoupon(_prev: unknown, formData: FormData): Promise<Ac
     await recordAudit(me, {
       action: "coupon.save", target: { type: "coupon", id: id! },
       summary: `クーポン ${data.code} を${data.id ? "編集" : "作成"}`,
-      detail: { type: data.type, value: data.value, minSubtotal: data.minSubtotal, maxUses: data.maxUses, isActive: data.isActive },
+      detail: { type: data.type, value: data.value, minSubtotal: data.minSubtotal, maxUses: data.maxUses, oncePerUser: data.oncePerUser, isActive: data.isActive },
     });
     updateTag(tags.coupons);
     refresh();

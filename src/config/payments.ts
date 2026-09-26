@@ -75,3 +75,10 @@ export const checkoutCanceledCopy = {
 /** 振込先口座（Stripe を使わない農家, #20）の預金種目 */
 export const bankAccountTypes = { ordinary: "普通", checking: "当座" } as const;
 export type BankAccountType = keyof typeof bankAccountTypes;
+
+/** クーポンの「お一人さま1回まで」（#21）。キャンセルした注文は数えない（返金した注文は使ったものとして数える）。 */
+export const couponOncePerUserCopy = {
+  label: "お一人さま1回まで",
+  description: "同じお客さまは1回だけ使えます（キャンセルした注文は数えません）。",
+  used: "このクーポンはお一人さま1回までです（すでにご利用済みです）",
+} as const;

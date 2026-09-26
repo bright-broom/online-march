@@ -470,6 +470,8 @@ export const coupons = pgTable("coupons", {
   value: integer("value").notNull(),
   minSubtotal: integer("min_subtotal").notNull().default(0),
   maxUses: integer("max_uses"),
+  /** お一人さま1回まで（キャンセルした注文は数えない）。#21 */
+  oncePerUser: boolean("once_per_user").notNull().default(false),
   usedCount: integer("used_count").notNull().default(0),
   startsAt: timestamp("starts_at", { withTimezone: true }),
   endsAt: timestamp("ends_at", { withTimezone: true }),

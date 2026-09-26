@@ -67,6 +67,7 @@ export const couponSchema = z
     value: z.coerce.number().int("整数で入力してください").min(1, "1以上で入力してください"),
     minSubtotal: z.coerce.number().int().min(0, "0円以上で入力してください").default(0),
     maxUses: optionalInt(1, "1以上の整数で入力してください"),
+    oncePerUser: checkbox,
     startsAt: optionalYmd,
     endsAt: optionalYmd,
     isActive: checkbox,

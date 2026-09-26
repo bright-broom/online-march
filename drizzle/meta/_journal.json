@@ -85,6 +85,13 @@
       "when": 1790383625199,
       "tag": "0011_farm_bank_account",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1790388752824,
+      "tag": "0012_coupon_once_per_user",
+      "breakpoints": true
     }
   ]
 }

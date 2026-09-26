@@ -112,6 +112,7 @@ export async function getCheckoutQuote(input: CheckoutQuoteInput): Promise<Actio
       prefecture: data.prefecture,
       desiredDate: data.desiredDate ?? null,
       couponCode: blocked ? null : couponCode,
+      userId: me.id,
       now: new Date(),
     });
     if (blocked) return { ...toDto(quote), couponError: rateLimits.couponMiss.message };

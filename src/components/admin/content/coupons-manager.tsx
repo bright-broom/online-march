@@ -13,6 +13,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "@/
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { couponOncePerUserCopy } from "@/config/payments";
 import { fromYmd } from "@/lib/dates";
 import { formatDate, formatNumber, formatYen } from "@/lib/format";
 import { deleteCoupon, saveCoupon } from "@/server/actions/admin-content";
@@ -30,6 +31,7 @@ export type CouponRow = {
   value: number;
   minSubtotal: number;
   maxUses: number | null;
+  oncePerUser: boolean;
   usedCount: number;
   startsYmd: string | null;
   endsYmd: string | null;
@@ -73,6 +75,7 @@ export function CouponsManager({ rows }: { rows: CouponRow[] }) {
             {formatNumber(c.usedCount)}
             <span className="text-muted-foreground"> / {c.maxUses == null ? "無制限" : formatNumber(c.maxUses)}</span>
           </p>
+          {c.oncePerUser && <p className="text-muted-foreground text-[11px]">{couponOncePerUserCopy.label}</p>}
           <Progress value={c.maxUses ? Math.min(100, (c.usedCount / c.maxUses) * 100) : c.usedCount > 0 ? 100 : 0} className={c.maxUses == null ? "opacity-40" : undefined} />
         </div>
       ),
@@ -198,6 +201,13 @@ function CouponForm({ coupon, onDone }: { coupon: CouponRow | null; onDone: () =
             <DatePickerField name="startsAt" label="開始日" defaultValue={coupon?.startsYmd} placeholder="すぐに開始" errors={err("startsAt")} />
             <DatePickerField name="endsAt" label="終了日（当日23:59まで）" defaultValue={coupon?.endsYmd} placeholder="期限なし" errors={err("endsAt")} />
           </div>
+          <Field orientation="horizontal" className="bg-muted/40 items-center justify-between rounded-xl p-3">
+            <div>
+              <FieldLabel htmlFor="coupon-once">{couponOncePerUserCopy.label}</FieldLabel>
+              <FieldDescription className="text-xs">{couponOncePerUserCopy.description}</FieldDescription>
+            </div>
+            <Switch id="coupon-once" name="oncePerUser" defaultChecked={coupon?.oncePerUser ?? false} />
+          </Field>
           <Field orientation="horizontal" className="bg-muted/40 items-center justify-between rounded-xl p-3">
             <div>
               <FieldLabel htmlFor="coupon-active">有効にする</FieldLabel>

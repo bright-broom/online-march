@@ -56,11 +56,11 @@
 | Issue | 状態 |
 | --- | --- |
 | #13 自動送金の農家への手動「振込済み」（二重払い） | **main にマージ済み**（PR #22, `0d87731`）。本番の画面での確認は未実施（→ 3節） |
-| #12 エラー監視 / #14 停止中の農家の精算 / #15 出店審査 / #16 メールアドレスの確認と変更 / #17 決済画面から戻ったときの取り消し / #19 操作記録 / #20 振込先口座 | **PR #23 でレビュー待ち**（ブランチ `claude/zealous-feynman-b5sb80`、Issue ごとにコミットを分けてある）。マージで各 Issue が閉じる。**テーブルを2つ足す**（マイグレーション 0010 `admin_audit_logs`・0011 `farm_bank_accounts`、追加のみ。本番ビルドが先に当てる） |
+| #12 エラー監視 / #14 停止中の農家の精算 / #15 出店審査 / #16 メールアドレスの確認と変更 / #17 決済画面から戻ったときの取り消し / #19 操作記録 / #20 振込先口座 | **PR #23 でレビュー待ち**（ブランチ `claude/zealous-feynman-b5sb80`、Issue ごとにコミットを分けてある）。マージで各 Issue が閉じる。**テーブルを2つ足す**（マイグレーション 0010 `admin_audit_logs`・0011 `farm_bank_accounts`、追加のみ。本番ビルドが先に当てる）。#21 で列を1つ足す（0012 `coupons.once_per_user`、既定 false） |
 
 **PR #23 をマージしたら本番で確かめること**（確かめたら 3節へ移す）:
 
-- ビルドログに `[db:migrate] done`（0010・0011 が当たったこと）
+- ビルドログに `[db:migrate] done`（0010〜0012 が当たったこと）
 - /admin/audit（操作記録）が開き、手数料率などを変えると1行増える
 - /farmer/payouts に「振込先口座」が出て、登録すると下4桁だけ表示される。/admin/payouts の明細で「全桁を表示」→ 操作記録に残る
 - Stripe のテスト決済画面で「戻る」→ カートに「お支払いを中断しました」、在庫とクーポンが戻る
@@ -248,3 +248,4 @@
 | #21 案内・通知: 在庫わずか／売り切れを生産者へ（しきい値を下回った・0 になった注文で1回）、出荷期限切れは毎日リマインド、メッセージ（同じやり取りは30分に1通）・レビュー返信（初回のみ）・振込完了のメール、Stripe 登録リンク切れの案内 | `services/orders.ts#createOrder`, `jobs/index.ts`（ship-reminders）, `actions/messages.ts`, `actions/reviews.ts#replyToReview`, `services/payouts.ts#notifyPaid`, `app/farmer/payouts/page.tsx` | `services/__tests__/notices.test.ts` |
 | #21 画面の基本: 生産者画面の noindex・管理画面の「本文へスキップ」・エリア別のエラー画面（メニューを残す）・Apple／PWA 用アイコン（180／192／512, maskable） | `app/farmer/layout.tsx`, `layout/dashboard-shell.tsx`, `common/area-error.tsx`, `app/{admin,farmer,mypage}/error.tsx`, `shop/brand-icon.tsx`, `app/apple-icon.tsx`, `app/icons/*`, `app/manifest.ts` | `components/__tests__/ui-basics.test.tsx` |
 | #21 ページングと検索: 注文履歴のページ送り（50件ずつ）・商品レビューの「もっと見る」・運営の注文／ユーザーをサーバー側で全件から検索（% と _ はそのまま） | `queries/account.ts#listOrders/countOrders`, `app/mypage/orders/page.tsx`, `queries/catalog.ts#getMoreProductReviews`, `shop/more-reviews.tsx`, `queries/admin.ts#getAdminOrders/getAdminUsers`, `admin/server-search.tsx` | `queries/__tests__/paging-search.test.ts` |
+| #21 クーポンの「お一人さま1回まで」（キャンセルした注文は数えない・同じ人の同時注文はロックして数え直す） | `coupons.once_per_user`（マイグレーション 0012）, `services/orders.ts#quoteCart/createOrder/hasUsedCoupon`, `config/payments.ts#couponOncePerUserCopy`, `admin/content/coupons-manager.tsx` | `services/__tests__/coupon-once-per-user.test.ts` |
