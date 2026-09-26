@@ -40,6 +40,13 @@ export default async function FarmerPayoutsPage({ searchParams }: PageProps<"/fa
     <div className="space-y-6">
       <PageHeader title="売上・精算" description="月末で締めて、翌月にお振込します。手数料は商品代金にだけかかり、送料はそのままお受け取りいただけます。" />
 
+      {sp.stripe === "refresh" && (
+        <Alert>
+          <Landmark />
+          <AlertTitle>登録用のリンクの有効期限が切れました</AlertTitle>
+          <AlertDescription>Stripe の登録画面は、開いてから時間がたつと使えなくなります。下の「登録を続ける」をもう一度押してください。入力済みの内容は保存されています。</AlertDescription>
+        </Alert>
+      )}
       {sp.stripe === "return" && (
         <Alert className="border-leaf/40 bg-leaf/5">
           <Landmark />

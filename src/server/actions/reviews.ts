@@ -5,10 +5,11 @@ import { z } from "zod";
 import { routes } from "@/config/nav";
 import { rateLimits } from "@/config/rate-limits";
 import { db } from "@/db";
-import { farmOrders, farms, orderItems, orders, reviews } from "@/db/schema";
+import { farmOrders, farms, orderItems, orders, products, reviews, user } from "@/db/schema";
 import { tags } from "@/lib/cache-tags";
 import { reviewEditSchema, reviewReplySchema, reviewSchema } from "@/lib/validators/engagement";
 import { assertFarm, assertRole, assertUser } from "@/server/auth/guards";
+import { emailTemplates } from "@/server/services/email/templates";
 import { notify } from "@/server/services/notify";
 import { recordAudit } from "@/server/services/audit";
 import { consumeRateLimit } from "@/server/services/rate-limit";
@@ -79,6 +80,18 @@ export async function replyToReview(input: { reviewId: string; reply: string }):
     if (!review) throw new ActionError("レビューが見つかりません");
     await db.update(reviews).set({ reply: data.reply, repliedAt: new Date() }).where(eq(reviews.id, review.id));
     updateTag(tags.productReviews(review.productId));
+    // 書いた人に知らせる（#21）。返信を直したときは知らせ直さない
+    if (!review.reply) {
+      const [author] = await db.select({ id: user.id, name: user.name, email: user.email, deletedAt: user.deletedAt }).from(user).where(eq(user.id, review.userId));
+      const product = await db.query.products.findFirst({ where: eq(products.id, review.productId), columns: { name: true, slug: true } });
+      if (author && !author.deletedAt && product) {
+        const href = routes.product(product.slug);
+        await notify({
+          userId: author.id, type: "review", title: `${farm.name}からレビューに返信が届きました`, body: data.reply.slice(0, 80), href,
+          email: emailTemplates.reviewReplied({ to: author.email, name: author.name, farmName: farm.name, productName: product.name, href }),
+        });
+      }
+    }
   }, "返信を公開しました");
 }
 

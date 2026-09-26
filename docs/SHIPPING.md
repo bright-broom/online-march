@@ -54,7 +54,7 @@
 | Job | Schedule (UTC, vercel.json) | Pro 推奨 | 内容 |
 | --- | --- | --- | --- |
 | `cancel-unpaid` | 15 15 * * *（JST 0:15）| */30 * * * * | 60分未決済の注文をキャンセル・在庫戻し（Stripe は `checkout.session.expired` webhook が主経路）|
-| `ship-reminders` | 0 23 * * *（JST 8:00）| 同左 | 期限が明日以前の未発送を農家へ通知 |
+| `ship-reminders` | 0 23 * * *（JST 8:00）| 同左 | 期限が明日以前の未発送を農家へ通知。期限を過ぎたものは発送されるまで毎日1回（件名「【至急】」, #21） |
 | `sync-tracking` | 0 21 * * *（JST 6:00）| 0 */3 * * * | 配達完了の自動反映 |
 | `review-requests` | 0 1 * * *（JST 10:00）| 同左 | レビュー依頼 |
 | `backup-db` | 30 17 * * *（JST 翌 2:30）| 同左 | 全テーブルを JSON(gzip) で非公開 Blob に保存 → **保存後に読み戻して検証** → 14日より古い分を削除 |

@@ -1,5 +1,5 @@
 import "server-only";
-import { and, desc, eq, inArray, isNotNull, isNull, lt, lte } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, lt, lte, or } from "drizzle-orm";
 import { feeConfig } from "@/config/fees";
 import { opsConfig } from "@/config/ops";
 import { routes } from "@/config/nav";
@@ -81,7 +81,7 @@ export const jobs = {
 
   "ship-reminders": {
     label: "出荷期限リマインド",
-    description: "出荷期限が明日以前の未発送注文を生産者にメールとアプリ通知でお知らせします",
+    description: "出荷期限が明日以前の未発送注文を生産者にメールとアプリ通知でお知らせします（期限を過ぎた注文は発送されるまで毎日）",
     schedule: "毎朝8時",
     maxAgeHours: 30,
     async run(now) {
@@ -91,7 +91,17 @@ export const jobs = {
         .from(farmOrders)
         .innerJoin(farms, eq(farms.id, farmOrders.farmId))
         .innerJoin(user, eq(user.id, farms.ownerId))
-        .where(and(inArray(farmOrders.status, ["paid", "preparing"]), lte(farmOrders.shipByDate, tomorrow), isNull(farmOrders.reminderSentAt)));
+        .where(
+          and(
+            inArray(farmOrders.status, ["paid", "preparing"]),
+            or(
+              // 期限が近い: 1回だけ
+              and(lte(farmOrders.shipByDate, tomorrow), isNull(farmOrders.reminderSentAt)),
+              // 期限を過ぎた: 発送されるまで毎日1回（前回が今日より前なら）。#21
+              and(lt(farmOrders.shipByDate, toYmd(now)), lt(farmOrders.reminderSentAt, new Date(`${toYmd(now)}T00:00:00+09:00`))),
+            ),
+          ),
+        );
       const byFarm = new Map<string, typeof due>();
       for (const d of due) (byFarm.get(d.farm.id) ?? byFarm.set(d.farm.id, []).get(d.farm.id)!).push(d);
       const today = toYmd(now);

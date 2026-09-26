@@ -81,6 +81,45 @@ export const emailTemplates = {
     };
   },
 
+  /** メッセージが届いた（#21）。本文は最初の数十文字だけ（全文はサイトで読む） */
+  messageReceived(p: { to: string; fromName: string; preview: string; href: string }): EmailMessage {
+    return {
+      to: p.to,
+      subject: `【メッセージ】${p.fromName}さんから届きました`,
+      blocks: [
+        { type: "p", text: `${p.fromName}さんからメッセージが届きました。\n\n「${p.preview}」` },
+        { type: "button", label: "メッセージを読む・返信する", href: url(p.href) },
+        { type: "note", text: "続けて届いたメッセージは、しばらくの間メールではお知らせしません。サイトのメッセージ画面でご確認ください。" },
+      ],
+    };
+  },
+
+  /** 生産者がレビューに返信した（#21） */
+  reviewReplied(p: { to: string; name: string; farmName: string; productName: string; href: string }): EmailMessage {
+    return {
+      to: p.to,
+      subject: `【レビューへの返信】${p.farmName}から返信が届きました`,
+      blocks: [
+        { type: "p", text: `${p.name} 様\n「${p.productName}」にお寄せいただいたレビューに、${p.farmName}から返信が届きました。` },
+        { type: "button", label: "返信を読む", href: url(p.href) },
+      ],
+    };
+  },
+
+  /** 売上のお振込が済んだ（#21。Stripe の自動送金・運営の銀行振込のどちらも） */
+  payoutPaid(p: { to: string; farmName: string; period: string; amount: number }): EmailMessage {
+    return {
+      to: p.to,
+      subject: `【お振込完了】${p.period}分 ${formatYen(p.amount)}`,
+      blocks: [
+        { type: "p", text: `${p.farmName} さま\n${p.period}分の売上をお振込しました。` },
+        { type: "table", rows: [["お振込額", formatYen(p.amount)]] },
+        { type: "note", text: "口座への反映は金融機関によって1〜2営業日かかることがあります。" },
+        { type: "button", label: "明細を見る", href: url(routes.farmer.payouts) },
+      ],
+    };
+  },
+
   /** 運営への障害のお知らせ（#12）。本文は運営画面のお知らせと同じ */
   opsAlert(p: { to: string; title: string; body: string; href: string }): EmailMessage {
     return {
@@ -182,7 +221,7 @@ export const emailTemplates = {
   shipReminder(p: { to: string; farmName: string; count: number; overdue: number }): EmailMessage {
     return {
       to: p.to,
-      subject: `【出荷リマインド】明日までの出荷が${p.count}件あります`,
+      subject: p.overdue ? `【至急】出荷期限を過ぎたご注文が${p.overdue}件あります` : `【出荷リマインド】明日までの出荷が${p.count}件あります`,
       blocks: [
         { type: "p", text: `${p.farmName} さま\n出荷期限が近いご注文が ${p.count} 件あります。${p.overdue ? `うち ${p.overdue} 件は期限を過ぎています。` : ""}` },
         { type: "button", label: "出荷センターを開く", href: url(routes.farmer.shipping) },

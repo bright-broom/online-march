@@ -1,6 +1,6 @@
 import "server-only";
 import { and, eq, gte, inArray, isNull, lt, ne, or, sql } from "drizzle-orm";
-import { REMOVED_VARIANT_SORT } from "@/config/catalog";
+import { catalogLimits, REMOVED_VARIANT_SORT } from "@/config/catalog";
 import { calcCommission } from "@/config/fees";
 import { routes } from "@/config/nav";
 import { shippingPolicy, type DeliveryTimeSlot } from "@/config/shipping";
@@ -240,7 +240,8 @@ export type CreateOrderInput = {
 
 /** Creates a pending order, reserving stock atomically. Throws ActionError on validation failure. */
 export async function createOrder(input: CreateOrderInput) {
-  return db.transaction(async (tx) => {
+  const lowStock: { farmOwnerId: string; productId: string; productName: string; variantLabel: string; stock: number }[] = [];
+  const result = await db.transaction(async (tx) => {
     const quote = await quoteCart(
       { lines: input.lines, prefecture: input.address.prefecture, desiredDate: input.desiredDeliveryDate, couponCode: input.couponCode, now: input.now },
       tx,
@@ -256,8 +257,15 @@ export async function createOrder(input: CreateOrderInput) {
           .update(productVariants)
           .set({ stock: sql`${productVariants.stock} - ${l.quantity}` })
           .where(and(eq(productVariants.id, l.variantId), gte(productVariants.stock, l.quantity)))
-          .returning({ id: productVariants.id });
+          .returning({ id: productVariants.id, stock: productVariants.stock });
         if (!res.length) throw new ActionError(`「${l.productName}（${l.variantLabel}）」の在庫が不足しています`);
+        // この注文でしきい値を下回ったとき・売り切れたときだけ（同じ規格で何度も知らせない）。#21
+        const left = res[0].stock;
+        const crossedLow = left <= catalogLimits.lowStockThreshold && left + l.quantity > catalogLimits.lowStockThreshold;
+        const soldOut = left === 0;
+        if (crossedLow || soldOut) {
+          lowStock.push({ farmOwnerId: g.farm.ownerId, productId: l.productId, productName: l.productName, variantLabel: l.variantLabel, stock: left });
+        }
       }
     }
 
@@ -332,6 +340,17 @@ export async function createOrder(input: CreateOrderInput) {
     }
     return { order, quote };
   });
+  // after commit: a rolled-back order must not have told the farmer anything
+  for (const s of lowStock) {
+    await notify({
+      userId: s.farmOwnerId,
+      type: "product",
+      title: s.stock === 0 ? `「${s.productName}（${s.variantLabel}）」が売り切れました` : `「${s.productName}（${s.variantLabel}）」の在庫が残り${s.stock}点です`,
+      body: "在庫を補充するか、販売を終える場合はそのままで大丈夫です（売り切れの表示になります）。",
+      href: routes.farmer.product(s.productId),
+    });
+  }
+  return result;
 }
 
 /* ───────────────────────── Payment ───────────────────────── */

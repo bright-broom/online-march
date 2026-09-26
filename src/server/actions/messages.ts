@@ -1,14 +1,18 @@
 "use server";
-import { and, eq } from "drizzle-orm";
+import { and, eq, gt } from "drizzle-orm";
 import { routes } from "@/config/nav";
+import { rateLimits } from "@/config/rate-limits";
 import { db } from "@/db";
-import { farmOrders, farms, messages, orders } from "@/db/schema";
+import { farmOrders, farms, messages, notifications, orders, user } from "@/db/schema";
 import { messageSchema } from "@/lib/validators/engagement";
 import { assertUser } from "@/server/auth/guards";
+import { emailTemplates } from "@/server/services/email/templates";
 import { notify } from "@/server/services/notify";
-import { rateLimits } from "@/config/rate-limits";
 import { consumeRateLimit } from "@/server/services/rate-limit";
 import { ActionError, parseInput, runAction, type ActionResult } from "./_utils";
+
+/** 同じやり取りで続けて届いたメッセージは、この間メールしない（サイト内のお知らせは毎回） */
+const MESSAGE_EMAIL_QUIET_MS = 30 * 60 * 1000;
 
 /**
  * Send a message in a farm⇄customer thread.
@@ -54,12 +58,23 @@ export async function sendMessage(input: { farmId: string; customerId?: string; 
     }
     const [row] = await db.insert(messages).values({ farmId: farm.id, customerId, senderId: me.id, farmOrderId, body: data.body }).returning({ id: messages.id });
     const toFarmer = me.id === customerId;
+    const recipientId = toFarmer ? farm.ownerId : customerId;
+    const href = toFarmer ? `${routes.farmer.messages}?c=${customerId}` : `${routes.mypage.messages}?f=${farm.id}`;
+    // メールは、同じやり取りで直前にお知らせしていなければ（#21）。続けて送ると1通ごとにメールが届いてしまうため
+    const [recent] = await db
+      .select({ id: notifications.id })
+      .from(notifications)
+      .where(and(eq(notifications.userId, recipientId), eq(notifications.type, "message"), eq(notifications.href, href), gt(notifications.createdAt, new Date(Date.now() - MESSAGE_EMAIL_QUIET_MS))))
+      .limit(1);
+    const recipient = recent ? null : await db.query.user.findFirst({ where: eq(user.id, recipientId), columns: { email: true } });
+    const fromName = toFarmer ? me.name : farm.name;
     await notify({
-      userId: toFarmer ? farm.ownerId : customerId,
+      userId: recipientId,
       type: "message",
       title: toFarmer ? `${me.name}さんからメッセージ` : `${farm.name}から返信が届きました`,
       body: data.body.slice(0, 80),
-      href: toFarmer ? `${routes.farmer.messages}?c=${customerId}` : `${routes.mypage.messages}?f=${farm.id}`,
+      href,
+      email: recipient ? emailTemplates.messageReceived({ to: recipient.email, fromName, preview: data.body.slice(0, 60), href }) : undefined,
     });
     return { id: row.id };
   });
