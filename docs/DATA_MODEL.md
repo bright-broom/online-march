@@ -69,6 +69,7 @@ farm_bank_accounts (farm 1─1)  ← 振込先口座。口座番号は暗号化�
 | `payouts.transferError` / `transferAttemptedAt` | 自動送金が通らなかった理由と試行時刻（送金成功で null に戻す）。/admin/payouts に表示 |
 | `payouts.refundAdjustment` / `farm_orders.clawbackPayoutId` | 精算済み注文の返金を翌月精算で相殺した額と、相殺した精算の参照（二重控除防止） |
 | `reviews.images` | お客さまの写真（#21）。URL の配列（最大 `catalogLimits.maxReviewImages`=3）。付けられるのはこのサイトが reviews フォルダに置いたものだけ（`validators/engagement.ts#reviewImageUrlPattern`。よその画像を商品ページに出させない）。問題があれば運営がレビューごと非公開にする（写真だけを消す操作はない）。付けずに終わった写真・外した写真のファイルは Blob に残る（容量が問題になったら掃除のジョブを足す） |
+| `farm_orders.deliveryIssueAt/Note` | 配達の問題（#25。持ち戻り・返送・予定を大きく過ぎても届かない）。入っている間は自動で配達完了にしない。発送済みのあいだだけ画面に出す。docs/SHIPPING.md §5 |
 | `coupons.oncePerUser` | お一人さま1回まで（#21）。docs/PAYMENTS.md |
 | `user.suspendedAt/suspendedReason` | 運営による利用停止（#21）。下の「利用停止」 |
 | `farm_members` | 農園のスタッフ（#24）。オーナーが招待（`email`・`access` all/shipping・`tokenHash`＝招待リンクの sha256・7日有効）→ 招待されたアドレスの**購入者**アカウントで参加すると `userId`・`acceptedAt` が入り、`tokenHash` は消える。1人1農園（`userId` 一意）・1農園5人まで（招待中を含む、`config/farm-staff.ts`）。ロールは変えない。外す＝行を消す（ガードが毎回 DB を見るので次のリクエストから入れない）。退会で所属と招待中の行も消す。スタッフのままでは出店申請できない |

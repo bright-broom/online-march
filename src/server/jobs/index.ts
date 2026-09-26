@@ -13,10 +13,10 @@ import { emailTemplates } from "@/server/services/email/templates";
 import { features } from "@/lib/env";
 import { sendEmail } from "@/server/services/email";
 import { notify } from "@/server/services/notify";
-import { expireUnpaidOrder, markOrderPaid, transitionFarmOrder } from "@/server/services/orders";
+import { expireUnpaidOrder, markOrderPaid } from "@/server/services/orders";
 import { alertAdmins } from "@/server/services/ops-alerts";
 import { executeDuePayouts } from "@/server/services/payouts";
-import { fetchTrackingStatus } from "@/server/services/shipping/tracking";
+import { syncDeliveries } from "@/server/services/shipping/delivery";
 
 /**
  * Shipping/finance automation. Each job is idempotent and safe to re-run.
@@ -121,21 +121,11 @@ export const jobs = {
 
   "sync-tracking": {
     label: "配送状況の同期",
-    description: `発送済みの荷物の配達状況を確認し、完了を自動反映します（API非対応時は発送${shippingPolicy.autoDeliveredAfterDays}日後に自動完了）`,
+    description: `発送済みの荷物の配達状況を確認し、完了を自動反映します（配送業者の API が無いときは、お届け予定日の${shippingPolicy.autoDeliveredAfterEtaDays}日後に自動完了。届けられなかった荷物は止めて知らせます）`,
     schedule: "3時間ごと",
     maxAgeHours: 30,
     async run(now) {
-      const shipped = await db.select().from(farmOrders).where(eq(farmOrders.status, "shipped"));
-      let delivered = 0;
-      for (const fo of shipped) {
-        const status = fo.trackingNumber ? await fetchTrackingStatus(fo.carrier, fo.trackingNumber) : null;
-        const autoDue = fo.shippedAt && now.getTime() - fo.shippedAt.getTime() > shippingPolicy.autoDeliveredAfterDays * DAY;
-        if (status?.status === "delivered" || (!status && autoDue)) {
-          await transitionFarmOrder(fo.id, "delivered", { source: "cron", now, note: status ? "配達完了（配送業者連携）" : "お届け予定日を過ぎたため配達完了としました" });
-          delivered++;
-        }
-      }
-      return { checked: shipped.length, delivered };
+      return syncDeliveries(now);
     },
   },
 

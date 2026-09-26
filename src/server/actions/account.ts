@@ -1,5 +1,6 @@
 "use server";
 import { and, count, eq, ne } from "drizzle-orm";
+import { refresh } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
 import { addresses, user } from "@/db/schema";
@@ -8,7 +9,7 @@ import { addressFormSchema, profileSchema } from "@/lib/validators/account";
 import { assertUser } from "@/server/auth/guards";
 import { markThreadRead } from "@/server/queries/messages";
 import { AccountCloseBlocked, closeCustomerAccount } from "@/server/services/account-closure";
-import { cancelOrderByCustomer } from "@/server/services/orders";
+import { cancelOrderByCustomer, confirmReceivedByCustomer } from "@/server/services/orders";
 import { ActionError, formToObject, parseInput, runAction, type ActionResult } from "./_utils";
 
 const idSchema = z.uuid("IDが正しくありません");
@@ -86,6 +87,16 @@ export async function cancelOrder(orderId: string): Promise<ActionResult> {
     const id = parseInput(idSchema, orderId);
     await cancelOrderByCustomer(id, me.id, new Date());
   }, "ご注文をキャンセルしました");
+}
+
+/** 「受け取りました」（#25）。発送済みの荷物をその場で配達完了にする */
+export async function confirmReceived(farmOrderId: string): Promise<ActionResult> {
+  return runAction(async () => {
+    const me = await assertUser();
+    const id = parseInput(idSchema, farmOrderId);
+    await confirmReceivedByCustomer(id, me.id, new Date());
+    refresh();
+  }, "受け取りを確認しました。ありがとうございました");
 }
 
 /* ───────────── messages ───────────── */

@@ -310,6 +310,12 @@ export const farmOrders = pgTable(
     /** set when money was returned to the customer for this farm order */
     refundedAt: timestamp("refunded_at", { withTimezone: true }),
     refundAmount: integer("refund_amount"),
+    /**
+     * 配達の問題（持ち戻り・返送・予定を大きく過ぎても届かない。#25）。入っている間は自動で配達完了にしない。
+     * 生産者と運営に知らせ、運営が判断する（配達完了にする・返金する）。配送業者の記録で配達完了になれば解ける
+     */
+    deliveryIssueAt: timestamp("delivery_issue_at", { withTimezone: true }),
+    deliveryIssueNote: text("delivery_issue_note"),
     labelPrintedAt: timestamp("label_printed_at", { withTimezone: true }),
     reminderSentAt: timestamp("reminder_sent_at", { withTimezone: true }),
     reviewRequestedAt: timestamp("review_requested_at", { withTimezone: true }),

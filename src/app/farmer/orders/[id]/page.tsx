@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
+import { DeliveryIssueAlert } from "@/components/common/delivery-issue-alert";
 import { StatusBadge } from "@/components/common/status-badge";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { CopyButton } from "@/components/farmer/copy-button";
@@ -70,6 +71,7 @@ export default async function FarmerOrderPage({ params }: PageProps<"/farmer/ord
           </>
         }
       />
+      <DeliveryIssueAlert status={fo.status} at={fo.deliveryIssueAt} note={fo.deliveryIssueNote} audience="farmer" />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-w-0 space-y-6">

@@ -11,6 +11,7 @@ import { carriers } from "@/config/shipping";
 import { fromYmd } from "@/lib/dates";
 import { formatDateTime, formatShortDate } from "@/lib/format";
 import type { OrderDetailFarmOrder } from "@/server/queries/account";
+import { ConfirmReceivedButton } from "./confirm-received-button";
 import { FulfillmentTracker } from "./fulfillment-tracker";
 import { ReviewDialog } from "./review-dialog";
 import { ShipmentTimeline } from "./shipment-timeline";
@@ -106,6 +107,11 @@ export function FarmOrderSection({ fo }: { fo: OrderDetailFarmOrder }) {
               {delivered && fo.deliveredAt ? formatDateTime(fo.deliveredAt) : fo.estimatedDeliveryDate ? formatShortDate(fromYmd(fo.estimatedDeliveryDate)) : "—"}
               {!delivered && fo.shipByDate && (
                 <p className="text-muted-foreground text-xs">出荷予定 {formatShortDate(fromYmd(fo.shipByDate))}</p>
+              )}
+              {fo.status === "shipped" && (
+                <div className="pt-2">
+                  <ConfirmReceivedButton farmOrderId={fo.id} />
+                </div>
               )}
             </Info>
             <Info icon={Package} label="荷姿">

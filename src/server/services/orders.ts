@@ -4,7 +4,7 @@ import { catalogLimits, REMOVED_VARIANT_SORT } from "@/config/catalog";
 import { calcCommission } from "@/config/fees";
 import { couponOncePerUserCopy } from "@/config/payments";
 import { routes } from "@/config/nav";
-import { shippingPolicy, type DeliveryTimeSlot } from "@/config/shipping";
+import { shippingPolicy, shippingZones, type DeliveryTimeSlot } from "@/config/shipping";
 import { farmOrderStatusMeta, farmOrderTransitions } from "@/config/status";
 import { db } from "@/db";
 import type { Database } from "@/db/client";
@@ -30,10 +30,10 @@ import {
   type ShipmentEventType,
 } from "@/db/schema";
 import { tags } from "@/lib/cache-tags";
-import { toYmd, type YMD } from "@/lib/dates";
+import { addDays, toYmd, type YMD } from "@/lib/dates";
 import { formatDateTime } from "@/lib/format";
 import { orderCode } from "@/lib/ids";
-import { quoteShipment, scheduleDelivery, type DeliverySchedule, type ShipmentQuote } from "@/lib/shipping";
+import { quoteShipment, scheduleDelivery, zoneOf, type DeliverySchedule, type ShipmentQuote } from "@/lib/shipping";
 import { ActionError } from "@/server/actions/_utils";
 import { expireTags } from "@/server/cache";
 import { readSettingsUncached } from "@/server/queries/settings";
@@ -479,7 +479,7 @@ const eventFor: Partial<Record<FarmOrderStatus, { type: ShipmentEventType; messa
 };
 
 export type TransitionOptions = {
-  source: "farmer" | "admin" | "customer" | "cron" | "system";
+  source: "farmer" | "admin" | "customer" | "cron" | "system" | "carrier";
   now: Date;
   trackingNumber?: string | null;
   carrier?: Carrier;
@@ -503,6 +503,10 @@ export async function transitionFarmOrder(farmOrderId: string, to: FarmOrderStat
   if (to === "shipped") {
     patch.shippedAt = opts.now;
     patch.trackingNumber = opts.trackingNumber ?? fo.trackingNumber;
+    // お届け予定日を実際に発送した日から引き直す（遅れて発送したら後ろへ。早まる方には動かさない。#25）。
+    // 自動の配達完了（services/shipping/delivery.ts）と発送メールの「お届け予定」がこの日を使う
+    const fromShipDate = addDays(toYmd(opts.now), shippingZones[zoneOf(fo.order.shippingAddress.prefecture)].transitDays);
+    if (!fo.estimatedDeliveryDate || fo.estimatedDeliveryDate < fromShipDate) patch.estimatedDeliveryDate = fromShipDate;
     if (opts.carrier) patch.carrier = opts.carrier;
   }
   if (to === "delivered") patch.deliveredAt = opts.now;
@@ -554,6 +558,22 @@ export async function transitionFarmOrder(farmOrderId: string, to: FarmOrderStat
   }
   expireTags(tags.analytics, tags.farmAnalytics(fo.farmId), to === "cancelled" && tags.products);
   return updated;
+}
+
+/**
+ * お客さまの「受け取りました」（#25）。自分の注文の、発送済みの荷物だけ。配達の問題が記録されていても、受け取ったなら完了にする。
+ * 業者の追跡やお届け予定日のルール（services/shipping/delivery.ts）を待たずに、その場で配達完了（精算・レビュー依頼が進む）。
+ */
+export async function confirmReceivedByCustomer(farmOrderId: string, userId: string, now: Date) {
+  const [own] = await db
+    .select({ id: farmOrders.id, status: farmOrders.status })
+    .from(farmOrders)
+    .innerJoin(orders, eq(orders.id, farmOrders.orderId))
+    .where(and(eq(farmOrders.id, farmOrderId), eq(orders.userId, userId)))
+    .limit(1);
+  if (!own) throw new ActionError("ご注文が見つかりません");
+  if (own.status !== "shipped") throw new ActionError(shippingPolicy.delivery.confirmNotShipped);
+  return transitionFarmOrder(own.id, "delivered", { source: "customer", now, note: shippingPolicy.delivery.byCustomer, actorId: userId });
 }
 
 /** Customer-initiated cancel of a whole order (only before shipment). */

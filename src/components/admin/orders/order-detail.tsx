@@ -1,5 +1,6 @@
 import { CreditCard, ExternalLink, Gift, MapPin, UserRound } from "lucide-react";
 import Link from "next/link";
+import { DeliveryIssueAlert } from "@/components/common/delivery-issue-alert";
 import { Icon } from "@/components/common/icon";
 import { Price } from "@/components/common/price";
 import { StatusBadge, ToneBadge } from "@/components/common/status-badge";
@@ -141,6 +142,7 @@ function FarmOrderCard({ orderId, fo, canRefund }: { orderId: string; fo: FarmOr
           ))}
         </ul>
 
+        <DeliveryIssueAlert status={fo.status} at={fo.deliveryIssueAt} note={fo.deliveryIssueNote} audience="admin" />
         <div className="grid gap-5 md:grid-cols-2">
           <div className="bg-muted/40 space-y-1.5 rounded-xl p-3 text-xs">
             <Row label="商品代金" value={formatYen(fo.subtotal)} />

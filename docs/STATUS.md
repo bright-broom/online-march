@@ -46,7 +46,7 @@
 | 検索エンジンへの公開 | 準備中のため `noindex`（自動） | デモモードを無効にし本番キーを入れると自動で公開される。作業不要 |
 | Vercel Analytics / Speed Insights | コンポーネントは `src/app/layout.tsx` に組み込み済み（本番は同一オリジン配信なので CSP 変更不要）。Vercel ダッシュボード側で有効化されているかは未確認 | 使うならダッシュボードで有効化 |
 
-コード側の残りは GitHub Issues の `P2` と、判断待ちの `owner-decision`。バックログ #21 は PR #23 で**スタッフアカウントと配送業者API以外をすべて実装済み**。その2つは仕様・契約の決定が要るので #24（スタッフアカウント）・#25（配送業者APIの配達完了連携）に論点を書いて切り出した。#24 はオーナーの決定（Issue のコメント）をもとに PR #23 で実装済み。#25 は業者との契約待ち。
+コード側の残りは GitHub Issues の `P2` と、判断待ちの `owner-decision`。バックログ #21 は PR #23 で**スタッフアカウントと配送業者API以外をすべて実装済み**。その2つは仕様・契約の決定が要るので #24（スタッフアカウント）・#25（配送業者APIの配達完了連携）に論点を書いて切り出した。#24・#25 もオーナーの決定（各 Issue のコメント）をもとに PR #23 で実装済み（#25 は業者に依存しない部分。業者との API 契約はまだ）。
 公開の可否を決めるのは上の表（オーナー作業）と Issues の `P0`。
 チェック自体は「鍵があるか」ではなく「実際に動いているか」を見る（自動処理の最終成功・バックアップが48時間以内・
 デモ以外の運営アカウント・公開URL）。`server/queries/go-live.ts`、回帰テスト `queries/__tests__/go-live.test.ts`。
@@ -56,14 +56,14 @@
 | Issue | 状態 |
 | --- | --- |
 | #13 自動送金の農家への手動「振込済み」（二重払い） | **main にマージ済み**（PR #22, `0d87731`）。本番の画面での確認は未実施（→ 3節） |
-| #12 エラー監視 / #14 停止中の農家の精算 / #15 出店審査 / #16 メールアドレスの確認と変更 / #17 決済画面から戻ったときの取り消し / #19 操作記録 / #20 振込先口座 | **PR #23 でレビュー待ち**（ブランチ `claude/zealous-feynman-b5sb80`、Issue ごとにコミットを分けてある）。マージで各 Issue が閉じる。**テーブルを2つ足す**（マイグレーション 0010 `admin_audit_logs`・0011 `farm_bank_accounts`、追加のみ。本番ビルドが先に当てる）。#21 で列を足す（0012 `coupons.once_per_user`、0013 `user.suspended_at`・`user.suspended_reason`、0014 `reviews.images`。どれも既定値つき）。#24 でテーブルを1つと列を1つ足す（0015 `farm_members`・`shipment_events.actor_id`） |
-| #21 バックログ | **PR #23 に同梱**（同じブランチ。まとまりごとにコミット）。守りの小物・回数制限・追跡番号・案内と通知・画面の基本・ページングと検索・クーポン「お一人さま1回」・会計CSV・利用停止と匿名化・レビューの写真。**#21 自体は閉じない**（残りの2つを #24・#25 に切り出した。#24 はこの PR で実装済みなので、残るのは #25 だけ。マージ後にオーナーが #21 を閉じてよい） |
+| #12 エラー監視 / #14 停止中の農家の精算 / #15 出店審査 / #16 メールアドレスの確認と変更 / #17 決済画面から戻ったときの取り消し / #19 操作記録 / #20 振込先口座 | **PR #23 でレビュー待ち**（ブランチ `claude/zealous-feynman-b5sb80`、Issue ごとにコミットを分けてある）。マージで各 Issue が閉じる。**テーブルを2つ足す**（マイグレーション 0010 `admin_audit_logs`・0011 `farm_bank_accounts`、追加のみ。本番ビルドが先に当てる）。#21 で列を足す（0012 `coupons.once_per_user`、0013 `user.suspended_at`・`user.suspended_reason`、0014 `reviews.images`。どれも既定値つき）。#24 でテーブルを1つと列を1つ足す（0015 `farm_members`・`shipment_events.actor_id`）。#25 で列を2つ足す（0016 `farm_orders.delivery_issue_at`・`delivery_issue_note`） |
+| #21 バックログ | **PR #23 に同梱**（同じブランチ。まとまりごとにコミット）。守りの小物・回数制限・追跡番号・案内と通知・画面の基本・ページングと検索・クーポン「お一人さま1回」・会計CSV・利用停止と匿名化・レビューの写真。**#21 自体は閉じない**（残りの2つを #24・#25 に切り出した。#24・#25 もこの PR で対応したので、マージ後にオーナーが #21 を閉じてよい） |
 | #24 スタッフアカウント | **PR #23 に同梱**。オーナーの決定（2026-09-26、Issue #24 のコメント）: オーナーがメールで招待・5人まで・1人1農園・購入者のアカウントのまま参加。権限は「出荷担当」「すべて」の2つ、精算・振込先口座・スタッフ管理はオーナーだけ。お客さまには農園名で届く。マージで閉じる（コミットに `Closes #24`） |
-| #25 配送業者APIの配達完了連携 | `owner-decision`。どの業者と誰の名義で契約するか、など（Issue に論点） |
+| #25 配送業者APIの配達完了連携 | **PR #23 に同梱（業者に依存しない部分）**。オーナーの決定（2026-09-26、Issue #25 のコメント）: API 契約はまだ・契約するなら運営がまとめて・API が無い荷物はお届け予定日の翌日に完了＋お客さまの「受け取りました」・届かなかったら知らせて自動完了を止める。業者のつなぎ込みは契約後（手順は docs/SHIPPING.md §5）。マージで閉じる（`Closes #25`）。契約したら新しい Issue で |
 
 **PR #23 をマージしたら本番で確かめること**（確かめたら 3節へ移す）:
 
-- ビルドログに `[db:migrate] done`（0010〜0015 が当たったこと）
+- ビルドログに `[db:migrate] done`（0010〜0016 が当たったこと）
 - /admin/audit（操作記録）が開き、手数料率などを変えると1行増える
 - /farmer/payouts に「振込先口座」が出て、登録すると下4桁だけ表示される。/admin/payouts の明細で「全桁を表示」→ 操作記録に残る
 - Stripe のテスト決済画面で「戻る」→ カートに「お支払いを中断しました」、在庫とクーポンが戻る
@@ -79,12 +79,14 @@
 - #24 スタッフ: 生産者で /farmer/staff → テスト用のアドレスを「出荷担当」で招待 → 画面に出るリンクを、そのアドレスで登録した購入者アカウントで開いて参加 →
   生産者画面のメニューが「受注管理・出荷センター・メッセージ・アカウント」だけ、/farmer/payouts を開くと受注管理へ戻される →
   オーナーが「外す」→ 生産者画面に入れない。**招待メールの到達は Resend 設定後**
+- #25 配達完了: テストの注文を発送 → マイページで「受け取りました」→ 配達完了になり、レビューが書ける。
+  発送したまま放置した注文が、お届け予定日の翌日の `sync-tracking` で配達完了になる（/admin/automation の実行結果に件数）
 - 作ったテストデータ（振込先口座・操作記録・停止したテスト用アカウント・レビューと写真・スタッフの招待とアカウントを含む）を消す（→ 5節）
 
 **オーナーの判断待ち**（コードは決まってから）:
 
 - #10 インボイス対応 / #11 二重価格の運用ルール / #18 「出荷準備中」でのお客さまのキャンセル
-- #25 配送業者APIの配達完了連携（#21 から切り出し）
+- 配送業者の追跡 API の契約（#25 の続き）: どの業者と契約するか。契約したら docs/SHIPPING.md §5 の手順でつなぐ
 - #24 の残り（決めていない既定）: スタッフへのお知らせ（新しい注文・メッセージのお知らせは今はオーナーにだけ届く。スタッフは生産者画面のバッジで気づく）。
   生産者側の操作記録（今は発送の履歴に操作した人を残すだけ）
 - 停止した農家への振込を止める手段が要るか（今は停止しても自動送金は続く。#14 の PR に記載。要るなら Issue にする）
@@ -155,6 +157,9 @@
 **テストで赤くできない守りは、そう書いておく**: PGlite はクエリを1本ずつ処理するので、同時実行の守り（クーポン「1人1回」の
 `pg_advisory_xact_lock` と数え直し、回数制限の upsert）は外してもテストが通る。テスト名とコメントに「ここでは再現できない」と書いた
 （`coupon-once-per-user.test.ts`, `rate-limit.test.ts`）。
+2026-09-26 の実例（#25 配達完了）: 予定日の当日に完了させる、予定日ではなく発送日で数える、発送時に予定日を引き直さない・希望日を上書きする、
+配達の問題を無視する・問題があっても自動で完了させる・毎回知らせる、API 障害を「API 無し」と同じに扱う、他人の荷物を受け取れる、など。
+「まだ発送していない荷物は受け取れない」は状態遷移の表でも断られる二重の守りだったので、**断る理由（文言）まで**確かめるテストにした。
 2026-09-26 の実例（#24 スタッフ）: 権限の表を広げる、ページ／Action の権限チェックを外す、招待中の人を所属扱いにする、別のアドレス・生産者・
 2つ目の農園での参加を許す、人数上限を外す、トークンを平文で持つ・使った後も残す、よその農園のスタッフを変更できるようにする、など。
 このとき**壊しても赤くならなかった2件**から分かったこと:
@@ -295,4 +300,5 @@ PR #23 の確認で作るものの消し方（どれも運営画面で消せな�
 | #21 運営向け会計CSV（月・注文日 JST で切った出荷単位ごとの明細＋生産者別集計、UTF-8 BOM／Shift_JIS、書き出しを操作記録に残す） | `services/accounting-csv.ts`, `queries/admin.ts#getAccountingRows`, `app/api/admin/accounting/route.ts`, `admin/payouts/accounting-export-card.tsx` | `services/__tests__/accounting-csv.test.ts` |
 | #21 ユーザーの利用停止・匿名化（停止中はどの入口からもログインできず端末も切れる・注文はそのまま・再開できる／匿名化は退会と同じ処理を運営が行う・自分と運営は対象外・操作記録つき） | `user.suspended_at`（マイグレーション 0013）, `server/auth/auth.ts`（databaseHooks）, `server/auth/session.ts`, `actions/admin-users.ts#setUserSuspended/anonymizeUser`, `admin/users/user-moderation.tsx` | `server/auth/__tests__/user-suspension.test.ts` |
 | #24 農園のスタッフ（オーナーが招待・5人まで・1人1農園・購入者アカウントのまま参加／出荷担当・すべて・オーナーの3段階の権限、精算と口座とスタッフ管理はオーナーだけ／メニューも権限で絞る／お客さまには農園名で届き、送った人は生産者側にだけ／発送の履歴に操作した人） | `farm_members`・`shipment_events.actor_id`（マイグレーション 0015）, `config/farm-staff.ts`, `server/auth/guards.ts#farmAccessOf/requireFarm/assertFarm`, `services/farm-staff.ts`, `actions/farm-staff.ts`, `app/farmer/staff`, `app/(shop)/join/staff/[token]` | `actions/__tests__/farm-staff.test.ts`, `authorization.test.ts` |
+| #25 配達完了の判定（お届け予定日の翌日に自動・発送時に予定日を引き直す・お客さまの「受け取りました」・届かなかったら知らせて止める・業者 API の差し込み口と障害時の猶予） | `farm_orders.delivery_issue_*`（マイグレーション 0016）, `services/shipping/delivery.ts`, `services/shipping/tracking.ts#trackingAdapters`, `services/orders.ts#transitionFarmOrder/confirmReceivedByCustomer`, `mypage/confirm-received-button.tsx`, `common/delivery-issue-alert.tsx` | `services/__tests__/delivery-sync.test.ts`, `jobs/jobs.test.ts` |
 | #21 レビューの写真（3枚まで・お客さまがアップロード・このサイトの reviews フォルダの URL だけ・編集で差し替え・運営はレビューごと非公開にして対応） | `reviews.images`（マイグレーション 0014）, `services/storage.ts#uploadFolders`, `validators/engagement.ts#reviewImageUrlPattern`, `mypage/review-dialog.tsx`, `common/review-photos.tsx`, `admin/products/reviews-table.tsx`（写真ありで絞り込み） | `actions/__tests__/review-photos.test.ts`, `services/__tests__/upload.test.ts` |
