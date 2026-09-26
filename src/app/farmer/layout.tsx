@@ -16,9 +16,9 @@ export default function FarmerLayout({ children }: LayoutProps<"/farmer">) {
 }
 
 async function Shell({ children }: { children: React.ReactNode }) {
-  const { user, farm } = await requireFarm();
+  const { user, farm, access } = await requireFarm("member");
   return (
-    <DashboardShell area="farmer" user={user} context={farm.name} farmId={farm.id}>
+    <DashboardShell area="farmer" user={user} context={farm.name} farmId={farm.id} farmAccess={access}>
       {farm.status !== "active" && <FarmStatusBanner status={farm.status} />}
       {children}
     </DashboardShell>

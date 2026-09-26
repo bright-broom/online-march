@@ -9,7 +9,7 @@ import { requireFarm } from "@/server/auth/guards";
 export const metadata: Metadata = { title: "出荷・配送設定" };
 
 export default async function FarmerSettingsPage() {
-  const { farm } = await requireFarm();
+  const { farm } = await requireFarm("shop");
   await connection();
   const nowIso = new Date().toISOString();
   return (

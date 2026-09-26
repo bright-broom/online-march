@@ -254,6 +254,22 @@ export const emailTemplates = {
     };
   },
 
+  /** 農園スタッフの招待（#24）。リンクは招待されたアドレスのアカウントでだけ使える */
+  farmStaffInvite(p: { to: string; farmName: string; inviterName: string; accessLabel: string; url: string; expiresDays: number }): EmailMessage {
+    return {
+      to: p.to,
+      subject: `【${p.farmName}】スタッフとして招待されました`,
+      blocks: [
+        { type: "p", text: `${p.inviterName} さんから「${p.farmName}」のスタッフ（権限：${p.accessLabel}）として招待されました。` },
+        { type: "button", label: "招待を確認する", href: p.url },
+        {
+          type: "note",
+          text: `このメールアドレスで会員登録・ログインしてから参加してください（まだの方は無料で登録できます）。リンクの有効期限は${p.expiresDays}日です。心当たりがない場合は、このメールを破棄してください。`,
+        },
+      ],
+    };
+  },
+
   /** 承認済みショップの一時停止（#15）。進行中の注文の出荷と精算は続く */
   farmSuspended(p: { to: string; farmName: string; reason?: string }): EmailMessage {
     return {

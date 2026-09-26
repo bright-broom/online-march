@@ -127,7 +127,7 @@ export async function refundOrder(data: { orderId: string; farmOrderId?: string 
  * 生産者によるキャンセル。支払い済みの出荷単位は返金まで行う（以前は在庫を戻すだけで、お客さまは引き落とされたままだった）。
  * 未決済のものは返金せずにキャンセルだけする。在庫は transitionFarmOrder が戻す。
  */
-export async function cancelFarmOrderAsFarmer(input: { farmOrderId: string; farmId: string; reason: string; now: Date }) {
+export async function cancelFarmOrderAsFarmer(input: { farmOrderId: string; farmId: string; reason: string; now: Date; actorId?: string }) {
   const fo = await db.query.farmOrders.findFirst({
     where: and(eq(farmOrders.id, input.farmOrderId), eq(farmOrders.farmId, input.farmId)),
     with: { order: true },
@@ -139,6 +139,6 @@ export async function cancelFarmOrderAsFarmer(input: { farmOrderId: string; farm
     const { amount } = await refundOrder({ orderId: fo.orderId, farmOrderId: fo.id }, { source: "farmer", note });
     return { refunded: amount };
   }
-  await transitionFarmOrder(fo.id, "cancelled", { source: "farmer", farmId: input.farmId, now: input.now, note });
+  await transitionFarmOrder(fo.id, "cancelled", { source: "farmer", farmId: input.farmId, now: input.now, note, actorId: input.actorId });
   return { refunded: 0 };
 }

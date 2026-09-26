@@ -21,6 +21,7 @@ const adminOps = await import("../admin-ops");
 const messages = await import("../messages");
 const reviews = await import("../reviews");
 const checkout = await import("../checkout");
+const farmStaff = await import("../farm-staff");
 const { createOrder } = await import("@/server/services/orders");
 
 const signIn = async (email: string, role: "customer" | "farmer" | "admin") => {
@@ -147,6 +148,19 @@ describe("cross-tenant authorization", () => {
 
     expect(res.ok).toBe(false);
     expect((await db.query.reviews.findFirst({ where: eq(s.reviews.id, victim.id) }))!.reply).toBe(victim.reply);
+  });
+
+  it("a farmer cannot change or remove another farm's staff (#24)", async () => {
+    const [victim] = await db
+      .insert(s.farmMembers)
+      .values({ farmId: theirs.id, email: "their-staff@awaji-test.jp", access: "shipping", expiresAt: new Date(Date.now() + 86_400_000) })
+      .returning();
+    await signIn("farmer@demo.awaji", "farmer");
+
+    expect((await farmStaff.changeStaffAccess({ memberId: victim.id, access: "all" })).ok).toBe(false);
+    expect((await farmStaff.removeStaff({ memberId: victim.id })).ok).toBe(false);
+    expect((await farmStaff.resendStaffInvite({ memberId: victim.id })).ok).toBe(false);
+    expect((await db.query.farmMembers.findFirst({ where: eq(s.farmMembers.id, victim.id) }))!.access).toBe("shipping");
   });
 
   it("a signed-out visitor cannot mutate anything", async () => {

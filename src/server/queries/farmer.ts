@@ -1,13 +1,17 @@
 import "server-only";
+import { createHash } from "node:crypto";
 import { and, asc, count, desc, eq, gte, inArray, isNull, lt, lte, ne, sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 import { catalogLimits } from "@/config/catalog";
+import { farmStaffCopy } from "@/config/farm-staff";
 import { shippingZones, type ShippingZoneKey } from "@/config/shipping";
 import { db } from "@/db";
 import { getMaskedBankAccount } from "@/server/services/bank-account";
 import {
   announcements,
+  farmMembers,
   farmOrders,
+  farms,
   messages,
   orderItems,
   orders,
@@ -224,12 +228,13 @@ export async function getFarmMonthlyFinance(farmId: string) {
 
 /* ───────────────────────── Overview (request-time) ───────────────────────── */
 
-export async function getFarmTodos(farmId: string, ownerId: string, today: YMD) {
+export async function getFarmTodos(farmId: string, today: YMD) {
   const [[newOrders], [dueToday], [overdue], [unread], [lowStock]] = await Promise.all([
     db.select({ n: count() }).from(farmOrders).where(and(eq(farmOrders.farmId, farmId), eq(farmOrders.status, "paid"))),
     db.select({ n: count() }).from(farmOrders).where(and(eq(farmOrders.farmId, farmId), inArray(farmOrders.status, TO_SHIP_STATUSES), eq(farmOrders.shipByDate, today))),
     db.select({ n: count() }).from(farmOrders).where(and(eq(farmOrders.farmId, farmId), inArray(farmOrders.status, TO_SHIP_STATUSES), lt(farmOrders.shipByDate, today))),
-    db.select({ n: count() }).from(messages).where(and(eq(messages.farmId, farmId), ne(messages.senderId, ownerId), isNull(messages.readAt))),
+    // お客さまから届いて未読のもの（オーナー・スタッフのどちらが送ったかに関係なく、#24）
+    db.select({ n: count() }).from(messages).where(and(eq(messages.farmId, farmId), eq(messages.senderId, messages.customerId), isNull(messages.readAt))),
     db
       .select({ n: count() })
       .from(productVariants)
@@ -407,7 +412,8 @@ export async function getFarmOrder(farmId: string, farmOrderId: string) {
     with: {
       order: true,
       items: true,
-      events: { orderBy: (t, { desc: d }) => d(t.occurredAt) },
+      // 誰が操作したか（#24。オーナーとスタッフのどちらか）。名前だけ
+      events: { orderBy: (t, { desc: d }) => d(t.occurredAt), with: { actor: { columns: { name: true } } } },
     },
   });
   if (!fo) return null;
@@ -681,3 +687,40 @@ export async function getSalesRows(farmId: string, from: YMD, to: YMD) {
 export async function getFarmBankAccount(farmId: string) {
   return getMaskedBankAccount(farmId);
 }
+
+/** /farmer/staff の一覧（招待中・期限切れ・参加中） */
+export async function listFarmStaff(farmId: string) {
+  return db
+    .select({
+      id: farmMembers.id,
+      email: farmMembers.email,
+      access: farmMembers.access,
+      invitedAt: farmMembers.invitedAt,
+      expiresAt: farmMembers.expiresAt,
+      acceptedAt: farmMembers.acceptedAt,
+      name: user.name,
+    })
+    .from(farmMembers)
+    .leftJoin(user, eq(user.id, farmMembers.userId))
+    .where(eq(farmMembers.farmId, farmId))
+    .orderBy(farmMembers.invitedAt);
+}
+export type FarmStaffRow = Awaited<ReturnType<typeof listFarmStaff>>[number];
+
+/** 招待リンクのトークンは sha256 だけを DB に持つ（#24, services/farm-staff.ts） */
+export const hashInviteToken = (token: string) => createHash("sha256").update(token).digest("hex");
+
+/** 招待リンクの中身（参加の画面に出す）。使えない理由があれば error */
+export async function getFarmInvite(token: string, now: Date) {
+  const row = await db
+    .select({ id: farmMembers.id, email: farmMembers.email, access: farmMembers.access, expiresAt: farmMembers.expiresAt, acceptedAt: farmMembers.acceptedAt, farmName: farms.name })
+    .from(farmMembers)
+    .innerJoin(farms, eq(farms.id, farmMembers.farmId))
+    .where(eq(farmMembers.tokenHash, hashInviteToken(token)))
+    .limit(1)
+    .then((r) => r[0]);
+  if (!row || row.acceptedAt) return { error: farmStaffCopy.errors.invalidInvite } as const;
+  if (row.expiresAt.getTime() < now.getTime()) return { error: farmStaffCopy.errors.expired } as const;
+  return { invite: row } as const;
+}
+

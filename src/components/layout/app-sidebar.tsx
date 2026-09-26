@@ -6,6 +6,7 @@ import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader,
   SidebarMenu, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarRail, useSidebar,
 } from "@/components/ui/sidebar";
+import { canFarm, type FarmAccess } from "@/config/farm-staff";
 import { adminNav, farmerNav, mypageNav, type NavGroup } from "@/config/nav";
 import type { BadgeCounts } from "@/server/queries/badges";
 import { UserMenu, type MenuUser } from "./user-menu";
@@ -14,7 +15,15 @@ export type DashboardArea = "mypage" | "farmer" | "admin";
 export const areaNav: Record<DashboardArea, NavGroup[]> = { mypage: mypageNav, farmer: farmerNav, admin: adminNav };
 const areaRoot: Record<DashboardArea, string> = { mypage: "/mypage", farmer: "/farmer", admin: "/admin" };
 
-export function AppSidebar({ area, user, context, badges }: { area: DashboardArea; user: MenuUser; context?: string; badges: BadgeCounts }) {
+/** 生産者画面では、権限の無いメニューを出さない（#24。開いてもページのガードが断る） */
+export const visibleNav = (area: DashboardArea, farmAccess?: FarmAccess): NavGroup[] =>
+  areaNav[area]
+    .map((g) => ({ ...g, items: g.items.filter((i) => !i.capability || (farmAccess ? canFarm(farmAccess, i.capability) : false)) }))
+    .filter((g) => g.items.length > 0);
+
+export function AppSidebar({
+  area, user, context, badges, farmAccess,
+}: { area: DashboardArea; user: MenuUser; context?: string; badges: BadgeCounts; farmAccess?: FarmAccess }) {
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
   const isActive = (href: string) => (href === areaRoot[area] ? pathname === href : pathname.startsWith(href));
@@ -30,7 +39,7 @@ export function AppSidebar({ area, user, context, badges }: { area: DashboardAre
         )}
       </SidebarHeader>
       <SidebarContent>
-        {areaNav[area].map((group) => (
+        {visibleNav(area, farmAccess).map((group) => (
           <SidebarGroup key={group.title}>
             <SidebarGroupLabel>{group.title}</SidebarGroupLabel>
             <SidebarGroupContent>

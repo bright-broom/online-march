@@ -74,7 +74,7 @@ export async function deleteReview(reviewId: string): Promise<ActionResult> {
 /** Farmer replies to a review on their product. */
 export async function replyToReview(input: { reviewId: string; reply: string }): Promise<ActionResult> {
   return runAction(async () => {
-    const { farm } = await assertFarm();
+    const { farm } = await assertFarm("catalog");
     const data = parseInput(reviewReplySchema, input);
     const review = await db.query.reviews.findFirst({ where: and(eq(reviews.id, data.reviewId), eq(reviews.farmId, farm.id)) });
     if (!review) throw new ActionError("レビューが見つかりません");

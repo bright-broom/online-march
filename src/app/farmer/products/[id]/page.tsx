@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "商品を編集" };
 
 export default async function EditProductPage({ params }: PageProps<"/farmer/products/[id]">) {
   const { id } = await params;
-  const { farm } = await requireFarm();
+  const { farm } = await requireFarm("catalog");
   const product = /^[0-9a-f-]{36}$/i.test(id) ? await getFarmProduct(farm.id, id) : null;
   if (!product) notFound();
   return (

@@ -18,7 +18,7 @@ import { getFarmReviews, getFarmReviewStats } from "@/server/queries/farmer";
 export const metadata: Metadata = { title: "レビュー" };
 
 export default async function FarmerReviewsPage({ searchParams }: PageProps<"/farmer/reviews">) {
-  const { farm } = await requireFarm();
+  const { farm } = await requireFarm("catalog");
   const sp = await searchParams;
   const unrepliedOnly = sp.filter === "unreplied";
   const [stats, reviews] = await Promise.all([getFarmReviewStats(farm.id), getFarmReviews(farm.id, { unrepliedOnly })]);

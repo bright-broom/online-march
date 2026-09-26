@@ -15,7 +15,7 @@ import { getFarmOrderCounts, listFarmOrders, orderTabStatuses, type OrderTab } f
 export const metadata: Metadata = { title: "受注管理" };
 
 export default async function FarmerOrdersPage({ searchParams }: PageProps<"/farmer/orders">) {
-  const { farm } = await requireFarm();
+  const { farm } = await requireFarm("ship");
   const sp = await searchParams;
   const tab: OrderTab = (orderTabStatuses as readonly string[]).includes(String(sp.tab)) ? (String(sp.tab) as OrderTab) : "paid";
   await connection();

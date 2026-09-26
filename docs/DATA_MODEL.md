@@ -63,7 +63,7 @@ farm_bank_accounts (farm 1─1)  ← 振込先口座。口座番号は暗号化�
 | `orders` | 顧客の1決済。`shippingAddress` はスナップショット JSON。`paymentProvider` stripe/demo |
 | `farm_orders` | 農家別の出荷単位。金額内訳（subtotal, shippingFee, discount, commission*, payoutAmount）と出荷情報（carrier, boxSize/Count, tracking, shipByDate, ETA）をインライン保持 |
 | `order_items` | 購入時点の名称・価格スナップショット |
-| `shipment_events` | 追跡タイムライン（source: system/farmer/cron/carrier） |
+| `shipment_events` | 追跡タイムライン（source: system/farmer/cron/carrier）。`actorId` は操作した人（オーナー・スタッフ・運営。#24。自動処理は null）で、生産者の注文画面の履歴に名前を出す |
 | `payouts` | 月次精算。`scheduledFor`=翌月15日 |
 | 在庫（`product_variants.stock`） | 予約は**条件付き更新**（`stock >= 数量` の行だけを減らす）で注文トランザクション内。同時注文は Postgres の行ロックで直列化され、売り越し・在庫マイナスは起きない。キャンセル・返金で戻す。回帰テスト `services/__tests__/stock-race.test.ts` |
 | `payouts.transferError` / `transferAttemptedAt` | 自動送金が通らなかった理由と試行時刻（送金成功で null に戻す）。/admin/payouts に表示 |
@@ -71,6 +71,7 @@ farm_bank_accounts (farm 1─1)  ← 振込先口座。口座番号は暗号化�
 | `reviews.images` | お客さまの写真（#21）。URL の配列（最大 `catalogLimits.maxReviewImages`=3）。付けられるのはこのサイトが reviews フォルダに置いたものだけ（`validators/engagement.ts#reviewImageUrlPattern`。よその画像を商品ページに出させない）。問題があれば運営がレビューごと非公開にする（写真だけを消す操作はない）。付けずに終わった写真・外した写真のファイルは Blob に残る（容量が問題になったら掃除のジョブを足す） |
 | `coupons.oncePerUser` | お一人さま1回まで（#21）。docs/PAYMENTS.md |
 | `user.suspendedAt/suspendedReason` | 運営による利用停止（#21）。下の「利用停止」 |
+| `farm_members` | 農園のスタッフ（#24）。オーナーが招待（`email`・`access` all/shipping・`tokenHash`＝招待リンクの sha256・7日有効）→ 招待されたアドレスの**購入者**アカウントで参加すると `userId`・`acceptedAt` が入り、`tokenHash` は消える。1人1農園（`userId` 一意）・1農園5人まで（招待中を含む、`config/farm-staff.ts`）。ロールは変えない。外す＝行を消す（ガードが毎回 DB を見るので次のリクエストから入れない）。退会で所属と招待中の行も消す。スタッフのままでは出店申請できない |
 | `farm_orders.refundedAt/refundAmount` | 返金の事実（金額・日時）。返金は `services/refunds.ts#refundOrder` のみ。タイムラインに `refund` イベント |
 
 ## 状態機械

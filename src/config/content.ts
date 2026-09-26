@@ -181,6 +181,8 @@ export const faqContent = [
 ] as const;
 
 export const joinContent = {
+  /** 農園のスタッフ（#24）は出店申請できない（1人1農園） */
+  staffMember: "農園のスタッフとして参加中のアカウントでは出店申請できません。スタッフを抜けてから申請してください",
   hero: {
     eyebrow: "FOR FARMERS",
     title: "畑のこだわりを、そのまま全国へ。",

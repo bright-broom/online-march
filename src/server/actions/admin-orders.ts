@@ -26,6 +26,7 @@ export async function adminTransitionFarmOrder(input: {
     const fo = await transitionFarmOrder(data.farmOrderId, data.to, {
       source: "admin",
       now: new Date(),
+      actorId: me.id,
       trackingNumber: data.trackingNumber || undefined,
       carrier: data.carrier,
       note: data.note || undefined,

@@ -193,3 +193,14 @@ export const shippingSettingsSchema = z
     path: ["freeShippingThreshold"],
   });
 export type ShippingSettingsInput = z.infer<typeof shippingSettingsSchema>;
+
+/* ── 農園スタッフ（#24） ── */
+const staffAccess = z.enum(["all", "shipping"], "権限を選んでください");
+export const staffInviteSchema = z.object({
+  email: z.string().trim().toLowerCase().pipe(z.email("メールアドレスの形式が正しくありません")).pipe(z.string().max(254)),
+  access: staffAccess,
+});
+export const staffAccessSchema = z.object({ memberId: z.uuid(), access: staffAccess });
+export const staffMemberSchema = z.object({ memberId: z.uuid() });
+/** 招待リンクのトークン（base64url 32バイト = 43文字） */
+export const staffInviteTokenSchema = z.object({ token: z.string().regex(/^[A-Za-z0-9_-]{43}$/, "招待リンクが正しくありません") });

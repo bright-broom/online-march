@@ -20,7 +20,7 @@ import { getPlatformSettings } from "@/server/queries/settings";
 export const metadata: Metadata = { title: "売上・精算" };
 
 export default async function FarmerPayoutsPage({ searchParams }: PageProps<"/farmer/payouts">) {
-  const { farm } = await requireFarm();
+  const { farm } = await requireFarm("money");
   const sp = await searchParams;
   await connection();
   const now = new Date();

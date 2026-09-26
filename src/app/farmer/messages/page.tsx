@@ -19,16 +19,16 @@ import { getThread, listThreads, markThreadRead } from "@/server/queries/message
 export const metadata: Metadata = { title: "メッセージ" };
 
 export default async function FarmerMessagesPage({ searchParams }: PageProps<"/farmer/messages">) {
-  const { user, farm } = await requireFarm();
+  const { farm } = await requireFarm("messages");
   const sp = await searchParams;
   const c = typeof sp.c === "string" && sp.c.length <= 64 ? sp.c : null;
   await connection();
   const now = new Date();
 
-  const threads = await listThreads({ farmId: farm.id, viewerId: user.id });
+  const threads = await listThreads({ farmId: farm.id });
   // ownership: only customers who ordered from / messaged this farm
   const customer = c ? await getFarmCustomer(farm.id, c) : null;
-  if (customer) await markThreadRead(farm.id, customer.id, user.id);
+  if (customer) await markThreadRead(farm.id, customer.id, "farm");
   const [messages, orders] = customer
     ? await Promise.all([getThread(farm.id, customer.id), getCustomerOrdersWithFarm(farm.id, customer.id)])
     : [[], []];
@@ -85,7 +85,7 @@ export default async function FarmerMessagesPage({ searchParams }: PageProps<"/f
                 <p className="font-medium">{customer.name} さん</p>
               </header>
               <div className="min-h-0 flex-1">
-                <ThreadView farmId={farm.id} customerId={customer.id} viewerId={user.id} messages={messages} />
+                <ThreadView farmId={farm.id} customerId={customer.id} messages={messages} />
               </div>
             </>
           ) : (

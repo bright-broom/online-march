@@ -24,13 +24,13 @@ function greeting(now: Date) {
 }
 
 export default async function FarmerOverviewPage() {
-  const { user, farm } = await requireFarm();
+  const { user, farm } = await requireFarm("money");
   await connection();
   const now = new Date();
   const today = toYmd(now);
   const [analytics, todos, upcoming, latestReviews, notices] = await Promise.all([
     getFarmAnalytics(farm.id),
-    getFarmTodos(farm.id, user.id, today),
+    getFarmTodos(farm.id, today),
     getUpcomingShipments(farm.id),
     getLatestReviews(farm.id),
     getFarmerAnnouncements(),

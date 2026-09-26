@@ -57,6 +57,12 @@ src/
   2FA を設定したアカウントはパスワードの後に `/two-factor` で6桁コード（またはバックアップコード）を入れる。
   端末をなくした運営は `npm run admin:reset-2fa -- --email …`（本人確認を別手段で取ってから）。
 - 農家は `farms.ownerId` で 1:1。farmer 画面の全クエリは **必ず farm.id でスコープ**。
+- **農園のスタッフ（#24）**: オーナーが招待し、購入者のアカウントのまま `farm_members` で農園に所属する（ロールは変えない・1人1農園・5人まで）。
+  `guards.ts#farmAccessOf` がオーナー（`owner`）かスタッフの権限（`all` / `shipping`）を返し、`requireFarm(capability)` /
+  `assertFarm(capability)` が `config/farm-staff.ts#canFarm` で判定する。**capability は必須**（書き忘れは型エラー）:
+  `ship`（注文・発送・送り状）/ `messages` / `cancel` / `catalog`（商品・レビュー返信）/ `shop`（ショップ・配送設定・お休み）/
+  `money`（概要・精算・口座・Stripe・売上明細 CSV）/ `staff`（スタッフ管理）、全員なら `"member"`。`money` と `staff` はオーナーだけ。
+  メニューは `NavItem.capability` で同じ値を使って絞る（`app-sidebar.tsx#visibleNav`）。スタッフが権限の無いページを開くと受注管理へ。
 - 出店申請: customer が /join から申請 → farms.status=pending → admin 承認で status=active & user.role=farmer。
 
 ## 4. エリア別レイアウトパターン（Cache Components 対応）
@@ -71,12 +77,12 @@ export default function Layout({ children }: LayoutProps<"/farmer">) {
   );
 }
 async function Shell({ children }: { children: React.ReactNode }) {
-  const { user, farm } = await requireFarm();
-  return <DashboardShell area="farmer" user={user} context={farm.name} farmId={farm.id}>{children}</DashboardShell>;
+  const { user, farm, access } = await requireFarm("member"); // オーナーとスタッフ全員（#24）
+  return <DashboardShell area="farmer" user={user} context={farm.name} farmId={farm.id} farmAccess={access}>{children}</DashboardShell>;
 }
 ```
 
-各ページも `requireFarm()` を呼んでよい（React `cache()` で重複排除）。各セグメントに `loading.tsx`。
+各ページも `requireFarm(<そのページに要る権限>)` を呼ぶ（React `cache()` で重複排除）。各セグメントに `loading.tsx`。
 
 ## 5. ルート一覧
 

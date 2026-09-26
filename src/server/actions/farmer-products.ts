@@ -24,7 +24,7 @@ function bustProductCaches(farmId: string, productId: string) {
  */
 export async function saveProduct(_prev: unknown, formData: FormData): Promise<ActionResult<{ id: string; created: boolean }>> {
   return runAction(async () => {
-    const { farm } = await assertFarm();
+    const { farm } = await assertFarm("catalog");
     const input = parseInput(productFormSchema, formToObject(formData));
     const now = new Date();
     const fields = {
@@ -133,7 +133,7 @@ export async function saveProduct(_prev: unknown, formData: FormData): Promise<A
 /** Quick action: 公開 / 非公開 / アーカイブ. */
 export async function setProductStatus(input: { id: string; status: "draft" | "active" | "archived" }): Promise<ActionResult> {
   return runAction(async () => {
-    const { farm } = await assertFarm();
+    const { farm } = await assertFarm("catalog");
     const data = parseInput(productStatusChangeSchema, input);
     const product = await db.query.products.findFirst({
       where: and(eq(products.id, data.id), eq(products.farmId, farm.id)),
@@ -154,7 +154,7 @@ export async function setProductStatus(input: { id: string; status: "draft" | "a
 /** Quick action: duplicate as a draft (images + visible variants). */
 export async function duplicateProduct(id: string): Promise<ActionResult<{ id: string }>> {
   return runAction(async () => {
-    const { farm } = await assertFarm();
+    const { farm } = await assertFarm("catalog");
     const src = await db.query.products.findFirst({
       where: and(eq(products.id, id), eq(products.farmId, farm.id)),
       with: {

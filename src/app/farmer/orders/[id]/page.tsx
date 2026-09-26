@@ -13,6 +13,7 @@ import { ShipByBadge } from "@/components/farmer/ship-by";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { canFarm } from "@/config/farm-staff";
 import { bpsToPercent } from "@/config/fees";
 import { routes } from "@/config/nav";
 import { carriers, deliveryTimeSlots, type DeliveryTimeSlot } from "@/config/shipping";
@@ -34,7 +35,9 @@ function Row({ label, children, strong }: { label: React.ReactNode; children: Re
 
 export default async function FarmerOrderPage({ params }: PageProps<"/farmer/orders/[id]">) {
   const { id } = await params;
-  const { farm } = await requireFarm();
+  const { farm, access } = await requireFarm("ship");
+  // 手数料と受取額は精算の情報なのでオーナーだけ（#24）。キャンセルは「すべて」のスタッフまで
+  const seesMoney = canFarm(access, "money");
   const fo = /^[0-9a-f-]{36}$/i.test(id) ? await getFarmOrder(farm.id, id) : null;
   if (!fo) notFound();
   await connection();
@@ -166,17 +169,21 @@ export default async function FarmerOrderPage({ params }: PageProps<"/farmer/ord
               <dl className="space-y-2">
                 <Row label="商品小計">{formatNumber(fo.subtotal)}円</Row>
                 <Row label="送料">{formatNumber(fo.shippingFee)}円</Row>
-                <Row label={`販売手数料 ${bpsToPercent(fo.commissionRateBps)}%`}>−{formatNumber(fo.commissionAmount)}円</Row>
-                <Separator />
-                <Row label="お受取額" strong>{formatNumber(fo.payoutAmount)}円</Row>
-                {fo.discount > 0 && <p className="text-muted-foreground text-xs">※ クーポン割引 {formatNumber(fo.discount)}円 は運営負担のため、お受取額は変わりません。</p>}
+                {seesMoney && (
+                  <>
+                    <Row label={`販売手数料 ${bpsToPercent(fo.commissionRateBps)}%`}>−{formatNumber(fo.commissionAmount)}円</Row>
+                    <Separator />
+                    <Row label="お受取額" strong>{formatNumber(fo.payoutAmount)}円</Row>
+                  </>
+                )}
+                {seesMoney && fo.discount > 0 && <p className="text-muted-foreground text-xs">※ クーポン割引 {formatNumber(fo.discount)}円 は運営負担のため、お受取額は変わりません。</p>}
               </dl>
             </CardContent>
           </Card>
         </div>
 
         <aside className="space-y-6 lg:sticky lg:top-20 lg:self-start">
-          <OrderActionPanel id={fo.id} status={fo.status} carrier={fo.carrier} trackingNumber={fo.trackingNumber} />
+          <OrderActionPanel id={fo.id} status={fo.status} carrier={fo.carrier} trackingNumber={fo.trackingNumber} allowCancel={canFarm(access, "cancel")} />
           <Card>
             <CardHeader>
               <CardTitle>履歴</CardTitle>

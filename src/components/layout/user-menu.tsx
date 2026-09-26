@@ -1,5 +1,5 @@
 "use client";
-import { LogOut, Store, UserRound } from "lucide-react";
+import { LogOut, Sprout, Store, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -13,7 +13,8 @@ import { signOut } from "@/lib/auth-client";
 
 const roleLabel: Record<UserRole, string> = { customer: "マイページ", farmer: "生産者ダッシュボード", admin: "運営管理" };
 
-export type MenuUser = { name: string; email: string; role: UserRole };
+/** staffFarmName: 購入者のアカウントで農園のスタッフをしている人（#24）。生産者画面への入口を出す */
+export type MenuUser = { name: string; email: string; role: UserRole; staffFarmName?: string | null };
 
 export function UserMenu({ user, compact = false }: { user: MenuUser; compact?: boolean }) {
   const router = useRouter();
@@ -43,6 +44,11 @@ export function UserMenu({ user, compact = false }: { user: MenuUser; compact?: 
           <DropdownMenuItem asChild>
             <Link href={roleHome[user.role]}><UserRound />{roleLabel[user.role]}</Link>
           </DropdownMenuItem>
+          {user.staffFarmName && (
+            <DropdownMenuItem asChild>
+              <Link href={routes.farmer.orders}><Sprout />{user.staffFarmName}（スタッフ）</Link>
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem asChild>
             <Link href={routes.home}><Store />ストアを見る</Link>
           </DropdownMenuItem>

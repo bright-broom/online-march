@@ -30,7 +30,7 @@ export async function getProductBySlug(slug: string) {
 "use server";
 export async function updateProduct(_prev: unknown, formData: FormData): Promise<ActionResult<{ id: string }>> {
   return runAction(async () => {
-    const { farm } = await assertFarm();                 // 1. 認可
+    const { farm } = await assertFarm("catalog");        // 1. 認可（生産者画面は要る権限を必ず書く。config/farm-staff.ts）
     const input = parseInput(productSchema, formToObject(formData)); // 2. 検証 (zod: lib/validators)
     const row = await ...;                                // 3. 実行（状態遷移は services）
     updateTag(tags.product(row.id));                      // 4. キャッシュ無効化

@@ -5,6 +5,7 @@ import { Logo } from "@/components/common/logo";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { routes } from "@/config/nav";
+import { farmAccessOf } from "@/server/auth/guards";
 import { getSessionUser } from "@/server/auth/session";
 import { MobileNav } from "./mobile-nav";
 import { HeaderCartButton, HeaderFavoritesButton, HeaderSearch } from "./shop-header-actions";
@@ -14,6 +15,8 @@ import { UserMenu } from "./user-menu";
 /** Request-time user area (reads the session cookie) — always rendered inside <Suspense>. */
 async function HeaderUser() {
   const user = await getSessionUser();
+  // 購入者のアカウントで農園のスタッフをしている人には、生産者画面への入口を出す（#24）
+  const staff = user?.role === "customer" ? await farmAccessOf(user.id, user.role) : null;
   if (!user) {
     return (
       <>
@@ -30,7 +33,7 @@ async function HeaderUser() {
   }
   return (
     <div className="ml-1">
-      <UserMenu compact user={{ name: user.name, email: user.email, role: user.role }} />
+      <UserMenu compact user={{ name: user.name, email: user.email, role: user.role, staffFarmName: staff?.access !== "owner" ? staff?.farm.name : null }} />
     </div>
   );
 }

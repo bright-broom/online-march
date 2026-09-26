@@ -486,6 +486,8 @@ export type TransitionOptions = {
   note?: string;
   /** when set, the farm order must belong to this farm (farmer actions) */
   farmId?: string;
+  /** 操作した人（オーナー・スタッフ・運営, #24）。履歴に残し、生産者の画面に名前を出す */
+  actorId?: string;
 };
 
 export async function transitionFarmOrder(farmOrderId: string, to: FarmOrderStatus, opts: TransitionOptions): Promise<FarmOrder> {
@@ -512,7 +514,7 @@ export async function transitionFarmOrder(farmOrderId: string, to: FarmOrderStat
     const ev = eventFor[to];
     if (ev) {
       await tx.insert(shipmentEvents).values({
-        farmOrderId: fo.id, type: ev.type, message: opts.note || ev.message, source: opts.source, occurredAt: opts.now,
+        farmOrderId: fo.id, type: ev.type, message: opts.note || ev.message, source: opts.source, actorId: opts.actorId ?? null, occurredAt: opts.now,
         location: to === "shipped" ? fo.farm.city : to === "delivered" ? fo.order.shippingAddress.prefecture : null,
       });
     }

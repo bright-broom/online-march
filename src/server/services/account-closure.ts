@@ -1,7 +1,7 @@
 import "server-only";
 import { and, eq, inArray, or } from "drizzle-orm";
 import { db } from "@/db";
-import { addresses, farmFollows, farmOrders, favorites, messages, notifications, orders, session, account as authAccount, user } from "@/db/schema";
+import { addresses, farmFollows, farmMembers, farmOrders, favorites, messages, notifications, orders, session, account as authAccount, user } from "@/db/schema";
 
 /**
  * 退会（アカウントの削除）。
@@ -9,7 +9,7 @@ import { addresses, farmFollows, farmOrders, favorites, messages, notifications,
  * user 行そのものは消せない。注文は `onDelete: "cascade"` でぶら下がっているため、行を消すと
  * **売上・精算の記録ごと消える**（生産者の帳簿と月次精算が壊れる）。そこで個人情報だけを消し、
  * 取引記録は残す = 匿名化する。
- *  - 消す: 氏名・メール・電話・アドレス帳・お気に入り・フォロー・お知らせ・生産者とのメッセージ・ログイン情報
+ *  - 消す: 氏名・メール・電話・アドレス帳・お気に入り・フォロー・お知らせ・生産者とのメッセージ・ログイン情報・農園スタッフの所属
  *  - 残す: 注文（金額・明細・お届け先スナップショット。帳簿と配送記録として必要）とレビュー本文
  *    （公開済みの評価。投稿者名は「退会したお客さま」になる）
  *
@@ -57,6 +57,8 @@ export async function closeCustomerAccount(userId: string, now = new Date()) {
     await tx.delete(favorites).where(eq(favorites.userId, userId));
     await tx.delete(farmFollows).where(eq(farmFollows.userId, userId));
     await tx.delete(notifications).where(eq(notifications.userId, userId));
+    // 農園のスタッフとしての所属（#24）。招待中の行（メールアドレスで待っている分）も消す
+    await tx.delete(farmMembers).where(or(eq(farmMembers.userId, userId), eq(farmMembers.email, me.email.toLowerCase())));
     // 生産者との1対1のやり取り。相手側からも読めなくなる
     await tx.delete(messages).where(or(eq(messages.customerId, userId), eq(messages.senderId, userId)));
     // ログイン手段（パスワード）とログイン中の端末

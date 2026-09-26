@@ -1,9 +1,10 @@
 "use server";
 import { and, eq, isNull } from "drizzle-orm";
 import { updateTag } from "next/cache";
+import { joinContent } from "@/config/content";
 import { routes } from "@/config/nav";
 import { db } from "@/db";
-import { farms, user } from "@/db/schema";
+import { farmMembers, farms, user } from "@/db/schema";
 import { tags } from "@/lib/cache-tags";
 import { isRejectedApplication } from "@/lib/farms";
 import { randomCode, slugify } from "@/lib/ids";
@@ -23,6 +24,9 @@ export async function submitFarmApplication(
 ): Promise<ActionResult<{ farmName: string }>> {
   return runAction(async () => {
     const me = await assertRole("customer");
+    // 1人1農園（#24）: よその農園のスタッフのままでは出店できない（承認でロールが farmer になると、所属が黙って効かなくなる）
+    const membership = await db.query.farmMembers.findFirst({ where: eq(farmMembers.userId, me.id), columns: { id: true } });
+    if (membership) throw new ActionError(joinContent.staffMember);
     const input = parseInput(farmApplicationSchema, formToObject(formData));
 
     const existing = await db.query.farms.findFirst({ where: eq(farms.ownerId, me.id), columns: { id: true, status: true, approvedAt: true } });

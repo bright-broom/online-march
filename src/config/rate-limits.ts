@@ -12,6 +12,8 @@ export const rateLimits = {
   review: { windowSec: 60 * 60, max: 10, message: "レビューの投稿・編集が多すぎます。1時間ほどおいてから再度お試しください。" },
   /** 使えないクーポンコードの入力（コードの総当たり対策。正しいコードの再計算は数えない） */
   couponMiss: { windowSec: 60 * 60, max: 10, message: "クーポンコードの入力が多すぎます。1時間ほどおいてから再度お試しください。" },
+  /** 農園スタッフの招待メール（招待・再送。#24）。人数の上限とは別に、同じアドレスへの送りすぎを防ぐ */
+  staffInvite: { windowSec: 60 * 60, max: 10, message: "招待メールの送信が多すぎます。1時間ほどおいてから再度お試しください。" },
 } as const;
 
 export type RateLimitName = keyof typeof rateLimits;

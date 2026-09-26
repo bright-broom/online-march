@@ -17,7 +17,7 @@ import { ActionError, formToObject, parseInput, runAction, type ActionResult } f
 /** ショップページ編集 (public farm profile). */
 export async function saveShop(_prev: unknown, formData: FormData): Promise<ActionResult> {
   return runAction(async () => {
-    const { farm } = await assertFarm();
+    const { farm } = await assertFarm("shop");
     const data = parseInput(shopFormSchema, formToObject(formData));
     await db.update(farms).set(data).where(eq(farms.id, farm.id));
     updateTag(tags.farm(farm.id));
@@ -32,7 +32,7 @@ export async function saveShop(_prev: unknown, formData: FormData): Promise<Acti
  */
 export async function saveFarmBankAccount(_prev: unknown, formData: FormData): Promise<ActionResult<{ last4: string }>> {
   return runAction(async () => {
-    const { farm } = await assertFarm();
+    const { farm } = await assertFarm("money");
     const data = parseInput(bankAccountSchema, formToObject(formData));
     await saveBankAccount(farm.id, data);
     refresh();
@@ -43,7 +43,7 @@ export async function saveFarmBankAccount(_prev: unknown, formData: FormData): P
 /** 出荷・配送設定. */
 export async function saveShippingSettings(_prev: unknown, formData: FormData): Promise<ActionResult> {
   return runAction(async () => {
-    const { farm } = await assertFarm();
+    const { farm } = await assertFarm("shop");
     const data = parseInput(shippingSettingsSchema, formToObject(formData));
     await db
       .update(farms)
@@ -67,7 +67,7 @@ export async function saveShippingSettings(_prev: unknown, formData: FormData): 
  */
 export async function setFarmPause(input: { until: string | null }): Promise<ActionResult> {
   return runAction(async () => {
-    const { farm } = await assertFarm();
+    const { farm } = await assertFarm("shop");
     const { until } = parseInput(farmPauseSchema, input);
     const today = toYmd(new Date());
     if (until && until < today) throw new ActionError("再開日は今日以降を選んでください");
@@ -87,7 +87,7 @@ export async function setFarmPause(input: { until: string | null }): Promise<Act
 /** Stripe Connect onboarding → redirects to Stripe (only when Stripe is configured). */
 export async function startStripeOnboarding(): Promise<ActionResult> {
   const result = await runAction(async () => {
-    const { user, farm } = await assertFarm();
+    const { user, farm } = await assertFarm("money");
     if (!features.stripe) throw new ActionError("現在はオンライン振込先登録を利用できません。運営からの銀行振込でお支払いします");
     const { createConnectOnboardingLink } = await import("@/server/services/payments/stripe");
     const link = await createConnectOnboardingLink({

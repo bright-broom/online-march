@@ -5,7 +5,8 @@ import { rateLimits } from "@/config/rate-limits";
 import { db } from "@/db";
 import { farmOrders, farms, messages, notifications, orders, user } from "@/db/schema";
 import { messageSchema } from "@/lib/validators/engagement";
-import { assertUser } from "@/server/auth/guards";
+import { canFarm } from "@/config/farm-staff";
+import { assertUser, farmAccessOf } from "@/server/auth/guards";
 import { emailTemplates } from "@/server/services/email/templates";
 import { notify } from "@/server/services/notify";
 import { consumeRateLimit } from "@/server/services/rate-limit";
@@ -17,7 +18,9 @@ const MESSAGE_EMAIL_QUIET_MS = 30 * 60 * 1000;
 /**
  * Send a message in a farm⇄customer thread.
  * - customer: customerId = self
- * - farmer:   must own farmId; customerId required
+ * - farm side (owner or staff with the "messages" capability, #24): customerId required.
+ *   Staff are customer accounts, so a staff member writing to another farm (or to their own farm without a
+ *   customerId) is treated as a customer.
  */
 export async function sendMessage(input: { farmId: string; customerId?: string; farmOrderId?: string; body: string }): Promise<ActionResult<{ id: string }>> {
   return runAction(async () => {
@@ -27,7 +30,11 @@ export async function sendMessage(input: { farmId: string; customerId?: string; 
     const farm = await db.query.farms.findFirst({ where: eq(farms.id, data.farmId) });
     if (!farm) throw new ActionError("生産者が見つかりません");
     let customerId: string;
-    if (me.role === "farmer" && farm.ownerId === me.id) {
+    const side = await farmAccessOf(me.id, me.role);
+    const farmSide = side?.farm.id === farm.id && canFarm(side.access, "messages");
+    // オーナーは常に農園側。スタッフ（購入者のアカウント）は宛先のお客さまを指定したときだけ農園側
+    const asFarm = farmSide && (me.role === "farmer" || (Boolean(data.customerId) && data.customerId !== me.id));
+    if (asFarm) {
       if (!data.customerId) throw new ActionError("宛先がありません");
       const [hasOrder] = await db
         .select({ id: farmOrders.id })

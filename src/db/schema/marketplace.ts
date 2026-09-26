@@ -20,6 +20,8 @@ import { user } from "./auth";
 /* ─────────────── enums ─────────────── */
 
 export const farmStatus = pgEnum("farm_status", ["pending", "active", "suspended"]);
+/** 農園スタッフの権限（#24）。all = オーナーと同じ（精算・振込先口座・スタッフ管理を除く）、shipping = 出荷担当。config/farm-staff.ts */
+export const farmMemberAccess = pgEnum("farm_member_access", ["all", "shipping"]);
 export const productStatus = pgEnum("product_status", ["draft", "active", "soldout", "archived"]);
 export const productCategory = pgEnum("product_category", [
   "onion",
@@ -356,6 +358,8 @@ export const shipmentEvents = pgTable(
     message: text("message").notNull().default(""),
     location: text("location"),
     source: text("source").notNull().default("system"),
+    /** 操作した人（生産者・スタッフ・運営。#24）。自動処理なら null */
+    actorId: text("actor_id").references(() => user.id, { onDelete: "set null" }),
     occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("shipment_events_fo_idx").on(t.farmOrderId)],
@@ -555,6 +559,36 @@ export const farmBankAccounts = pgTable("farm_bank_accounts", {
 });
 
 /**
+ * 農園のスタッフ（#24）。オーナー（farms.ownerId）が招待し、招待されたアドレスのアカウントで参加すると userId が入る。
+ * 招待中は userId が null。トークンは sha256 だけを持つ（平文はメールのリンクにだけ出る）。
+ * 1人1農園まで（userId の一意制約）。1農園の人数上限は config/farm-staff.ts#farmStaffPolicy。
+ * ロールは変えない（購入者のアカウントのまま）。権限の判定は server/auth/guards.ts#farmAccessOf。
+ */
+export const farmMembers = pgTable(
+  "farm_members",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    farmId: uuid("farm_id")
+      .notNull()
+      .references(() => farms.id, { onDelete: "cascade" }),
+    /** 招待したアドレス（小文字） */
+    email: text("email").notNull(),
+    userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
+    access: farmMemberAccess("access").notNull(),
+    tokenHash: text("token_hash"),
+    invitedBy: text("invited_by").references(() => user.id, { onDelete: "set null" }),
+    invitedAt: timestamp("invited_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex("farm_members_farm_email_uq").on(t.farmId, t.email),
+    uniqueIndex("farm_members_user_uq").on(t.userId),
+    uniqueIndex("farm_members_token_uq").on(t.tokenHash),
+  ],
+);
+
+/**
  * 運営の操作記録（#19）。誰が・いつ・何に・何をしたか。消さない・書き換えない（追記だけ）。
  * actorEmail は操作した時点の控え（あとで退会・アドレス変更しても誰の操作か分かるように）。
  */
@@ -621,6 +655,7 @@ export const orderItemsRelations = relations(orderItems, ({ one }) => ({
 
 export const shipmentEventsRelations = relations(shipmentEvents, ({ one }) => ({
   farmOrder: one(farmOrders, { fields: [shipmentEvents.farmOrderId], references: [farmOrders.id] }),
+  actor: one(user, { fields: [shipmentEvents.actorId], references: [user.id] }),
 }));
 
 export const reviewsRelations = relations(reviews, ({ one }) => ({
@@ -651,6 +686,8 @@ export type Notification = typeof notifications.$inferSelect;
 export type Announcement = typeof announcements.$inferSelect;
 export type JobRun = typeof jobRuns.$inferSelect;
 export type Message = typeof messages.$inferSelect;
+export type FarmMember = typeof farmMembers.$inferSelect;
+export type FarmMemberAccess = (typeof farmMemberAccess.enumValues)[number];
 
 export type FarmStatus = (typeof farmStatus.enumValues)[number];
 export type ProductStatus = (typeof productStatus.enumValues)[number];

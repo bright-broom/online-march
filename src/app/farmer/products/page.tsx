@@ -15,7 +15,7 @@ import { listFarmProducts, productStatusFilters } from "@/server/queries/farmer"
 export const metadata: Metadata = { title: "商品管理" };
 
 export default async function FarmerProductsPage({ searchParams }: PageProps<"/farmer/products">) {
-  const { farm } = await requireFarm();
+  const { farm } = await requireFarm("catalog");
   const sp = await searchParams;
   const status = (productStatusFilters as string[]).includes(String(sp.status)) ? (String(sp.status) as ProductStatus | "all") : "all";
   const all = await listFarmProducts(farm.id);

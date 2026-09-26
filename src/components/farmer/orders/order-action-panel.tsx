@@ -20,8 +20,15 @@ import { cancelOrder, shipOrder, startPreparing } from "@/server/actions/farmer-
 
 /** Next-step actions for a farm order, driven by config `farmOrderTransitions`. */
 export function OrderActionPanel({
-  id, status, carrier: initialCarrier, trackingNumber,
-}: { id: string; status: FarmOrderStatus; carrier: Carrier; trackingNumber: string | null }) {
+  id, status, carrier: initialCarrier, trackingNumber, allowCancel = true,
+}: {
+  id: string;
+  status: FarmOrderStatus;
+  carrier: Carrier;
+  trackingNumber: string | null;
+  /** 出荷担当のスタッフには出さない（キャンセルは返金を伴う, #24。サーバー側でも断る） */
+  allowCancel?: boolean;
+}) {
   const next = farmOrderTransitions[status];
   const [pending, start] = useTransition();
   const [carrier, setCarrier] = useState<Carrier>(initialCarrier);
@@ -32,7 +39,7 @@ export function OrderActionPanel({
 
   const canPrepare = next.includes("preparing");
   const canShip = next.includes("shipped");
-  const canCancel = next.includes("cancelled");
+  const canCancel = allowCancel && next.includes("cancelled");
 
   if (!canPrepare && !canShip && !canCancel) {
     return (

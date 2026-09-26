@@ -4,7 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { FarmAccess } from "@/config/farm-staff";
 import { routes } from "@/config/nav";
+import { farmAccessOf } from "@/server/auth/guards";
 import type { SessionUser } from "@/server/auth/session";
 import { getBadgeCounts, getRecentNotifications } from "@/server/queries/badges";
 import { AppSidebar, type DashboardArea } from "./app-sidebar";
@@ -17,9 +19,13 @@ import { ThemeToggle } from "./theme-toggle";
  * from the area layout after the auth guard. See app/farmer/layout.tsx for the pattern.
  */
 export async function DashboardShell({
-  area, user, context, farmId, children,
-}: { area: DashboardArea; user: SessionUser; context?: string; farmId?: string; children: React.ReactNode }) {
-  const [badges, notifications] = await Promise.all([getBadgeCounts(user, farmId), getRecentNotifications(user.id)]);
+  area, user, context, farmId, farmAccess, children,
+}: { area: DashboardArea; user: SessionUser; context?: string; farmId?: string; farmAccess?: FarmAccess; children: React.ReactNode }) {
+  const [badges, notifications, staff] = await Promise.all([
+    getBadgeCounts(user, farmId),
+    getRecentNotifications(user.id),
+    user.role === "customer" ? farmAccessOf(user.id, user.role) : null,
+  ]);
   return (
     <SidebarProvider>
       {/* キーボード・読み上げの人が、サイドバーのメニューを毎回たどらずに本文へ行けるように（#21） */}
@@ -29,7 +35,7 @@ export async function DashboardShell({
       >
         本文へスキップ
       </a>
-      <AppSidebar area={area} user={{ name: user.name, email: user.email, role: user.role }} context={context} badges={badges} />
+      <AppSidebar area={area} user={{ name: user.name, email: user.email, role: user.role, staffFarmName: staff?.farm.name }} context={context} badges={badges} farmAccess={farmAccess} />
       <SidebarInset className="min-w-0 print:m-0 print:shadow-none">
         <header className="no-print bg-background/80 sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-b px-4 backdrop-blur-md md:rounded-t-xl">
           <SidebarTrigger className="-ml-1" />

@@ -95,7 +95,7 @@ export async function markMessagesRead(farmId: string): Promise<ActionResult> {
   return runAction(async () => {
     const me = await assertUser();
     const id = parseInput(idSchema, farmId);
-    await markThreadRead(id, me.id, me.id);
+    await markThreadRead(id, me.id, "customer");
   });
 }
 
