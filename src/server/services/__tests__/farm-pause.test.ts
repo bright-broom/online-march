@@ -93,6 +93,18 @@ describe("受付の一時停止", () => {
     expect(!res.ok && res.error).toContain("今日以降");
   });
 
+  it("上限（config）より先の日付では止められないが、上限ちょうどまでは止められる（#21: 年の打ち間違い対策）", async () => {
+    const mine = await signInFarmer("awa-farm");
+    const { shippingPolicy } = await import("@/config/shipping");
+
+    const tooFar = await setFarmPause({ until: addDays(today, shippingPolicy.maxPauseDays + 1) });
+    expect(tooFar.ok).toBe(false);
+    expect((await db.query.farms.findFirst({ where: eq(s.farms.id, mine.id) }))!.pausedUntil).not.toBe(addDays(today, shippingPolicy.maxPauseDays + 1));
+
+    expect((await setFarmPause({ until: addDays(today, shippingPolicy.maxPauseDays) })).ok).toBe(true);
+    await setFarmPause({ until: null });
+  });
+
   it("解除すると受付が戻る", async () => {
     const mine = await signInFarmer("awa-farm");
     await setFarmPause({ until: addDays(today, 6) });

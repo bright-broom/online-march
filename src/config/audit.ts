@@ -1,5 +1,5 @@
 /**
- * 運営の操作記録（#19）に残す操作。運営が行う「変更」の Server Action（actions/admin-*.ts）はすべてどれかを記録する
+ * 運営の操作記録（#19）に残す操作。運営だけが使う「変更」の Server Action（assertRole("admin") のもの。多くは actions/admin-*.ts）はすべてどれかを記録する
  * （test/admin-audit-coverage.test.ts が漏れを検出する）。ラベルは /admin/audit に出す。
  */
 export const auditActions = {
@@ -15,6 +15,7 @@ export const auditActions = {
   "farm.bank_account_reveal": "振込先口座番号の表示",
   "product.featured": "おすすめ商品",
   "product.archived": "商品の非公開",
+  "review.published": "レビューの公開・非公開",
   "user.role": "ロールの変更",
   "coupon.save": "クーポンの作成・編集",
   "coupon.active": "クーポンの有効・無効",

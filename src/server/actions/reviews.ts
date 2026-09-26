@@ -1,6 +1,7 @@
 "use server";
 import { and, eq } from "drizzle-orm";
 import { updateTag } from "next/cache";
+import { z } from "zod";
 import { routes } from "@/config/nav";
 import { db } from "@/db";
 import { farmOrders, farms, orderItems, orders, reviews } from "@/db/schema";
@@ -8,6 +9,7 @@ import { tags } from "@/lib/cache-tags";
 import { reviewEditSchema, reviewReplySchema, reviewSchema } from "@/lib/validators/engagement";
 import { assertFarm, assertRole, assertUser } from "@/server/auth/guards";
 import { notify } from "@/server/services/notify";
+import { recordAudit } from "@/server/services/audit";
 import { recomputeRatings } from "@/server/services/orders";
 import { ActionError, formToObject, parseInput, runAction, type ActionResult } from "./_utils";
 
@@ -76,12 +78,17 @@ export async function replyToReview(input: { reviewId: string; reply: string }):
   }, "返信を公開しました");
 }
 
-/** Admin moderation: publish / unpublish a review. */
+/** Admin moderation: publish / unpublish a review. Recorded in the audit log (#19). */
 export async function setReviewPublished(input: { reviewId: string; published: boolean }): Promise<ActionResult> {
   return runAction(async () => {
-    await assertRole("admin");
-    const [r] = await db.update(reviews).set({ isPublished: input.published }).where(eq(reviews.id, input.reviewId)).returning();
+    const me = await assertRole("admin");
+    const data = parseInput(z.object({ reviewId: z.uuid(), published: z.boolean() }), input);
+    const [r] = await db.update(reviews).set({ isPublished: data.published }).where(eq(reviews.id, data.reviewId)).returning();
     if (!r) throw new ActionError("レビューが見つかりません");
+    await recordAudit(me, {
+      action: "review.published", target: { type: "review", id: r.id },
+      summary: `レビュー（★${r.rating}）を${data.published ? "公開" : "非公開に"}`, detail: { published: data.published, productId: r.productId },
+    });
     await recomputeRatings(r.productId, r.farmId);
   }, input.published ? "レビューを公開しました" : "レビューを非公開にしました");
 }

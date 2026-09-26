@@ -9,7 +9,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
-import { addDays, toYmd } from "@/lib/dates";
+import { shippingPolicy } from "@/config/shipping";
+import { addDays } from "@/lib/dates";
 import { formatDate } from "@/lib/format";
 import { setFarmPause } from "@/server/actions/farmer-shop";
 
@@ -88,7 +89,7 @@ export function PauseCard({ pausedUntil, today }: { pausedUntil: string | null; 
                   mode="single"
                   locale={ja}
                   autoFocus
-                  disabled={{ before: fromYmdLocal(toYmd(new Date())) }}
+                  disabled={[{ before: fromYmdLocal(today) }, { after: fromYmdLocal(addDays(today, shippingPolicy.maxPauseDays)) }]}
                   onSelect={(d) => d && save(toYmdLocal(d))}
                 />
               </PopoverContent>

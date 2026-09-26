@@ -105,6 +105,17 @@ describe("運営の操作記録", () => {
     expect(log.summary).toContain("2026-08分");
   });
 
+  it("レビューの公開・非公開は入力を検証し、記録を残す（#21）", async () => {
+    const { setReviewPublished } = await import("../reviews");
+    const review = (await db.query.reviews.findFirst())!;
+
+    expect((await setReviewPublished({ reviewId: "not-a-uuid", published: false })).ok).toBe(false);
+    expect((await setReviewPublished({ reviewId: review.id, published: "no" as unknown as boolean })).ok).toBe(false);
+    expect((await setReviewPublished({ reviewId: review.id, published: false })).ok).toBe(true);
+    expect(await latest()).toMatchObject({ action: "review.published", targetId: review.id, detail: { published: false } });
+    await setReviewPublished({ reviewId: review.id, published: true });
+  });
+
   it("失敗した操作と、運営以外の操作は記録しない", async () => {
     const before = await countLogs();
     // refused by the guard: removing your own admin role

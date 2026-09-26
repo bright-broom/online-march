@@ -2,10 +2,11 @@
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { refresh, updateTag } from "next/cache";
+import { shippingPolicy } from "@/config/shipping";
 import { db } from "@/db";
 import { farms } from "@/db/schema";
 import { tags } from "@/lib/cache-tags";
-import { toYmd } from "@/lib/dates";
+import { addDays, toYmd } from "@/lib/dates";
 import { features } from "@/lib/env";
 import { farmPauseSchema, shippingSettingsSchema, shopFormSchema } from "@/lib/validators/farmer";
 import { bankAccountSchema } from "@/lib/validators/bank-account";
@@ -68,7 +69,11 @@ export async function setFarmPause(input: { until: string | null }): Promise<Act
   return runAction(async () => {
     const { farm } = await assertFarm();
     const { until } = parseInput(farmPauseSchema, input);
-    if (until && until < toYmd(new Date())) throw new ActionError("再開日は今日以降を選んでください");
+    const today = toYmd(new Date());
+    if (until && until < today) throw new ActionError("再開日は今日以降を選んでください");
+    if (until && until > addDays(today, shippingPolicy.maxPauseDays)) {
+      throw new ActionError(`お休みは${shippingPolicy.maxPauseDays}日先までにしてください（長く休む場合は、再開日が近づいたら延ばしてください）`);
+    }
     await db.update(farms).set({ pausedUntil: until }).where(eq(farms.id, farm.id));
     // 商品ページ・農園ページの「お休み中」表示に効かせる
     updateTag(tags.farm(farm.id));

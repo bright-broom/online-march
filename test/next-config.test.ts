@@ -29,6 +29,26 @@ const picomatch = createRequire(import.meta.url)("next/dist/compiled/picomatch")
 
 afterEach(() => vi.unstubAllEnvs());
 
+describe("セキュリティヘッダー", () => {
+  const headersOf = async (nodeEnv: string) => {
+    vi.stubEnv("NODE_ENV", nodeEnv);
+    const config = await loadConfig("postgres://example");
+    const [rule] = (await config.headers!()) ?? [];
+    return Object.fromEntries(rule.headers.map((h) => [h.key, h.value]));
+  };
+
+  it("本番では HSTS を付ける（#21）。2年・サブドメインも", async () => {
+    const h = await headersOf("production");
+    expect(h["Strict-Transport-Security"]).toMatch(/max-age=(\d+)/);
+    expect(Number(/max-age=(\d+)/.exec(h["Strict-Transport-Security"])![1])).toBeGreaterThanOrEqual(31536000);
+    expect(h["Strict-Transport-Security"]).toContain("includeSubDomains");
+  });
+
+  it("開発（http://localhost）では付けない", async () => {
+    expect((await headersOf("development"))["Strict-Transport-Security"]).toBeUndefined();
+  });
+});
+
 describe("本番関数に PGlite のバイナリを同梱しない", () => {
   it("PGlite が参照しているバイナリを検出できている（前提）", () => {
     expect(referencedAssets).toEqual(expect.arrayContaining(["pglite.wasm", "pglite.data", "initdb.wasm"]));

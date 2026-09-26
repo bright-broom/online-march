@@ -136,6 +136,8 @@ export type DeliveryTimeSlot = keyof typeof deliveryTimeSlots;
 
 /** Timings used by checkout & the automation cron (src/server/jobs). */
 export const shippingPolicy = {
+  /** 受付の一時停止（お休み）で選べる最長日数。年の打ち間違いでショップが黙って消えたままにならないように（#21） */
+  maxPauseDays: 180,
   /** 送料無料ライン（農家ごとの設定が無い場合の既定値。null=なし） */
   defaultFreeShippingThreshold: null as number | null,
   /** 指定可能な最短お届け日 = 出荷可能日 + transitDays */

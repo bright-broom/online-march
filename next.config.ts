@@ -30,8 +30,11 @@ const csp = [
 ].join("; ");
 // Dev is exempt: React's development build uses eval() for debugging, and the analytics scripts load from
 // va.vercel-scripts.com instead of the same-origin production path.
+// HSTS: browsers remember to use HTTPS only (2 years). Production only: dev runs on plain http://localhost.
+// No `preload` yet: submitting to the preload list is a commitment for the custom domain, decide it with the domain.
+const hsts = "max-age=63072000; includeSubDomains";
 const securityHeaders = [
-  ...(isProd ? [{ key: "Content-Security-Policy", value: csp }] : []),
+  ...(isProd ? [{ key: "Content-Security-Policy", value: csp }, { key: "Strict-Transport-Security", value: hsts }] : []),
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "X-Frame-Options", value: "DENY" }, // matches frame-ancestors for older browsers
