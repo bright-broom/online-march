@@ -36,7 +36,7 @@ platform_settings (key/value)               job_runs (automation log)
 
 | Table | 要点 |
 | --- | --- |
-| `farms` | 出品者ショップ。`status` pending/active/suspended。`commissionRateBps` null=既定。出荷設定: `defaultCarrier` `leadTimeDays` `shipWeekdays` `freeShippingThreshold`。評価は `ratingSum/Count` 非正規化 |
+| `farms` | 出品者ショップ。`status` pending/active/suspended（**却下＝`approvedAt` が空のまま suspended**。`lib/farms.ts#isRejectedApplication`。却下された申請だけ /join から同じ行を書き換えて出し直せる, #15）。`commissionRateBps` null=既定。出荷設定: `defaultCarrier` `leadTimeDays` `shipWeekdays` `freeShippingThreshold`。評価は `ratingSum/Count` 非正規化 |
 | `products` | `category` enum, `variety`, `cultivation`(config key), `harvestFrom/To`(月), `status`, `soldCount`/`rating*` 非正規化 |
 | `product_variants` | 規格（5kg 等）。`price` `compareAtPrice` `stock` `weightGrams`（送料計算に使用） |
 | `orders` | 顧客の1決済。`shippingAddress` はスナップショット JSON。`paymentProvider` stripe/demo |

@@ -700,9 +700,27 @@ export async function getShopAnnouncements(limit = 3): Promise<AnnouncementDTO[]
 /** The signed-in user's farm application, if any. User-specific → call inside <Suspense>. */
 export async function getFarmApplication(userId: string) {
   const [row] = await db
-    .select({ id: farms.id, name: farms.name, slug: farms.slug, status: farms.status, createdAt: farms.createdAt })
+    .select({
+      id: farms.id,
+      name: farms.name,
+      slug: farms.slug,
+      status: farms.status,
+      approvedAt: farms.approvedAt,
+      createdAt: farms.createdAt,
+      // a rejected application is re-submitted from these (#15)
+      representative: farms.representative,
+      tagline: farms.tagline,
+      story: farms.story,
+      cultivationMethods: farms.cultivationMethods,
+      postalCode: farms.postalCode,
+      prefecture: farms.prefecture,
+      city: farms.city,
+      addressLine: farms.addressLine,
+      phone: farms.phone,
+    })
     .from(farms)
     .where(eq(farms.ownerId, userId))
     .limit(1);
-  return row ? { ...row, createdAt: row.createdAt.toISOString() } : null;
+  return row ? { ...row, approvedAt: row.approvedAt?.toISOString() ?? null, createdAt: row.createdAt.toISOString() } : null;
 }
+export type FarmApplication = NonNullable<Awaited<ReturnType<typeof getFarmApplication>>>;

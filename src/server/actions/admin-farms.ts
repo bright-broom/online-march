@@ -60,11 +60,17 @@ export async function setFarmStatus(input: z.input<typeof statusInput>): Promise
         email: firstApproval ? emailTemplates.farmApproved({ to: farm.owner.email, farmName: farm.name }) : undefined,
       });
     } else {
+      // 却下（審査中 → suspended）と停止（公開中 → suspended）。どちらもお知らせだけでなくメールでも伝える（#15）
+      const rejected = farm.status === "pending";
       await notify({
         userId: farm.ownerId,
         type: "system",
-        title: farm.status === "pending" ? "出店申請について" : "ショップを一時停止しました",
-        body: data.reason || (farm.status === "pending" ? "今回は出店を見送らせていただきました。詳しくは運営までお問い合わせください。" : "運営までお問い合わせください。"),
+        title: rejected ? "出店申請について" : "ショップを一時停止しました",
+        body: data.reason || (rejected ? "今回は出店を見送らせていただきました。内容を見直して、出店申請ページから再度お申し込みいただけます。" : "運営までお問い合わせください。"),
+        href: rejected ? routes.join : routes.farmer.root,
+        email: rejected
+          ? emailTemplates.farmRejected({ to: farm.owner.email, name: farm.owner.name, farmName: farm.name, reason: data.reason })
+          : emailTemplates.farmSuspended({ to: farm.owner.email, farmName: farm.name, reason: data.reason }),
       });
     }
     expireFarm(farm.id);

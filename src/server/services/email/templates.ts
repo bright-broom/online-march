@@ -2,6 +2,7 @@ import "server-only";
 import { routes } from "@/config/nav";
 import { carriers, deliveryTimeSlots, type DeliveryTimeSlot } from "@/config/shipping";
 import type { Carrier } from "@/db/schema";
+import { siteConfig } from "@/config/site";
 import { siteUrl } from "@/lib/env";
 import { paymentMethodLabel } from "@/config/payments";
 import { formatDate, formatDateTime, formatYen } from "@/lib/format";
@@ -157,6 +158,34 @@ export const emailTemplates = {
       blocks: [
         { type: "p", text: `${p.farmName} さま\n出店申請を承認しました。商品を登録して販売を始めましょう。` },
         { type: "button", label: "ダッシュボードへ", href: url(routes.farmer.root) },
+      ],
+    };
+  },
+
+  /** 出店申請の見送り（#15）。内容を直せば /join から出し直せる */
+  farmRejected(p: { to: string; name: string; farmName: string; reason?: string }): EmailMessage {
+    return {
+      to: p.to,
+      subject: "【出店申請について】審査結果のお知らせ",
+      blocks: [
+        { type: "p", text: `${p.name} さま\n「${p.farmName}」の出店申請をご検討いただきありがとうございました。慎重に確認しましたが、今回は出店を見送らせていただきます。` },
+        ...(p.reason ? [{ type: "p" as const, text: `運営からのメッセージ：\n${p.reason}` }] : []),
+        { type: "note", text: `内容を見直して、出店申請ページからもう一度お申し込みいただけます。ご不明な点は ${siteConfig.contact.email} までお問い合わせください。` },
+        { type: "button", label: "出店申請ページを開く", href: url(`${routes.join}#apply`) },
+      ],
+    };
+  },
+
+  /** 承認済みショップの一時停止（#15）。進行中の注文の出荷と精算は続く */
+  farmSuspended(p: { to: string; farmName: string; reason?: string }): EmailMessage {
+    return {
+      to: p.to,
+      subject: "【重要】ショップを一時停止しました",
+      blocks: [
+        { type: "p", text: `${p.farmName} さま\nショップを一時停止しました。停止中は商品がストアに表示されず、新しいご注文は入りません。` },
+        ...(p.reason ? [{ type: "p" as const, text: `運営からのメッセージ：\n${p.reason}` }] : []),
+        { type: "note", text: `進行中のご注文の発送は引き続き行え、その売上は通常どおり精算されます。ご不明な点は ${siteConfig.contact.email} までお問い合わせください。` },
+        { type: "button", label: "ダッシュボードを開く", href: url(routes.farmer.root) },
       ],
     };
   },
