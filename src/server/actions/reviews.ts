@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { updateTag } from "next/cache";
 import { z } from "zod";
 import { routes } from "@/config/nav";
+import { rateLimits } from "@/config/rate-limits";
 import { db } from "@/db";
 import { farmOrders, farms, orderItems, orders, reviews } from "@/db/schema";
 import { tags } from "@/lib/cache-tags";
@@ -10,6 +11,7 @@ import { reviewEditSchema, reviewReplySchema, reviewSchema } from "@/lib/validat
 import { assertFarm, assertRole, assertUser } from "@/server/auth/guards";
 import { notify } from "@/server/services/notify";
 import { recordAudit } from "@/server/services/audit";
+import { consumeRateLimit } from "@/server/services/rate-limit";
 import { recomputeRatings } from "@/server/services/orders";
 import { ActionError, formToObject, parseInput, runAction, type ActionResult } from "./_utils";
 
@@ -18,6 +20,7 @@ export async function createReview(_prev: unknown, formData: FormData): Promise<
   return runAction(async () => {
     const me = await assertUser();
     const data = parseInput(reviewSchema, formToObject(formData));
+    if (!(await consumeRateLimit("review", me.id))) throw new ActionError(rateLimits.review.message);
     const [owned] = await db
       .select({ farmId: farmOrders.farmId, status: farmOrders.status })
       .from(orderItems)
@@ -45,6 +48,7 @@ export async function updateReview(_prev: unknown, formData: FormData): Promise<
   return runAction(async () => {
     const me = await assertUser();
     const data = parseInput(reviewEditSchema, formToObject(formData));
+    if (!(await consumeRateLimit("review", me.id))) throw new ActionError(rateLimits.review.message);
     const mine = await db.query.reviews.findFirst({ where: and(eq(reviews.id, data.reviewId), eq(reviews.userId, me.id)) });
     if (!mine) throw new ActionError("レビューが見つかりません");
     await db.update(reviews).set({ rating: data.rating, title: data.title, body: data.body }).where(eq(reviews.id, mine.id));

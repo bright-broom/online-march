@@ -8,7 +8,9 @@ import { addresses, orders, type AddressSnapshot, type Carrier } from "@/db/sche
 import { tags } from "@/lib/cache-tags";
 import { features } from "@/lib/env";
 import { abandonCheckoutSchema, checkoutQuoteSchema, confirmCheckoutSchema, placeOrderSchema, type CheckoutQuoteInput, type PlaceOrderInput } from "@/lib/validators/checkout";
+import { rateLimits } from "@/config/rate-limits";
 import { assertUser } from "@/server/auth/guards";
+import { consumeRateLimit, isRateLimited } from "@/server/services/rate-limit";
 import { abandonCheckout, createOrder, expireUnpaidOrder, markOrderPaid, quoteCart, type AbandonedCheckout, type CartQuote } from "@/server/services/orders";
 import { ActionError, parseInput, runAction, type ActionResult } from "./_utils";
 
@@ -100,15 +102,20 @@ function toDto(q: CartQuote): CheckoutQuote {
 /** Authoritative re-quote of the client cart (prices, stock, shipping, schedule, coupon). */
 export async function getCheckoutQuote(input: CheckoutQuoteInput): Promise<ActionResult<CheckoutQuote>> {
   return runAction(async () => {
-    await assertUser();
+    const me = await assertUser();
     const data = parseInput(checkoutQuoteSchema, input);
+    // クーポンコードの総当たり対策（#21）: 使えないコードの入力を数え、上限を超えたらコードを見ずに断る（見積もり自体は返す）
+    const couponCode = data.couponCode || null;
+    const blocked = couponCode ? await isRateLimited("couponMiss", me.id) : false;
     const quote = await quoteCart({
       lines: data.lines,
       prefecture: data.prefecture,
       desiredDate: data.desiredDate ?? null,
-      couponCode: data.couponCode || null,
+      couponCode: blocked ? null : couponCode,
       now: new Date(),
     });
+    if (blocked) return { ...toDto(quote), couponError: rateLimits.couponMiss.message };
+    if (couponCode && quote.couponError) await consumeRateLimit("couponMiss", me.id);
     return toDto(quote);
   });
 }

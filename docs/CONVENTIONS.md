@@ -42,10 +42,14 @@ export async function updateProduct(_prev: unknown, formData: FormData): Promise
 - 返り値は常に `ActionResult<T>`。例外で UI を落とさない（`ActionError` を throw → `{ok:false}`）。
 - クライアントは `useActionState` + `toast`、または `useTransition` で直接呼ぶ。
 - `redirect()` は runAction の外 or 内で可（unstable_rethrow 済み）。
-- **運営の Action（`actions/admin-*.ts`）は、成功したら `services/audit.ts#recordAudit(me, …)` で操作記録を残す**（#19）。
+- **運営だけが使う Action（`assertRole("admin")`。多くは `actions/admin-*.ts`）は、成功したら `services/audit.ts#recordAudit(me, …)` で操作記録を残す**（#19）。
   `action` は `config/audit.ts#auditActions` に足す。失敗した操作は記録しない（ガードや `ActionError` の後で呼ぶ）。
   記録を書かない運営 Action を足すと `test/admin-audit-coverage.test.ts` が落ちる。
 - Action の想定外のエラーは `runAction` が運営に通知する（#12）。利用者向けの失敗は `ActionError` で投げる。
+- 連打や総当たりの的になる入力（投稿・送信・アップロード・コードの入力）には回数制限を付ける（#21）:
+  `services/rate-limit.ts#consumeRateLimit(name, me.id)` が false なら `ActionError(rateLimits[name].message)`。
+  上限は `config/rate-limits.ts`。失敗したときだけ数えるもの（使えないクーポン）は `isRateLimited` で先に見て、失敗時に数える。
+  認証まわり（ログイン・登録・再設定・メール変更）は Better Auth 側の `rateLimit.customRules`。
 
 ## トランザクション
 

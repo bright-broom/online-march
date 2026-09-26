@@ -6,6 +6,8 @@ import { farmOrders, farms, messages, orders } from "@/db/schema";
 import { messageSchema } from "@/lib/validators/engagement";
 import { assertUser } from "@/server/auth/guards";
 import { notify } from "@/server/services/notify";
+import { rateLimits } from "@/config/rate-limits";
+import { consumeRateLimit } from "@/server/services/rate-limit";
 import { ActionError, parseInput, runAction, type ActionResult } from "./_utils";
 
 /**
@@ -17,6 +19,7 @@ export async function sendMessage(input: { farmId: string; customerId?: string; 
   return runAction(async () => {
     const me = await assertUser();
     const data = parseInput(messageSchema, input);
+    if (!(await consumeRateLimit("message", me.id))) throw new ActionError(rateLimits.message.message);
     const farm = await db.query.farms.findFirst({ where: eq(farms.id, data.farmId) });
     if (!farm) throw new ActionError("生産者が見つかりません");
     let customerId: string;
