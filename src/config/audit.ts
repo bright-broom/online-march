@@ -18,6 +18,8 @@ export const auditActions = {
   "product.archived": "商品の非公開",
   "review.published": "レビューの公開・非公開",
   "user.role": "ロールの変更",
+  "user.suspend": "ユーザーの利用停止・再開",
+  "user.anonymize": "ユーザーの匿名化",
   "coupon.save": "クーポンの作成・編集",
   "coupon.active": "クーポンの有効・無効",
   "coupon.delete": "クーポンの削除",

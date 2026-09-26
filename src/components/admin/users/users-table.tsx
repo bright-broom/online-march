@@ -17,12 +17,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
+import { userModerationCopy } from "@/config/content";
 import { routes } from "@/config/nav";
 import type { UserRole } from "@/db/schema/auth";
 import { formatDate } from "@/lib/format";
 import { setUserRole } from "@/server/actions/admin-users";
 import type { AdminUserRow } from "@/server/queries/admin";
 import { roleMeta } from "../labels";
+import { UserModeration } from "./user-moderation";
 import { useRunAction } from "../use-admin-action";
 
 const roles = Object.keys(roleMeta) as UserRole[];
@@ -83,6 +85,13 @@ export function UsersTable({ rows, currentUserId }: { rows: AdminUserRow[]; curr
             {u.id === currentUserId && <span className="text-muted-foreground ml-1.5 text-xs">（あなた）</span>}
           </p>
           <p className="text-muted-foreground truncate text-xs">{u.email}</p>
+          {u.deletedAt ? (
+            <ToneBadge tone="neutral" className="mt-1">{userModerationCopy.anonymizedBadge}</ToneBadge>
+          ) : u.suspendedAt ? (
+            <span title={u.suspendedReason || undefined}>
+              <ToneBadge tone="danger" className="mt-1">{userModerationCopy.suspendedBadge}（{formatDate(u.suspendedAt)}〜）</ToneBadge>
+            </span>
+          ) : null}
         </div>
       ),
     },
@@ -115,6 +124,12 @@ export function UsersTable({ rows, currentUserId }: { rows: AdminUserRow[]; curr
       header: "ロール変更",
       enableSorting: false,
       cell: ({ row: { original: u } }) => <RoleSelect user={u} isSelf={u.id === currentUserId} />,
+    },
+    {
+      id: "moderation",
+      header: "利用停止・匿名化",
+      enableSorting: false,
+      cell: ({ row: { original: u } }) => <UserModeration user={u} isSelf={u.id === currentUserId} />,
     },
   ];
   return (

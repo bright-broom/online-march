@@ -320,3 +320,19 @@ export const legalContent: Record<"terms" | "privacy", LegalDoc> = {
     ],
   },
 };
+
+/** 運営によるユーザーの利用停止・匿名化（#21） */
+export const userModerationCopy = {
+  suspendedLogin: "このアカウントは利用を停止しています。お問い合わせフォームからご連絡ください。",
+  suspendedBadge: "利用停止中",
+  anonymizedBadge: "匿名化済み",
+  reasonMax: 200,
+  errors: {
+    self: "自分自身は利用停止・匿名化できません",
+    admin: "運営ユーザーは利用停止・匿名化できません（先にロールを変更してください）",
+    notFound: "ユーザーが見つかりません",
+    alreadyClosed: "このユーザーはすでに匿名化されています",
+    notCustomer: "匿名化できるのは購入者だけです（生産者は出店の停止で対応してください）",
+    liveOrders: "進行中の注文（未決済・準備中・配送中）があるため匿名化できません。完了またはキャンセルの後で行ってください",
+  },
+} as const;

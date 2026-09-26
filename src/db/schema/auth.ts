@@ -24,6 +24,10 @@ export const user = pgTable("user", {
   twoFactorEnabled: boolean("two_factor_enabled").notNull().default(false),
   /** 退会日時。行は残すが個人情報は消してある（注文は帳簿として残すため user 行を消せない。docs/DATA_MODEL.md §退会） */
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  /** 運営による利用停止（#21）。停止中はログインできず、ログイン中の端末も切れる。注文・レビューなどはそのまま */
+  suspendedAt: timestamp("suspended_at", { withTimezone: true }),
+  /** 利用停止の理由（運営のメモ。本人には見せない） */
+  suspendedReason: text("suspended_reason").notNull().default(""),
   ...timestamps,
 });
 

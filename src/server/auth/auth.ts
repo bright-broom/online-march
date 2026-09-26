@@ -5,6 +5,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { nextCookies } from "better-auth/next-js";
 import { twoFactor } from "better-auth/plugins";
+import { userModerationCopy } from "@/config/content";
 import { isDemoEmail } from "@/config/demo";
 import { siteConfig } from "@/config/site";
 import { db } from "@/db";
@@ -97,6 +98,22 @@ export const auth = betterAuth({
     additionalFields: {
       role: { type: "string", required: false, defaultValue: "customer", input: false },
       phone: { type: "string", required: false },
+      // 運営による利用停止（#21）。getSessionUser が見て、停止中ならログインしていない扱いにする
+      suspendedAt: { type: "date", required: false, input: false },
+    },
+  },
+  /**
+   * 利用停止中（#21）の人にはセッションを作らない。パスワード・二段階認証・メール確認後の自動ログインなど、
+   * ログインの入口がどれでもここを通る。停止した時点のセッションは運営の操作（setUserSuspended）で消す。
+   */
+  databaseHooks: {
+    session: {
+      create: {
+        before: async (s) => {
+          const u = await db.query.user.findFirst({ where: eq(user.id, s.userId), columns: { suspendedAt: true } });
+          if (u?.suspendedAt) throw new APIError("FORBIDDEN", { message: userModerationCopy.suspendedLogin });
+        },
+      },
     },
   },
   session: {

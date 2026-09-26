@@ -36,6 +36,22 @@ farm_bank_accounts (farm 1─1)  ← 振込先口座。口座番号は暗号化�
 - レビューの表示名は「退会したお客さま」になる
 - 進行中の注文（`farm_orders` が pending_payment / paid / preparing / shipped）があるうちは退会できない
 - 実装 `server/services/account-closure.ts`、回帰テスト `services/__tests__/account-closure.test.ts`
+- **運営による匿名化**（#21, /admin/users）: お客さまからの削除依頼などで、運営が同じ処理を行う（`actions/admin-users.ts#anonymizeUser`）。
+  購入者だけ・進行中の注文があるとできない・取り消せない。操作記録には元のアドレスを書かない（user id で追う）。
+  ただし、それより前の操作記録（利用停止など）の要約に入っているアドレスはそのまま残る（運営の操作の証跡のため書き換えない）
+
+## 利用停止（#21）
+
+`user.suspendedAt` が入っている間は利用停止中（理由は `user.suspendedReason`、運営のメモ）。/admin/users から運営が停止・再開する
+（`actions/admin-users.ts#setUserSuspended`、操作記録 `user.suspend`）。
+
+- ログインできない: Better Auth の `databaseHooks.session.create.before`（`server/auth/auth.ts`）がセッションを作らせない。
+  パスワード・二段階認証・メール確認後の自動ログインのどの入口でも同じ
+- 停止した時点のセッションは消す。万一残っていても `getSessionUser` が停止中なら null を返す
+- 注文・レビュー・ショップはそのまま（進行中の注文は通常どおり発送。返金が要れば運営が `refundOrder`）。
+  生産者を停止してもショップは公開のまま。ショップも止めるなら出店の停止（`farms.status`）
+- 自分自身・運営ユーザーは停止・匿名化できない（運営は先にロールを変える。最後の1人の決まりが効く）
+- 回帰テスト `server/auth/__tests__/user-suspension.test.ts`
 
 ## テーブル要点
 

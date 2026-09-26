@@ -92,6 +92,13 @@
       "when": 1790388752824,
       "tag": "0012_coupon_once_per_user",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1790389478902,
+      "tag": "0013_user_suspension",
+      "breakpoints": true
     }
   ]
 }
