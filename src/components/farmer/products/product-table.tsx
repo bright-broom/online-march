@@ -1,6 +1,6 @@
 "use client";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Archive, Copy, Eye, EyeOff, ImageOff, MoreHorizontal, Pencil, Plus, TriangleAlert, ExternalLink } from "lucide-react";
+import { Archive, Copy, Eye, EyeOff, ImageOff, MoreHorizontal, Pencil, TriangleAlert, ExternalLink } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -152,11 +152,28 @@ export function ProductTable({ rows }: { rows: FarmProductRow[] }) {
       getRowId={(r) => r.id}
       searchPlaceholder="商品名で検索"
       emptyText="該当する商品はありません"
-      toolbar={
-        <Button asChild size="sm">
-          <Link href={routes.farmer.newProduct}><Plus />商品を登録</Link>
-        </Button>
-      }
+      /* 「商品を登録」はページ見出しの横にある（ここにも置くと同じボタンが2つ並んでいた） */
+      mobileCard={(r) => (
+        <div className="flex items-center gap-3">
+          <Link href={routes.farmer.product(r.id)} className="flex min-w-0 flex-1 items-center gap-3">
+            <span className="bg-muted relative size-14 shrink-0 overflow-hidden rounded-lg border">
+              {r.image ? <Image src={r.image} alt={r.name} fill sizes="56px" className="object-cover" /> : <ImageOff className="text-muted-foreground absolute inset-0 m-auto size-4" />}
+            </span>
+            <span className="min-w-0 space-y-1">
+              <span className="line-clamp-2 text-sm font-medium">{r.name}</span>
+              <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+                <StatusBadge kind="product" status={r.status} />
+                <span className="num">{priceRange(r)}</span>
+                <span className="text-muted-foreground inline-flex items-center gap-0.5">
+                  在庫 <span className="num text-foreground">{formatNumber(r.stock)}</span>
+                  {r.lowStock && r.status === "active" && <TriangleAlert className="text-destructive size-3.5" aria-label="在庫わずか" />}
+                </span>
+              </span>
+            </span>
+          </Link>
+          <RowActions row={r} />
+        </div>
+      )}
     />
   );
 }

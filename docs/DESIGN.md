@@ -40,6 +40,10 @@
 - 影は最小限（`shadow-sm` まで）。区切りは余白と `border` で。
 - グリッド: 商品 `grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8`。モバイルでも2列（産直ECの定石）。
 - ダッシュボード: `DashboardShell` + `PageHeader` + KPI（`StatCard` 4列）+ Card 内のグラフ/表。
+- **スマホで使う一覧（生産者の受注・商品など）は `DataTable` に `mobileCard`（と行全体をリンクにするなら `mobileHref`）を渡す**。
+  md 未満は表の代わりにカード（1行目: 誰・何の名前と金額 / 2行目: 補足 / 3行目: 状態バッジと番号）。横スクロールの表で状態や金額を画面外に切らない。
+- 詳細画面の「次にやること」（操作パネル）は、スマホでは先頭に出す（`order-first lg:order-none`。PC は右の sticky 列）。
+  並びの入れ替えで `space-y-*` を使うと、隠した要素の手前に余白が残る（Tailwind v4 の `space-y` は `:not(:last-child)` に付く）。`flex flex-col gap-*` を使う。
 
 ## 5. コンポーネント規約
 

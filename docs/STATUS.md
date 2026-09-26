@@ -50,21 +50,21 @@
 コード側の残りは、配送業者との API 契約が決まったあとのつなぎ込み（#25 の続き）だけ。`owner-decision` の Issue はすべて決定をもらって実装した（専門家の確認が要る点は下の「オーナーの判断待ち」）。
 #10（インボイス）・#11（二重価格）・#18（出荷準備中のキャンセル）はオーナーの決定をもとに PR #23 で実装済み。ただし**運営の登録番号は「売主は誰か」が決まるまで設定しない**（→ 下の表と docs/PAYMENTS.md「インボイス」）。
 バックログ #21 と、そこから切り出した #24（スタッフアカウント）・#25（配達完了の判定）は、オーナーの決定（各 Issue のコメント）をもとに
-**すべて PR #23 で実装済み**（マージ待ち。→ 2.1）。
+**すべて PR #23 で実装し、2026-09-26 に main へマージ済み**（→ 2.1。本番での確認はまだ）。
 公開の可否を決めるのは上の表（オーナー作業）と Issues の `P0`。
 チェック自体は「鍵があるか」ではなく「実際に動いているか」を見る（自動処理の最終成功・バックアップが48時間以内・
 デモ以外の運営アカウント・公開URL）。`server/queries/go-live.ts`、回帰テスト `queries/__tests__/go-live.test.ts`。
 
 ### 2.1 コードで直せる P1・P2 の状況（2026-09-26）
 
-**PR #23 の状態**: 最新 `ffa183f`（#18）で CI 成功・main と衝突なし・レビューのコメントなし・**draft のまま**（2026-09-26 05:51 UTC に確認）。
-下書きを外してマージするのはオーナー。マージすると #10・#11・#12・#14・#15・#16・#17・#18・#19・#20・#24・#25 が自動で閉じる（#21 は手で閉じる）。
+**PR #23 は 2026-09-26 06:27 UTC に main へマージ済み**（CI 成功・衝突なし）。#10・#11・#12・#14・#15・#16・#17・#18・#19・#20・#24・#25 はマージで閉じた。**#21 は手で閉じる**。
+本番デプロイの Ready とビルドログの `[db:migrate] done`、下の「本番で確かめること」はまだ（この環境からは Vercel・本番DBに届かない。→ 6節）。
 マイグレーションは 0010〜0019 の10個（どれも追加だけ）。
 
 | Issue | 状態 |
 | --- | --- |
 | #13 自動送金の農家への手動「振込済み」（二重払い） | **main にマージ済み**（PR #22, `0d87731`）。本番の画面での確認は未実施（→ 3節） |
-| #12 エラー監視 / #14 停止中の農家の精算 / #15 出店審査 / #16 メールアドレスの確認と変更 / #17 決済画面から戻ったときの取り消し / #19 操作記録 / #20 振込先口座 | **PR #23 でレビュー待ち**（ブランチ `claude/zealous-feynman-b5sb80`、Issue ごとにコミットを分けてある）。マージで各 Issue が閉じる。**テーブルを2つ足す**（マイグレーション 0010 `admin_audit_logs`・0011 `farm_bank_accounts`、追加のみ。本番ビルドが先に当てる）。#21 で列を足す（0012 `coupons.once_per_user`、0013 `user.suspended_at`・`user.suspended_reason`、0014 `reviews.images`。どれも既定値つき）。#24 でテーブルを1つと列を1つ足す（0015 `farm_members`・`shipment_events.actor_id`）。#25 で列を2つ足す（0016 `farm_orders.delivery_issue_at`・`delivery_issue_note`）。#10 で列を3つ足す（0017 `products.tax_rate`・`order_items.tax_rate`（既定 8）・`farms.invoice_registration_number`）。#11 でテーブルを1つと列を1つ足す（0018 `variant_price_periods`・`product_variants.display_compare_at_price`）。#18 で列を5つ足す（0019 `farm_orders.cancel_request_*`） |
+| #12 エラー監視 / #14 停止中の農家の精算 / #15 出店審査 / #16 メールアドレスの確認と変更 / #17 決済画面から戻ったときの取り消し / #19 操作記録 / #20 振込先口座 | **PR #23 でマージ済み**（Issue ごとにコミットを分けてある）。**テーブルを2つ足す**（マイグレーション 0010 `admin_audit_logs`・0011 `farm_bank_accounts`、追加のみ。本番ビルドが先に当てる）。#21 で列を足す（0012 `coupons.once_per_user`、0013 `user.suspended_at`・`user.suspended_reason`、0014 `reviews.images`。どれも既定値つき）。#24 でテーブルを1つと列を1つ足す（0015 `farm_members`・`shipment_events.actor_id`）。#25 で列を2つ足す（0016 `farm_orders.delivery_issue_at`・`delivery_issue_note`）。#10 で列を3つ足す（0017 `products.tax_rate`・`order_items.tax_rate`（既定 8）・`farms.invoice_registration_number`）。#11 でテーブルを1つと列を1つ足す（0018 `variant_price_periods`・`product_variants.display_compare_at_price`）。#18 で列を5つ足す（0019 `farm_orders.cancel_request_*`） |
 | #21 バックログ | **PR #23 に同梱**（同じブランチ。まとまりごとにコミット）。守りの小物・回数制限・追跡番号・案内と通知・画面の基本・ページングと検索・クーポン「お一人さま1回」・会計CSV・利用停止と匿名化・レビューの写真。**#21 自体は閉じない**（残りの2つを #24・#25 に切り出した。#24・#25 もこの PR で対応したので、マージ後にオーナーが #21 を閉じてよい） |
 | #24 スタッフアカウント | **PR #23 に同梱**。オーナーの決定（2026-09-26、Issue #24 のコメント）: オーナーがメールで招待・5人まで・1人1農園・購入者のアカウントのまま参加。権限は「出荷担当」「すべて」の2つ、精算・振込先口座・スタッフ管理はオーナーだけ。お客さまには農園名で届く。マージで閉じる（コミットに `Closes #24`） |
 | #10 インボイス | **PR #23 に同梱**。オーナーの決定（2026-09-26、Issue #10 のコメント）: 運営は登録済み／予定・商品 8% と送料 10%・生産者の番号は任意で登録・支払通知書を作る。マージで閉じる（`Closes #10`） |
@@ -328,6 +328,7 @@ PR #23 の確認で作るものの消し方（どれも運営画面で消せな�
 | 一部返金後の領収書（#4） | `lib/receipt.ts#receiptAmounts` | `services/__tests__/receipt.test.ts` |
 | フォロー中の農家の新商品のお知らせ（#5） | `services/product-launch.ts` | `actions/__tests__/product-launch.test.ts` |
 | お客さまのキャンセル: 準備前は生産者ごとに取り消し、準備中は依頼→生産者が承認／お断り（#18） | `lib/order-cancel.ts`, `services/cancel-requests.ts`, `refunds.ts#refundOrder`（`onlyStatus`）, `orders.ts#transitionFarmOrder`, `config/order-cancel.ts` | `services/__tests__/cancel-request.test.ts`, `authorization.test.ts` |
+| 生産者画面のスマホ表示: 受注・商品の一覧をカードに、注文詳細は「次にやること」を先頭に | `components/dashboard/data-table.tsx`（`mobileCard`・`mobileHref`）, `farmer/orders/orders-table.tsx`, `farmer/products/product-table.tsx`, `app/farmer/orders/[id]/page.tsx` | `components/dashboard/__tests__/data-table.test.tsx` |
 | 通常価格の打ち消し表示を販売の記録で確かめる（#11） | `lib/compare-price.ts`, `services/price-history.ts`, `variant_price_periods`, job `compare-prices`, `queries/farmer.ts#getCompareAtNotes` | `lib/__tests__/compare-price.test.ts`, `services/__tests__/price-history.test.ts` |
 | 自動送金の農家に手動の「振込済み」を出さない・送金前に Stripe の既存送金を確認（二重払い防止, #13） | `services/payouts.ts#markPayoutPaidManually/executeDuePayouts`, `payments/stripe.ts#findPayoutTransfer`, `admin/payouts/payouts-table.tsx` | `services/__tests__/manual-payout.test.ts`, `payout-transfer-lookup.test.ts` |
 | 停止中の農家の売上・返金の相殺も月次で精算する（#14） | `jobs/index.ts`（close-payouts） | `jobs/suspended-farm-payout.test.ts` |

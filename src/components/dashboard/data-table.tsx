@@ -4,6 +4,7 @@ import {
   type ColumnDef, type RowSelectionState, type SortingState,
 } from "@tanstack/react-table";
 import { ArrowUpDown, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
@@ -13,14 +14,17 @@ import { cn } from "@/lib/utils";
 /**
  * Generic client table (sorting, global search, pagination, optional row selection).
  * Define `columns` in a "use client" file next to the page; pass serializable `data` from the server.
+ * `mobileCard`: 幅の狭い画面（md 未満）では表の代わりにカードの一覧を出す（横スクロールで状態や金額が画面外に切れないように）。
+ * 検索・並び・ページ送りは表と同じ行を使う。行全体をリンクにするときは `mobileHref` を渡す。
  */
 export function DataTable<T>({
   columns, data, searchPlaceholder = "検索", pageSize = 20, toolbar, emptyText = "データがありません",
-  enableSelection = false, onSelectionChange, getRowId, rowClassName,
+  enableSelection = false, onSelectionChange, getRowId, rowClassName, mobileCard, mobileHref,
 }: {
   columns: ColumnDef<T, unknown>[]; data: T[]; searchPlaceholder?: string | false; pageSize?: number;
   toolbar?: React.ReactNode | ((selected: T[]) => React.ReactNode); emptyText?: string;
   enableSelection?: boolean; onSelectionChange?: (rows: T[]) => void; getRowId?: (row: T) => string; rowClassName?: (row: T) => string | undefined;
+  mobileCard?: (row: T) => React.ReactNode; mobileHref?: (row: T) => string;
 }) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
@@ -60,7 +64,31 @@ export function DataTable<T>({
           <div className="flex flex-wrap items-center gap-2">{typeof toolbar === "function" ? toolbar(selected) : toolbar}</div>
         </div>
       )}
-      <div className="bg-card overflow-hidden rounded-xl border">
+      {mobileCard && (
+        <ul className="bg-card divide-y overflow-hidden rounded-xl border md:hidden" aria-label="一覧">
+          {table.getRowModel().rows.length ? (
+            table.getRowModel().rows.map((row) => {
+              const href = mobileHref?.(row.original);
+              const body = mobileCard(row.original);
+              return (
+                <li key={row.id} className={rowClassName?.(row.original)}>
+                  {href ? (
+                    <Link href={href} className="hover:bg-muted/40 focus-visible:bg-muted/40 flex items-center gap-3 px-4 py-3.5 outline-none transition-colors">
+                      <div className="min-w-0 flex-1">{body}</div>
+                      <ChevronRight className="text-muted-foreground size-4 shrink-0" aria-hidden />
+                    </Link>
+                  ) : (
+                    <div className="px-4 py-3.5">{body}</div>
+                  )}
+                </li>
+              );
+            })
+          ) : (
+            <li className="text-muted-foreground px-4 py-10 text-center text-sm">{emptyText}</li>
+          )}
+        </ul>
+      )}
+      <div className={cn("bg-card overflow-hidden rounded-xl border", mobileCard && "hidden md:block")}>
         <Table>
           <TableHeader className="bg-muted/40">
             {table.getHeaderGroups().map((hg) => (

@@ -70,6 +70,26 @@ export function OrdersTable({ rows, today, showShipBy }: { rows: FarmOrderRow[];
       searchPlaceholder="注文番号・お名前・都道府県で検索"
       emptyText="該当する注文はありません"
       rowClassName={(r) => (showShipBy && shipUrgency(r.shipByDate, today) === "overdue" ? "bg-destructive/5" : undefined)}
+      mobileHref={(r) => routes.farmer.order(r.id)}
+      mobileCard={(r) => (
+        <div className="space-y-1.5">
+          <div className="flex items-baseline justify-between gap-3">
+            <p className="flex min-w-0 items-center gap-1.5 truncate font-medium">
+              {r.recipientName} 様
+              {r.hasGift && <Gift className="text-onion-red size-3.5 shrink-0" aria-label="ギフト" />}
+              <span className="text-muted-foreground truncate text-xs font-normal">{r.prefecture}</span>
+            </p>
+            <span className="num shrink-0 text-sm">{formatNumber(r.subtotal)}円</span>
+          </div>
+          <p className="text-muted-foreground line-clamp-1 text-xs">{itemsSummaryText(r.items)}</p>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <StatusBadge kind="farmOrder" status={r.status} />
+            {r.cancelRequested && <Badge variant="destructive">{orderCancelCopy.farmer.listBadge}</Badge>}
+            {showShipBy && <ShipByBadge shipByDate={r.shipByDate} today={today} />}
+            <span className="text-muted-foreground ml-auto font-mono text-[11px]">{r.code}</span>
+          </div>
+        </div>
+      )}
     />
   );
 }
