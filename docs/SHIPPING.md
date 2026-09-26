@@ -44,7 +44,10 @@
 送り状CSV API: `GET /api/farmer/labels?ids=<farmOrderId,...>&carrier=yamato|japanpost|sagawa&encoding=sjis|utf8`
 （生産者本人の paid/preparing のみ。`labelPrintedAt` と `label_created` イベントを記録）
 
-追跡CSV取込: 任意CSVの各行から注文コード `AM-YYMMDD-XXXX-n` と 10〜14桁の番号を抽出（`parseTrackingCsv`）。
+追跡CSV取込: 任意CSVの各行から注文コード `AM-YYMMDD-XXXX-n` と追跡番号を抽出（`parseTrackingCsv`）。
+見出し行に「伝票番号」「追跡番号」「お問い合わせ番号」などがあればその列だけを読み、無ければ数字10〜14桁のうち
+電話番号の形（0 始まり 10〜11 桁）を除いた最初のものを使う（お届け先の電話番号の取り違え防止, #21）。
+追跡番号の決まりは手入力・CSV・運営の入力で1つ（`lib/shipping.ts#trackingNumberPattern`: 全角・空白・ハイフンをそろえて英数字8〜20桁）。
 
 ## 4. Automation（Vercel Cron → `/api/cron/[job]`）
 

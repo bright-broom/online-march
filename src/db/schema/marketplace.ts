@@ -55,6 +55,11 @@ export const shipmentEventType = pgEnum("shipment_event_type", [
   "note",
   "refund",
 ]);
+/**
+ * `processing` はどこからも使っていない（送金は pending → paid を1回の条件付き更新で行い、二重送金は冪等キーと
+ * Stripe への確認で防いでいる）。enum の値を消すにはマイグレーションを書き換えることになり「足すだけ」の決まり（AGENTS.md）に反するので、
+ * 値は残して画面にも出さない（#21）。使う日が来たら config/status.ts の説明と合わせて意味を決める。
+ */
 export const payoutStatus = pgEnum("payout_status", ["pending", "processing", "paid"]);
 export const couponType = pgEnum("coupon_type", ["percent", "fixed"]);
 export const notificationType = pgEnum("notification_type", [

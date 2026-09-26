@@ -1,5 +1,6 @@
 /** zod schemas for the 運営 (admin) console. Shared by client forms and server actions. */
 import { z } from "zod";
+import { trackingNumberSchema } from "./farmer";
 
 const ymd = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "日付を選択してください");
 const optionalYmd = z.preprocess((v) => (v === "" || v == null ? null : v), ymd.nullable());
@@ -39,12 +40,8 @@ export const userRoleSchema = z.object({
 export const adminTransitionSchema = z.object({
   farmOrderId: z.uuid(),
   to: z.enum(["preparing", "shipped", "delivered", "cancelled"]),
-  trackingNumber: z
-    .string()
-    .trim()
-    .max(40)
-    .optional()
-    .transform((v) => (v ? v.replace(/[^\dA-Za-z-]/g, "") : undefined)),
+  // 空なら既存の番号のまま（lib/shipping.ts の決まりで検証。生産者の入力・CSV取込と同じ）
+  trackingNumber: z.union([z.literal("").transform(() => undefined), trackingNumberSchema]).optional(),
   carrier: z.enum(["yamato", "japanpost", "sagawa"]).optional(),
   note: z.string().trim().max(200, "200文字以内で入力してください").optional(),
 });

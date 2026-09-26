@@ -1,5 +1,6 @@
 /** Farmer dashboard input schemas (client + server). Messages are user-facing Japanese. */
 import { z } from "zod";
+import { normalizeTrackingNumber, trackingNumberPattern } from "@/lib/shipping";
 import { catalogLimits, categoryKeys, cultivationMethods } from "@/config/catalog";
 import { carriers } from "@/config/shipping";
 import type { Carrier, ProductCategory, ProductStatus } from "@/db/schema/marketplace";
@@ -96,11 +97,12 @@ export const productStatusChangeSchema = z.object({
 
 export const idsSchema = z.array(z.uuid()).min(1, "注文を選択してください").max(200, "一度に操作できるのは200件までです");
 
+/** 追跡番号（決まりは lib/shipping.ts の1か所。CSV取込・運営の入力も同じ） */
 export const trackingNumberSchema = z
   .string()
   .trim()
-  .transform((v) => v.replace(/[\s-]/g, ""))
-  .pipe(z.string().regex(/^[0-9A-Za-z]{8,20}$/, "追跡番号は8〜20桁の英数字で入力してください"));
+  .transform(normalizeTrackingNumber)
+  .pipe(z.string().regex(trackingNumberPattern, "追跡番号は8〜20桁の英数字で入力してください"));
 
 export const shipOrderSchema = z.object({
   id: z.uuid(),

@@ -17,7 +17,8 @@ import { getAdminPayouts } from "@/server/queries/admin";
 
 export const metadata: Metadata = { title: "精算・振込" };
 
-const statuses = Object.keys(payoutStatusMeta) as PayoutStatus[];
+// processing は使っていない値（db/schema の payoutStatus の説明）なので、絞り込みにも出さない
+const statuses = (Object.keys(payoutStatusMeta) as PayoutStatus[]).filter((s) => s !== "processing");
 
 export default async function AdminPayoutsPage({ searchParams }: PageProps<"/admin/payouts">) {
   await requireRole("admin", routes.admin.payouts);

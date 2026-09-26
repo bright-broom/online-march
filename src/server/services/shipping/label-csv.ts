@@ -3,6 +3,7 @@ import iconv from "iconv-lite";
 import { carriers, deliveryTimeSlots, shippingPolicy, type DeliveryTimeSlot } from "@/config/shipping";
 import type { AddressSnapshot, Carrier, Farm } from "@/db/schema";
 import { toYmd } from "@/lib/dates";
+import { looksLikePhoneNumber, normalizeTrackingNumber, trackingNumberPattern } from "@/lib/shipping";
 
 export type LabelRow = {
   code: string;
@@ -48,18 +49,52 @@ export function buildLabelCsv(carrier: Carrier, rows: LabelRow[], encoding: "sji
   return { body, filename: `${carrier}-labels-${toYmd(new Date())}.csv`, contentType: `text/csv; charset=${encoding === "sjis" ? "Shift_JIS" : "UTF-8"}` };
 }
 
+/** 追跡番号の列の見出し（B2クラウド・ゆうプリR・e飛伝の書き出しと、手作りの CSV でよく使う名前） */
+const TRACKING_HEADER = /伝票番号|追跡番号|問い?合わ?せ(伝票)?番号|送り状番号|荷物番号/;
+const ORDER_CODE = /AM-\d{6}-[0-9A-Z]{4}-\d+/;
+
+/** 1行を列に分ける（"…" の中のカンマ・"" を扱う最小限の CSV 分割） */
+function cellsOf(line: string) {
+  const cells: string[] = [];
+  let cur = "";
+  let quoted = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (quoted && c === '"' && line[i + 1] === '"') {
+      cur += '"';
+      i++;
+    } else if (c === '"') {
+      quoted = !quoted;
+    } else if (!quoted && (c === "," || c === "\t")) {
+      cells.push(cur);
+      cur = "";
+    } else {
+      cur += c;
+    }
+  }
+  cells.push(cur);
+  return cells.map((v) => v.trim());
+}
+
 /**
  * Parse a tracking-number CSV exported from the carrier software (or hand-made).
- * Accepts any CSV that has a column containing our order code (AM-XXXXXX-XXXX-N) and a 10–14 digit number.
+ * 各行から注文番号（AM-XXXXXX-XXXX-N）と追跡番号を拾う。追跡番号は、見出し行に「伝票番号」などの列があればその列だけを読む。
+ * 見出しが無いときは、数字 10〜14 桁の列のうち電話番号の形（0 始まり 10〜11 桁）を除いた最初のものを使う（お届け先の電話番号を取り違えないため, #21）。
+ * どちらも決まり（lib/shipping.ts#trackingNumberPattern）に合うものだけ。
  */
 export function parseTrackingCsv(input: Buffer | string): { code: string; trackingNumber: string }[] {
   const utf8 = typeof input === "string" ? input : input.toString("utf8");
   const text = typeof input !== "string" && utf8.includes("�") ? iconv.decode(input, "Shift_JIS") : utf8;
+  const rows = text.split(/\r?\n/).filter((l) => l.trim()).map(cellsOf);
+  const header = rows.find((r) => r.some((c) => TRACKING_HEADER.test(c)) && !r.some((c) => ORDER_CODE.test(c)));
+  const column = header ? header.findIndex((c) => TRACKING_HEADER.test(c)) : -1;
   const out: { code: string; trackingNumber: string }[] = [];
-  for (const line of text.split(/\r?\n/)) {
-    const code = line.match(/AM-\d{6}-[0-9A-Z]{4}-\d+/)?.[0];
-    const tracking = line.replace(/AM-\d{6}-[0-9A-Z]{4}-\d+/g, "").match(/(?<!\d)\d{10,14}(?!\d)/)?.[0];
-    if (code && tracking) out.push({ code, trackingNumber: tracking });
+  for (const cells of rows) {
+    const code = cells.join(",").match(ORDER_CODE)?.[0];
+    if (!code) continue;
+    const candidates = column >= 0 ? [cells[column] ?? ""] : cells.filter((c) => !ORDER_CODE.test(c) && /^\d{10,14}$/.test(normalizeTrackingNumber(c)) && !looksLikePhoneNumber(c));
+    const tracking = candidates.map(normalizeTrackingNumber).find((c) => trackingNumberPattern.test(c));
+    if (tracking) out.push({ code, trackingNumber: tracking });
   }
   return out;
 }

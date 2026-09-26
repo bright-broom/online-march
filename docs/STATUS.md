@@ -241,3 +241,4 @@
 | Stripe を使わない農家の振込先口座（生産者が登録・暗号化して保存・運営は全桁表示を記録つきで）（#20） | `farm_bank_accounts`（マイグレーション 0011）, `services/bank-account.ts`, `actions/farmer-shop.ts#saveFarmBankAccount`, `actions/admin-ops.ts#revealFarmBankAccount`, `farmer/payouts/bank-account-card.tsx` | `actions/__tests__/bank-account.test.ts` |
 | #21 守りの小物: HSTS（本番のみ）・レビュー公開の入力検証と操作記録・お休みは180日先まで | `next.config.ts`, `actions/reviews.ts#setReviewPublished`, `config/shipping.ts#maxPauseDays` | `test/next-config.test.ts`, `admin-audit.test.ts`, `farm-pause.test.ts`, `test/admin-audit-coverage.test.ts` |
 | #21 回数制限: アップロード・メッセージ・レビュー・使えないクーポンの入力（本人ごと・DB で数える） | `config/rate-limits.ts`, `services/rate-limit.ts` | `services/__tests__/rate-limit.test.ts` |
+| #21 追跡番号: 手入力・CSV・運営で決まりを1つに／CSVは見出しの列を読み電話番号を取り違えない／未使用の `payouts.status=processing` は残して画面に出さない | `lib/shipping.ts#trackingNumberPattern`, `services/shipping/label-csv.ts#parseTrackingCsv`, `validators/admin.ts` | `services/__tests__/tracking-csv.test.ts` |
