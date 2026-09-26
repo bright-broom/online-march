@@ -666,3 +666,42 @@ export type JobRunRow = Awaited<ReturnType<typeof getJobRuns>>[number];
 export async function getAuditLogs(limit = 1000) {
   return db.select().from(adminAuditLogs).orderBy(desc(adminAuditLogs.createdAt)).limit(limit);
 }
+
+/**
+ * 運営向け会計CSV（#21）の明細。1行 = 1出荷単位。注文日（JST）で月を切り、未決済は除く（キャンセル・返金は含める）。
+ * ダウンロードのたびに最新を読むので "use cache" は付けない（生産者の売上明細 getSalesRows と同じ）。
+ */
+export async function getAccountingRows(month: string) {
+  const from = `${month}-01` as YMD;
+  const next = monthKey(new Date(fromYmd(from).getTime() + 32 * 86_400_000));
+  return db
+    .select({
+      orderedAt: farmOrders.createdAt,
+      orderCode: orders.code,
+      farmOrderCode: farmOrders.code,
+      farmName: farms.name,
+      status: farmOrders.status,
+      paymentMethod: orders.paymentMethod,
+      subtotal: farmOrders.subtotal,
+      shippingFee: farmOrders.shippingFee,
+      discount: farmOrders.discount,
+      commission: farmOrders.commissionAmount,
+      payoutAmount: farmOrders.payoutAmount,
+      refundAmount: farmOrders.refundAmount,
+      refundedAt: farmOrders.refundedAt,
+      payoutScheduledFor: payouts.scheduledFor,
+      payoutPaidAt: payouts.paidAt,
+    })
+    .from(farmOrders)
+    .innerJoin(orders, eq(orders.id, farmOrders.orderId))
+    .innerJoin(farms, eq(farms.id, farmOrders.farmId))
+    .leftJoin(payouts, eq(payouts.id, farmOrders.payoutId))
+    .where(
+      and(
+        ne(farmOrders.status, "pending_payment"),
+        gte(farmOrders.createdAt, fromYmd(from)),
+        lt(farmOrders.createdAt, fromYmd(`${next}-01` as YMD)),
+      ),
+    )
+    .orderBy(farmOrders.createdAt, farmOrders.code);
+}

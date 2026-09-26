@@ -90,6 +90,12 @@ export const announcementSchema = z.object({
 
 export const idSchema = z.object({ id: z.uuid() });
 
+/** 運営向け会計CSV（#21）。月は YYYY-MM。文字コードは既定で UTF-8（BOM 付き） */
+export const accountingCsvQuerySchema = z.object({
+  month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "対象月が正しくありません"),
+  encoding: z.enum(["utf8", "sjis"]).default("utf8"),
+});
+
 /** Marker for admin refund notes in shipment_events (farm_orders has no refund column). */
 
 /** Admin period switch (overview analytics). */

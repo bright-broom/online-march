@@ -104,6 +104,8 @@ export const routes = {
     automation: "/admin/automation",
     audit: "/admin/audit",
     settings: "/admin/settings",
+    /** 会計CSV（#21）のダウンロード */
+    accountingCsv: "/api/admin/accounting",
   },
 } as const;
 

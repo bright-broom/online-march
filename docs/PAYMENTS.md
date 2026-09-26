@@ -41,6 +41,17 @@
 実装 `services/sales-csv.ts` + `queries/farmer.ts#getSalesRows`、UI は /farmer/payouts。
 回帰テスト `services/__tests__/sales-csv.test.ts`（農園スコープ・期間の境界・金額の整合・CSVエスケープ）。
 
+## 運営向けの書き出し（会計CSV）
+
+`/api/admin/accounting?month=YYYY-MM&encoding=utf8|sjis`（既定 UTF-8・BOM 付き）— 運営の月次の記帳用（#21）。
+/admin/payouts の「会計CSVの書き出し」から。運営（二段階認証済み）だけが取れ、書き出すたびに操作記録
+（`accounting.export`）に残す。**注文日（JST）**で月を切り、未決済は除外、キャンセル・返金は含める。
+1ファイルに2つの表: 明細（1行 = 1出荷単位。注文日 / 注文番号 / 出荷単位番号 / 生産者 / 状態 / 決済手段 / 商品代金 / 送料 /
+クーポン割引（運営負担）/ お客さま支払額 / 販売手数料（運営の収入）/ 生産者受取額 / 返金額 / 返金日 / 精算予定日 / 入金日）と、
+生産者別の集計＋合計。**勘定科目の割り当てはしない**（会計ソフト・税理士ごとに違うため）。
+実装 `services/accounting-csv.ts` + `queries/admin.ts#getAccountingRows`、`app/api/admin/accounting/route.ts`。
+回帰テスト `services/__tests__/accounting-csv.test.ts`（権限・二段階認証・月の境界・未決済の除外・明細と集計の一致・BOM・操作記録）。
+
 ## モード
 
 | 条件 | 挙動 |

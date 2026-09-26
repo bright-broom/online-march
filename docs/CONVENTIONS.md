@@ -45,6 +45,7 @@ export async function updateProduct(_prev: unknown, formData: FormData): Promise
 - **運営だけが使う Action（`assertRole("admin")`。多くは `actions/admin-*.ts`）は、成功したら `services/audit.ts#recordAudit(me, …)` で操作記録を残す**（#19）。
   `action` は `config/audit.ts#auditActions` に足す。失敗した操作は記録しない（ガードや `ActionError` の後で呼ぶ）。
   記録を書かない運営 Action を足すと `test/admin-audit-coverage.test.ts` が落ちる。
+  運営だけの Route Handler（例: `app/api/admin/accounting/route.ts` の会計CSV）はこの検査の対象外なので、自分で記録を書き、テストで確かめる。
 - Action の想定外のエラーは `runAction` が運営に通知する（#12）。利用者向けの失敗は `ActionError` で投げる。
 - 連打や総当たりの的になる入力（投稿・送信・アップロード・コードの入力）には回数制限を付ける（#21）:
   `services/rate-limit.ts#consumeRateLimit(name, me.id)` が false なら `ActionError(rateLimits[name].message)`。

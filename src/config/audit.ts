@@ -6,6 +6,7 @@ export const auditActions = {
   "order.refund": "返金",
   "order.status": "注文ステータスの変更",
   "payout.mark_paid": "振込済みにする",
+  "accounting.export": "会計CSVの書き出し",
   "platform.commission": "標準手数料率の変更",
   "platform.maintenance": "メンテナンスモード",
   "job.run": "自動処理の手動実行",
