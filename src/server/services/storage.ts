@@ -13,9 +13,14 @@ const extOf: Record<ImageType, string> = { "image/jpeg": "jpg", "image/png": "pn
 /**
  * アップロード先のフォルダと、置いてよいロール。ここに無いフォルダ・ロールは受け付けない（#3）。
  * 以前は folder を無検証でパスに使っていたため、ログインしていれば任意の場所に書けた（ローカルでは ../ で外にも）。
- * お客さまがアップロードする画面は今は無い（レビュー写真は未実装）。
+ * お客さまが置けるのはレビューの写真（reviews）だけ。回数は rate-limits.ts#upload で本人ごとに数える。
  */
-export const uploadFolders = { products: ["farmer", "admin"], farms: ["farmer", "admin"] } as const satisfies Record<string, readonly UserRole[]>;
+export const uploadFolders = {
+  products: ["farmer", "admin"],
+  farms: ["farmer", "admin"],
+  // レビューの写真（#21）。お客さまだけ。付けられるのは reviews フォルダの URL だけ（validators/engagement.ts#reviewImageUrl）
+  reviews: ["customer"],
+} as const satisfies Record<string, readonly UserRole[]>;
 export type UploadFolder = keyof typeof uploadFolders;
 
 export function uploadFolderFor(role: UserRole, folder: unknown): UploadFolder | null {

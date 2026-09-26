@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { EmptyState } from "@/components/common/empty-state";
 import { RatingStars } from "@/components/common/rating";
+import { ReviewPhotos } from "@/components/common/review-photos";
 import { ToneBadge } from "@/components/common/status-badge";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { DeleteReviewButton } from "@/components/mypage/delete-review-button";
@@ -71,12 +72,13 @@ export default async function ReviewsPage() {
                   </div>
                   {r.title && <p className="font-medium">{r.title}</p>}
                   <p className="text-sm leading-relaxed whitespace-pre-wrap">{r.body}</p>
+                  <ReviewPhotos images={r.images} alt={`${r.productName}のレビュー`} size={64} />
                   <div className="flex justify-end gap-1">
                     <ReviewDialog
                       productId={r.productId}
                       productName={r.productName}
                       imageUrl={r.imageUrl}
-                      review={{ id: r.id, rating: r.rating, title: r.title, body: r.body }}
+                      review={{ id: r.id, rating: r.rating, title: r.title, body: r.body, images: r.images }}
                     />
                     <DeleteReviewButton reviewId={r.id} productName={r.productName} />
                   </div>

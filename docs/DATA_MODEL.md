@@ -68,6 +68,9 @@ farm_bank_accounts (farm 1─1)  ← 振込先口座。口座番号は暗号化�
 | 在庫（`product_variants.stock`） | 予約は**条件付き更新**（`stock >= 数量` の行だけを減らす）で注文トランザクション内。同時注文は Postgres の行ロックで直列化され、売り越し・在庫マイナスは起きない。キャンセル・返金で戻す。回帰テスト `services/__tests__/stock-race.test.ts` |
 | `payouts.transferError` / `transferAttemptedAt` | 自動送金が通らなかった理由と試行時刻（送金成功で null に戻す）。/admin/payouts に表示 |
 | `payouts.refundAdjustment` / `farm_orders.clawbackPayoutId` | 精算済み注文の返金を翌月精算で相殺した額と、相殺した精算の参照（二重控除防止） |
+| `reviews.images` | お客さまの写真（#21）。URL の配列（最大 `catalogLimits.maxReviewImages`=3）。付けられるのはこのサイトが reviews フォルダに置いたものだけ（`validators/engagement.ts#reviewImageUrlPattern`。よその画像を商品ページに出させない）。問題があれば運営がレビューごと非公開にする（写真だけを消す操作はない）。付けずに終わった写真・外した写真のファイルは Blob に残る（容量が問題になったら掃除のジョブを足す） |
+| `coupons.oncePerUser` | お一人さま1回まで（#21）。docs/PAYMENTS.md |
+| `user.suspendedAt/suspendedReason` | 運営による利用停止（#21）。下の「利用停止」 |
 | `farm_orders.refundedAt/refundAmount` | 返金の事実（金額・日時）。返金は `services/refunds.ts#refundOrder` のみ。タイムラインに `refund` イベント |
 
 ## 状態機械

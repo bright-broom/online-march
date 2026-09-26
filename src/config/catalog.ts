@@ -85,6 +85,8 @@ export const catalogLimits = {
   maxImagesPerProduct: 8,
   maxVariantsPerProduct: 6,
   maxImageBytes: 8 * 1024 * 1024,
+  /** レビューに付けられる写真の枚数（#21） */
+  maxReviewImages: 3,
   acceptedImageTypes: ["image/jpeg", "image/png", "image/webp", "image/avif"],
   lowStockThreshold: 5,
 } as const;

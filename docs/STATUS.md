@@ -56,11 +56,11 @@
 | Issue | 状態 |
 | --- | --- |
 | #13 自動送金の農家への手動「振込済み」（二重払い） | **main にマージ済み**（PR #22, `0d87731`）。本番の画面での確認は未実施（→ 3節） |
-| #12 エラー監視 / #14 停止中の農家の精算 / #15 出店審査 / #16 メールアドレスの確認と変更 / #17 決済画面から戻ったときの取り消し / #19 操作記録 / #20 振込先口座 | **PR #23 でレビュー待ち**（ブランチ `claude/zealous-feynman-b5sb80`、Issue ごとにコミットを分けてある）。マージで各 Issue が閉じる。**テーブルを2つ足す**（マイグレーション 0010 `admin_audit_logs`・0011 `farm_bank_accounts`、追加のみ。本番ビルドが先に当てる）。#21 で列を足す（0012 `coupons.once_per_user`、0013 `user.suspended_at`・`user.suspended_reason`。どれも既定値つき） |
+| #12 エラー監視 / #14 停止中の農家の精算 / #15 出店審査 / #16 メールアドレスの確認と変更 / #17 決済画面から戻ったときの取り消し / #19 操作記録 / #20 振込先口座 | **PR #23 でレビュー待ち**（ブランチ `claude/zealous-feynman-b5sb80`、Issue ごとにコミットを分けてある）。マージで各 Issue が閉じる。**テーブルを2つ足す**（マイグレーション 0010 `admin_audit_logs`・0011 `farm_bank_accounts`、追加のみ。本番ビルドが先に当てる）。#21 で列を足す（0012 `coupons.once_per_user`、0013 `user.suspended_at`・`user.suspended_reason`、0014 `reviews.images`。どれも既定値つき） |
 
 **PR #23 をマージしたら本番で確かめること**（確かめたら 3節へ移す）:
 
-- ビルドログに `[db:migrate] done`（0010〜0013 が当たったこと）
+- ビルドログに `[db:migrate] done`（0010〜0014 が当たったこと）
 - /admin/audit（操作記録）が開き、手数料率などを変えると1行増える
 - /farmer/payouts に「振込先口座」が出て、登録すると下4桁だけ表示される。/admin/payouts の明細で「全桁を表示」→ 操作記録に残る
 - Stripe のテスト決済画面で「戻る」→ カートに「お支払いを中断しました」、在庫とクーポンが戻る
@@ -251,3 +251,4 @@
 | #21 クーポンの「お一人さま1回まで」（キャンセルした注文は数えない・同じ人の同時注文はロックして数え直す） | `coupons.once_per_user`（マイグレーション 0012）, `services/orders.ts#quoteCart/createOrder/hasUsedCoupon`, `config/payments.ts#couponOncePerUserCopy`, `admin/content/coupons-manager.tsx` | `services/__tests__/coupon-once-per-user.test.ts` |
 | #21 運営向け会計CSV（月・注文日 JST で切った出荷単位ごとの明細＋生産者別集計、UTF-8 BOM／Shift_JIS、書き出しを操作記録に残す） | `services/accounting-csv.ts`, `queries/admin.ts#getAccountingRows`, `app/api/admin/accounting/route.ts`, `admin/payouts/accounting-export-card.tsx` | `services/__tests__/accounting-csv.test.ts` |
 | #21 ユーザーの利用停止・匿名化（停止中はどの入口からもログインできず端末も切れる・注文はそのまま・再開できる／匿名化は退会と同じ処理を運営が行う・自分と運営は対象外・操作記録つき） | `user.suspended_at`（マイグレーション 0013）, `server/auth/auth.ts`（databaseHooks）, `server/auth/session.ts`, `actions/admin-users.ts#setUserSuspended/anonymizeUser`, `admin/users/user-moderation.tsx` | `server/auth/__tests__/user-suspension.test.ts` |
+| #21 レビューの写真（3枚まで・お客さまがアップロード・このサイトの reviews フォルダの URL だけ・編集で差し替え・運営はレビューごと非公開にして対応） | `reviews.images`（マイグレーション 0014）, `services/storage.ts#uploadFolders`, `validators/engagement.ts#reviewImageUrlPattern`, `mypage/review-dialog.tsx`, `common/review-photos.tsx`, `admin/products/reviews-table.tsx`（写真ありで絞り込み） | `actions/__tests__/review-photos.test.ts`, `services/__tests__/upload.test.ts` |

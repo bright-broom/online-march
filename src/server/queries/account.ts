@@ -413,6 +413,7 @@ export async function listMyReviews(userId: string) {
       rating: reviews.rating,
       title: reviews.title,
       body: reviews.body,
+      images: reviews.images,
       reply: reviews.reply,
       repliedAt: reviews.repliedAt,
       isPublished: reviews.isPublished,

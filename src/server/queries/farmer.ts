@@ -496,6 +496,7 @@ export async function getFarmReviews(farmId: string, opts: { unrepliedOnly?: boo
       rating: reviews.rating,
       title: reviews.title,
       body: reviews.body,
+      images: reviews.images,
       reply: reviews.reply,
       repliedAt: reviews.repliedAt,
       isPublished: reviews.isPublished,

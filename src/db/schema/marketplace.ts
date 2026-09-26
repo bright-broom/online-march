@@ -378,6 +378,8 @@ export const reviews = pgTable(
     rating: integer("rating").notNull(),
     title: text("title").notNull().default(""),
     body: text("body").notNull().default(""),
+    /** お客さまの写真（#21、最大 catalogLimits.maxReviewImages 枚）。自分でアップロードした reviews フォルダの URL だけ（validators/engagement.ts） */
+    images: jsonb("images").$type<string[]>().notNull().default([]),
     reply: text("reply"),
     repliedAt: timestamp("replied_at", { withTimezone: true }),
     isPublished: boolean("is_published").notNull().default(true),

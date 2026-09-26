@@ -457,6 +457,7 @@ export async function getAdminReviews(limit = 200) {
       rating: reviews.rating,
       title: reviews.title,
       body: reviews.body,
+      images: reviews.images,
       reply: reviews.reply,
       isPublished: reviews.isPublished,
       createdAt: reviews.createdAt,

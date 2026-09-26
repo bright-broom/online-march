@@ -146,6 +146,8 @@ export type ReviewDTO = {
   rating: number;
   title: string;
   body: string;
+  /** お客さまの写真（#21） */
+  images: string[];
   reply: string | null;
   repliedAt: string | null;
   createdAt: string;
@@ -556,6 +558,7 @@ const reviewColumns = {
   rating: reviews.rating,
   title: reviews.title,
   body: reviews.body,
+  images: reviews.images,
   reply: reviews.reply,
   repliedAt: reviews.repliedAt,
   createdAt: reviews.createdAt,
@@ -571,6 +574,7 @@ type ReviewRow = {
   rating: number;
   title: string;
   body: string;
+  images: string[];
   reply: string | null;
   repliedAt: Date | null;
   createdAt: Date;
@@ -586,6 +590,7 @@ const toReview = (r: ReviewRow): ReviewDTO => ({
   rating: r.rating,
   title: r.title,
   body: r.body,
+  images: r.images,
   reply: r.reply,
   repliedAt: iso(r.repliedAt),
   createdAt: iso(r.createdAt)!,

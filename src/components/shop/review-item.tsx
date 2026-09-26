@@ -1,6 +1,7 @@
 import { Sprout } from "lucide-react";
 import Link from "next/link";
 import { RatingStars } from "@/components/common/rating";
+import { ReviewPhotos } from "@/components/common/review-photos";
 import { routes } from "@/config/nav";
 import { formatDate } from "@/lib/format";
 import type { ReviewDTO } from "@/server/queries/catalog";
@@ -14,6 +15,7 @@ export function ReviewItem({ review, showProduct = false }: { review: ReviewDTO;
         {review.title && <h3 className="text-sm font-semibold">{review.title}</h3>}
       </div>
       <p className="text-foreground/85 text-sm leading-relaxed whitespace-pre-line">{review.body}</p>
+      <ReviewPhotos images={review.images} alt={review.title || `${review.product.name}のレビュー`} />
       <p className="text-muted-foreground text-xs">
         {review.author}・<time dateTime={review.createdAt}>{formatDate(review.createdAt)}</time>
         {showProduct && (

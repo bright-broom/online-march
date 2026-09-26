@@ -52,7 +52,7 @@ export async function updateReview(_prev: unknown, formData: FormData): Promise<
     if (!(await consumeRateLimit("review", me.id))) throw new ActionError(rateLimits.review.message);
     const mine = await db.query.reviews.findFirst({ where: and(eq(reviews.id, data.reviewId), eq(reviews.userId, me.id)) });
     if (!mine) throw new ActionError("レビューが見つかりません");
-    await db.update(reviews).set({ rating: data.rating, title: data.title, body: data.body }).where(eq(reviews.id, mine.id));
+    await db.update(reviews).set({ rating: data.rating, title: data.title, body: data.body, images: data.images }).where(eq(reviews.id, mine.id));
     await recomputeRatings(mine.productId, mine.farmId); // 星が変われば商品・生産者の平均も変わる
     updateTag(tags.productReviews(mine.productId));
   }, "レビューを更新しました");

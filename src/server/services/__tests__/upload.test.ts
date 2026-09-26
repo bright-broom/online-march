@@ -43,7 +43,8 @@ describe("アップロード先の許可", () => {
     expect(uploadFolderFor("farmer", "products")).toBe("products");
     expect(uploadFolderFor("admin", "farms")).toBe("farms");
   });
-  it("お客さまはどこにも置けない。許可リストに無いフォルダ・パスは拒否", () => {
+  it("お客さまが置けるのはレビューの写真だけ。許可リストに無いフォルダ・パスは拒否", () => {
+    expect(uploadFolderFor("customer", "reviews")).toBe("reviews");
     expect(uploadFolderFor("customer", "farms")).toBeNull();
     expect(uploadFolderFor("customer", "products")).toBeNull();
     expect(uploadFolderFor("farmer", "reviews")).toBeNull();
@@ -58,6 +59,14 @@ describe("POST /api/upload", () => {
     const res = await upload(JPEG, "products", "image/png");
     expect(res.status).toBe(200);
     expect((await res.json()).url).toMatch(/^\/uploads\/products\/[a-z0-9]+-[a-z0-9]+\.jpg$/);
+  });
+
+  it("お客さまのレビュー写真は、レビューに付けてよい形の URL で返る（#21）", async () => {
+    const { reviewImageUrlPattern } = await import("@/lib/validators/engagement");
+    current = user("customer");
+    const res = await upload(WEBP, "reviews", "image/webp");
+    expect(res.status).toBe(200);
+    expect((await res.json()).url).toMatch(reviewImageUrlPattern);
   });
 
   it("画像と偽った別の中身は拒否（ブラウザ申告の形式は信用しない）", async () => {
