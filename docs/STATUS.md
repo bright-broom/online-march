@@ -41,12 +41,14 @@
 | デモデータ | `@demo.awaji` のアカウントとシードデータが本番DBに入ったまま | 公開前に `npm run demo:purge`（`scripts/demo-purge.ts`）。運営アカウントは `npm run admin:promote -- --email <メール>` |
 | 特商法・運営者情報 | 仮の値 | `src/config/site.ts` の 代表者名 / 問い合わせメール / 電話番号 / 郵便番号 / 住所 / 受付時間 |
 | 利用規約・プライバシーポリシー | 下書き（`legalDraft = true`、【要確認】4か所: 再配送料の負担・運営者の責任上限・管轄裁判所 ほか） | 専門家に確認して `src/config/content.ts` を正式版に。本番公開チェックの「利用規約・プライバシーポリシー」が両方を見ている。**プライバシーポリシーに「生産者の振込先口座（暗号化して保存・運営が振込時に参照）」を足す**（#20 で集め始めた情報。#8）。PR #23（#21）で足した機能の分も書き足す: **レビューの写真**（お客さまが投稿した写真を商品ページに公開する・問題があれば運営が非公開にする）、**利用停止**（運営がどんなときに利用を止めるか・止めても注文は続く）、**運営による匿名化**（削除の依頼を受けたら運営が行う） |
+| 運営のインボイス登録番号（#10） | 未設定（空の間は領収書・支払通知書に出ない。本番公開チェックは「要確認」） | 「売主は誰か」を決めてから `src/config/site.ts` の `invoiceRegistrationNumber` に入れる。売主が生産者のままだと、商品代金の領収書に運営の番号が載る食い違いがある（docs/PAYMENTS.md「インボイス」）。税理士に確認 |
 | **売主は誰か（特商法の表示）** | 利用規約は「売買契約は購入者と**各生産者**の間」、特商法表記の販売事業者は**運営事務局**で食い違っている | どちらのモデルにするか専門家と決める。生産者が売主なら生産者ごとに氏名・住所・電話の表示が要る（食べチョク等と同じ）。住所・電話は出店申請で集めているが農園ページには代表者名しか出していない。決まればコードで対応する |
 | 運営アカウント | デモの `admin@demo.awaji` のみ | 本人のメールで会員登録 → `npm run admin:promote -- --email <メール>` → ログインすると**二段階認証の設定画面**へ（運営は必須。バックアップコードは必ず保管）。**デモ削除前にやらないと /admin に入れなくなる** |
 | 検索エンジンへの公開 | 準備中のため `noindex`（自動） | デモモードを無効にし本番キーを入れると自動で公開される。作業不要 |
 | Vercel Analytics / Speed Insights | コンポーネントは `src/app/layout.tsx` に組み込み済み（本番は同一オリジン配信なので CSP 変更不要）。Vercel ダッシュボード側で有効化されているかは未確認 | 使うならダッシュボードで有効化 |
 
-コード側の残りは、判断待ちの `owner-decision`（#10・#11・#18）と、配送業者との API 契約が決まったあとのつなぎ込み（#25 の続き）。
+コード側の残りは、判断待ちの `owner-decision`（#11・#18）と、配送業者との API 契約が決まったあとのつなぎ込み（#25 の続き）。
+#10（インボイス）はオーナーの決定をもとに PR #23 で実装済み。ただし**運営の登録番号は「売主は誰か」が決まるまで設定しない**（→ 下の表と docs/PAYMENTS.md「インボイス」）。
 バックログ #21 と、そこから切り出した #24（スタッフアカウント）・#25（配達完了の判定）は、オーナーの決定（各 Issue のコメント）をもとに
 **すべて PR #23 で実装済み**（マージ待ち。→ 2.1）。
 公開の可否を決めるのは上の表（オーナー作業）と Issues の `P0`。
@@ -55,21 +57,22 @@
 
 ### 2.1 コードで直せる P1・P2 の状況（2026-09-26）
 
-**PR #23 の状態（2026-09-26 04:06 UTC）**: 最新 `00913b3` まで CI 成功・main と衝突なし・レビューのコメントなし・**draft のまま**。
-下書きを外してマージするのはオーナー。マージすると #12・#14・#15・#16・#17・#19・#20・#24・#25 が自動で閉じる（#21 は手で閉じる）。
-マイグレーションは 0010〜0016 の7つ（どれも追加だけ）。
+**PR #23 の状態**: `00913b3`（#25）まで CI 成功・main と衝突なし・レビューのコメントなし・**draft のまま**（2026-09-26 04:06 UTC）。その後 #10 を積んだ。
+下書きを外してマージするのはオーナー。マージすると #10・#12・#14・#15・#16・#17・#19・#20・#24・#25 が自動で閉じる（#21 は手で閉じる）。
+マイグレーションは 0010〜0017 の8つ（どれも追加だけ）。
 
 | Issue | 状態 |
 | --- | --- |
 | #13 自動送金の農家への手動「振込済み」（二重払い） | **main にマージ済み**（PR #22, `0d87731`）。本番の画面での確認は未実施（→ 3節） |
-| #12 エラー監視 / #14 停止中の農家の精算 / #15 出店審査 / #16 メールアドレスの確認と変更 / #17 決済画面から戻ったときの取り消し / #19 操作記録 / #20 振込先口座 | **PR #23 でレビュー待ち**（ブランチ `claude/zealous-feynman-b5sb80`、Issue ごとにコミットを分けてある）。マージで各 Issue が閉じる。**テーブルを2つ足す**（マイグレーション 0010 `admin_audit_logs`・0011 `farm_bank_accounts`、追加のみ。本番ビルドが先に当てる）。#21 で列を足す（0012 `coupons.once_per_user`、0013 `user.suspended_at`・`user.suspended_reason`、0014 `reviews.images`。どれも既定値つき）。#24 でテーブルを1つと列を1つ足す（0015 `farm_members`・`shipment_events.actor_id`）。#25 で列を2つ足す（0016 `farm_orders.delivery_issue_at`・`delivery_issue_note`） |
+| #12 エラー監視 / #14 停止中の農家の精算 / #15 出店審査 / #16 メールアドレスの確認と変更 / #17 決済画面から戻ったときの取り消し / #19 操作記録 / #20 振込先口座 | **PR #23 でレビュー待ち**（ブランチ `claude/zealous-feynman-b5sb80`、Issue ごとにコミットを分けてある）。マージで各 Issue が閉じる。**テーブルを2つ足す**（マイグレーション 0010 `admin_audit_logs`・0011 `farm_bank_accounts`、追加のみ。本番ビルドが先に当てる）。#21 で列を足す（0012 `coupons.once_per_user`、0013 `user.suspended_at`・`user.suspended_reason`、0014 `reviews.images`。どれも既定値つき）。#24 でテーブルを1つと列を1つ足す（0015 `farm_members`・`shipment_events.actor_id`）。#25 で列を2つ足す（0016 `farm_orders.delivery_issue_at`・`delivery_issue_note`）。#10 で列を3つ足す（0017 `products.tax_rate`・`order_items.tax_rate`（既定 8）・`farms.invoice_registration_number`） |
 | #21 バックログ | **PR #23 に同梱**（同じブランチ。まとまりごとにコミット）。守りの小物・回数制限・追跡番号・案内と通知・画面の基本・ページングと検索・クーポン「お一人さま1回」・会計CSV・利用停止と匿名化・レビューの写真。**#21 自体は閉じない**（残りの2つを #24・#25 に切り出した。#24・#25 もこの PR で対応したので、マージ後にオーナーが #21 を閉じてよい） |
 | #24 スタッフアカウント | **PR #23 に同梱**。オーナーの決定（2026-09-26、Issue #24 のコメント）: オーナーがメールで招待・5人まで・1人1農園・購入者のアカウントのまま参加。権限は「出荷担当」「すべて」の2つ、精算・振込先口座・スタッフ管理はオーナーだけ。お客さまには農園名で届く。マージで閉じる（コミットに `Closes #24`） |
+| #10 インボイス | **PR #23 に同梱**。オーナーの決定（2026-09-26、Issue #10 のコメント）: 運営は登録済み／予定・商品 8% と送料 10%・生産者の番号は任意で登録・支払通知書を作る。マージで閉じる（`Closes #10`） |
 | #25 配送業者APIの配達完了連携 | **PR #23 に同梱（業者に依存しない部分）**。オーナーの決定（2026-09-26、Issue #25 のコメント）: API 契約はまだ・契約するなら運営がまとめて・API が無い荷物はお届け予定日の翌日に完了＋お客さまの「受け取りました」・届かなかったら知らせて自動完了を止める。業者のつなぎ込みは契約後（手順は docs/SHIPPING.md §5）。マージで閉じる（`Closes #25`）。契約したら新しい Issue で |
 
 **PR #23 をマージしたら本番で確かめること**（確かめたら 3節へ移す）:
 
-- ビルドログに `[db:migrate] done`（0010〜0016 が当たったこと）
+- ビルドログに `[db:migrate] done`（0010〜0017 が当たったこと）
 - /admin/audit（操作記録）が開き、手数料率などを変えると1行増える
 - /farmer/payouts に「振込先口座」が出て、登録すると下4桁だけ表示される。/admin/payouts の明細で「全桁を表示」→ 操作記録に残る
 - Stripe のテスト決済画面で「戻る」→ カートに「お支払いを中断しました」、在庫とクーポンが戻る
@@ -87,11 +90,14 @@
   オーナーが「外す」→ 生産者画面に入れない。**招待メールの到達は Resend 設定後**
 - #25 配達完了: テストの注文を発送 → マイページで「受け取りました」→ 配達完了になり、レビューが書ける。
   発送したまま放置した注文が、お届け予定日の翌日の `sync-tracking` で配達完了になる（/admin/automation の実行結果に件数）
+- #10 インボイス: テストの注文の領収書に「8%対象」「10%対象」と消費税額、商品に ※ が出る（登録番号は未設定なので出ない）。
+  /farmer/payouts の精算の内訳 →「支払通知書を開く」で印刷できる。本番公開チェックに「適格請求書の登録番号: 要確認」
 - 作ったテストデータ（振込先口座・操作記録・停止したテスト用アカウント・レビューと写真・スタッフの招待とアカウントを含む）を消す（→ 5節）
 
 **オーナーの判断待ち**（コードは決まってから）:
 
-- #10 インボイス対応 / #11 二重価格の運用ルール / #18 「出荷準備中」でのお客さまのキャンセル
+- #11 二重価格の運用ルール / #18 「出荷準備中」でのお客さまのキャンセル
+- #10 の残り: 売主を決めたうえで、領収書に載せる登録番号（運営か各生産者か）と端数処理（税率ごとに1回切り捨て）を税理士に確認
 - 配送業者の追跡 API の契約（#25 の続き）: どの業者と契約するか。契約したら docs/SHIPPING.md §5 の手順でつなぐ
 - #24 の残り（決めていない既定）: スタッフへのお知らせ（新しい注文・メッセージのお知らせは今はオーナーにだけ届く。スタッフは生産者画面のバッジで気づく）。
   生産者側の操作記録（今は発送の履歴に操作した人を残すだけ）
@@ -308,4 +314,5 @@ PR #23 の確認で作るものの消し方（どれも運営画面で消せな�
 | #21 ユーザーの利用停止・匿名化（停止中はどの入口からもログインできず端末も切れる・注文はそのまま・再開できる／匿名化は退会と同じ処理を運営が行う・自分と運営は対象外・操作記録つき） | `user.suspended_at`（マイグレーション 0013）, `server/auth/auth.ts`（databaseHooks）, `server/auth/session.ts`, `actions/admin-users.ts#setUserSuspended/anonymizeUser`, `admin/users/user-moderation.tsx` | `server/auth/__tests__/user-suspension.test.ts` |
 | #24 農園のスタッフ（オーナーが招待・5人まで・1人1農園・購入者アカウントのまま参加／出荷担当・すべて・オーナーの3段階の権限、精算と口座とスタッフ管理はオーナーだけ／メニューも権限で絞る／お客さまには農園名で届き、送った人は生産者側にだけ／発送の履歴に操作した人） | `farm_members`・`shipment_events.actor_id`（マイグレーション 0015）, `config/farm-staff.ts`, `server/auth/guards.ts#farmAccessOf/requireFarm/assertFarm`, `services/farm-staff.ts`, `actions/farm-staff.ts`, `app/farmer/staff`, `app/(shop)/join/staff/[token]` | `actions/__tests__/farm-staff.test.ts`, `authorization.test.ts` |
 | #25 配達完了の判定（お届け予定日の翌日に自動・発送時に予定日を引き直す・お客さまの「受け取りました」・届かなかったら知らせて止める・業者 API の差し込み口と障害時の猶予） | `farm_orders.delivery_issue_*`（マイグレーション 0016）, `services/shipping/delivery.ts`, `services/shipping/tracking.ts#trackingAdapters`, `services/orders.ts#transitionFarmOrder/confirmReceivedByCustomer`, `mypage/confirm-received-button.tsx`, `common/delivery-issue-alert.tsx` | `services/__tests__/delivery-sync.test.ts`, `jobs/jobs.test.ts` |
+| #10 インボイス（税率を商品と注文明細に持つ・領収書に明細と税率ごとの内訳と運営の登録番号・支払通知書・生産者の登録番号・本番公開チェック） | `products.tax_rate`・`order_items.tax_rate`・`farms.invoice_registration_number`（マイグレーション 0017）, `config/tax.ts`, `lib/tax.ts`, `lib/receipt.ts`, `mypage/receipt-view.tsx`, `farmer/payouts/payout-statement.tsx`, `app/farmer/payouts/[id]/statement`, `queries/go-live.ts#checkInvoiceNumber` | `lib/__tests__/tax.test.ts`, `services/__tests__/invoice.test.ts` |
 | #21 レビューの写真（3枚まで・お客さまがアップロード・このサイトの reviews フォルダの URL だけ・編集で差し替え・運営はレビューごと非公開にして対応） | `reviews.images`（マイグレーション 0014）, `services/storage.ts#uploadFolders`, `validators/engagement.ts#reviewImageUrlPattern`, `mypage/review-dialog.tsx`, `common/review-photos.tsx`, `admin/products/reviews-table.tsx`（写真ありで絞り込み） | `actions/__tests__/review-photos.test.ts`, `services/__tests__/upload.test.ts` |

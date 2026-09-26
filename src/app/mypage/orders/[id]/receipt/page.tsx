@@ -7,7 +7,7 @@ import { ReceiptView } from "@/components/mypage/receipt-view";
 import { Button } from "@/components/ui/button";
 import { routes } from "@/config/nav";
 import { paymentMethodLabel } from "@/config/payments";
-import { receiptAmounts } from "@/lib/receipt";
+import { receiptAmounts, receiptTaxLines } from "@/lib/receipt";
 import { requireRole } from "@/server/auth/guards";
 import { getOrderSummary, getProfile } from "@/server/queries/account";
 
@@ -41,6 +41,10 @@ export default async function ReceiptPage({ params }: PageProps<"/mypage/orders/
             discountTotal: order.discountTotal,
             paymentLabel: paymentMethodLabel(order.paymentMethod) ?? providerLabel[order.paymentProvider] ?? order.paymentProvider,
             defaultName: profile?.name ?? user.name,
+            items: order.farmOrders.flatMap((fo) =>
+              fo.items.map((it) => ({ name: `${it.productName}（${it.variantLabel}）`, quantity: it.quantity, lineTotal: it.lineTotal, taxRate: it.taxRate })),
+            ),
+            taxLines: receiptTaxLines(order),
           }}
         />
       ) : (

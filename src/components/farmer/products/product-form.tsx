@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { catalogLimits, categories, categoryKeys, cultivationMethods, months } from "@/config/catalog";
 import { routes } from "@/config/nav";
 import { productStatusMeta } from "@/config/status";
+import { taxConfig } from "@/config/tax";
 import type { ProductCategory, ProductStatus } from "@/db/schema/marketplace";
 import type { ActionResult } from "@/server/actions/_utils";
 import { saveProduct } from "@/server/actions/farmer-products";
@@ -35,6 +36,8 @@ export type ProductFormInitial = {
   description: string;
   highlights: string[];
   cultivation: string;
+  /** 消費税率（%）。#10 */
+  taxRate: number;
   storageTips: string;
   harvestFrom: number | null;
   harvestTo: number | null;
@@ -51,6 +54,7 @@ type FormState = {
   description: string;
   highlights: string[];
   cultivation: string;
+  taxRate: string;
   storageTips: string;
   harvestFrom: string;
   harvestTo: string;
@@ -68,6 +72,7 @@ function initialState(p?: ProductFormInitial): FormState {
     description: p?.description ?? "",
     highlights: p?.highlights ?? [],
     cultivation: p?.cultivation ?? Object.keys(cultivationMethods)[0],
+    taxRate: String(p?.taxRate ?? taxConfig.defaultProductRate),
     storageTips: p?.storageTips ?? "",
     harvestFrom: p?.harvestFrom ? String(p.harvestFrom) : "",
     harvestTo: p?.harvestTo ? String(p.harvestTo) : "",
@@ -137,6 +142,7 @@ export function ProductForm({ product, farm }: { product?: ProductFormInitial; f
       <input type="hidden" name="variety" value={s.variety} />
       <input type="hidden" name="highlights" value={JSON.stringify(s.highlights)} />
       <input type="hidden" name="cultivation" value={s.cultivation} />
+      <input type="hidden" name="taxRate" value={s.taxRate} />
       <input type="hidden" name="harvestFrom" value={s.harvestFrom} />
       <input type="hidden" name="harvestTo" value={s.harvestTo} />
       <input type="hidden" name="status" value={s.status} />
@@ -227,6 +233,19 @@ export function ProductForm({ product, farm }: { product?: ProductFormInitial; f
                     ))}
                   </RadioGroup>
                   <FieldError>{fe("cultivation")}</FieldError>
+                </Field>
+                <Field data-invalid={!!fe("taxRate") || undefined}>
+                  <FieldLabel htmlFor="tax-rate">消費税率</FieldLabel>
+                  <Select value={s.taxRate} onValueChange={(v) => set("taxRate", v)}>
+                    <SelectTrigger id="tax-rate" className="w-56"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {taxConfig.productRateOptions.map((o) => (
+                        <SelectItem key={o.value} value={String(o.value)}>{o.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FieldDescription className="text-xs">玉ねぎなどの食品は 8% のままにしてください。領収書の税率ごとの内訳に使います。</FieldDescription>
+                  <FieldError>{fe("taxRate")}</FieldError>
                 </Field>
                 <Field data-invalid={!!fe("harvestTo") || undefined}>
                   <FieldLabel>収穫・出荷時期</FieldLabel>

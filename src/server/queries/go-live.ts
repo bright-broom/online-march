@@ -3,6 +3,7 @@ import { desc, eq, sql } from "drizzle-orm";
 import { demoEmailDomain, demoEmailDomains, isDemoEmail } from "@/config/demo";
 import { paymentConfig, paymentMethodLabel } from "@/config/payments";
 import { legalContent, legalDraft, type LegalDoc } from "@/config/content";
+import { invoiceRegistrationNumberPattern } from "@/config/tax";
 import { siteConfig } from "@/config/site";
 import { db } from "@/db";
 import { jobRuns, user } from "@/db/schema";
@@ -18,6 +19,16 @@ export type GoLiveCheck = {
   state: "ready" | "blocker" | "warning";
   detail: string;
 };
+
+/**
+ * 運営の適格請求書発行事業者の登録番号（#10）。オーナーは「登録済み／登録予定」と決めたので、空なら要確認（公開は止めない）。
+ * 形が違う番号は領収書に誤った番号が載るので止める。
+ */
+export function checkInvoiceNumber(value: string): Pick<GoLiveCheck, "state" | "detail"> {
+  if (!value) return { state: "warning", detail: "未設定のため、領収書・支払通知書に登録番号が出ません。登録が済んだら src/config/site.ts の invoiceRegistrationNumber に入れてください" };
+  if (!invoiceRegistrationNumberPattern.test(value)) return { state: "blocker", detail: `「${value}」は登録番号の形（T＋13桁）ではありません（src/config/site.ts）` };
+  return { state: "ready", detail: `${value} を領収書・支払通知書に表示しています` };
+}
 
 /**
  * 利用規約・プライバシーポリシーが正式版か。下書き表示（legalDraft）が残っている、または専門家確認待ちの
@@ -232,5 +243,6 @@ export async function getGoLiveChecks(): Promise<GoLiveCheck[]> {
       detail: placeholders.length ? `${placeholders.join("・")}が仮の値です（src/config/site.ts）` : "実データが設定されています",
     },
     { key: "legal-docs", label: "利用規約・プライバシーポリシー", ...checkLegalDocs(legalDraft, legalContent) },
+    { key: "invoice", label: "適格請求書の登録番号", ...checkInvoiceNumber(siteConfig.company.invoiceRegistrationNumber) },
   ];
 }

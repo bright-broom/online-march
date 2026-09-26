@@ -60,6 +60,8 @@ export type QuotedLine = {
   weightGrams: number;
   lineTotal: number;
   stock: number;
+  /** 消費税率（%）。注文明細に控える（#10） */
+  taxRate: number;
 };
 
 export type QuotedFarm = {
@@ -154,6 +156,7 @@ export async function quoteCart(
       weightGrams: r.v.weightGrams,
       lineTotal: r.v.price * qty,
       stock: r.v.stock,
+      taxRate: r.p.taxRate,
     });
     g.subtotal += r.v.price * qty;
   }
@@ -343,6 +346,7 @@ export async function createOrder(input: CreateOrderInput) {
           quantity: l.quantity,
           weightGrams: l.weightGrams,
           lineTotal: l.lineTotal,
+          taxRate: l.taxRate,
         })),
       );
     }

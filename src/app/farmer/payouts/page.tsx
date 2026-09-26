@@ -5,6 +5,7 @@ import { BarBreakdownChart } from "@/components/charts";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { BankAccountCard } from "@/components/farmer/payouts/bank-account-card";
+import { InvoiceNumberCard } from "@/components/farmer/payouts/invoice-number-card";
 import { PayoutsTable } from "@/components/farmer/payouts/payouts-table";
 import { SalesExportCard } from "@/components/farmer/payouts/sales-export-card";
 import { StripeConnectCard } from "@/components/farmer/payouts/stripe-connect-card";
@@ -92,6 +93,7 @@ export default async function FarmerPayoutsPage({ searchParams }: PageProps<"/fa
         <div className="space-y-6">
           <StripeConnectCard stripeEnabled={features.stripe} onboarded={farm.stripeOnboarded} hasAccount={Boolean(farm.stripeAccountId)} />
           <BankAccountCard account={bankAccount} stripeOnboarded={features.stripe && farm.stripeOnboarded} />
+          <InvoiceNumberCard value={farm.invoiceRegistrationNumber} />
         </div>
       </div>
 

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { normalizeTrackingNumber, trackingNumberPattern } from "@/lib/shipping";
 import { catalogLimits, categoryKeys, cultivationMethods } from "@/config/catalog";
 import { carriers } from "@/config/shipping";
+import { invoiceRegistrationNumberPattern, taxConfig, taxRates } from "@/config/tax";
 import type { Carrier, ProductCategory, ProductStatus } from "@/db/schema/marketplace";
 
 /** Hidden-input JSON fields (images / variants / highlights) → parsed value. Invalid JSON → schema error. */
@@ -53,6 +54,9 @@ export const imageInputSchema = z.object({
   alt: z.string().trim().max(120).optional().default(""),
 });
 
+/** 商品の消費税率（#10）: 8 か 10 だけ */
+export const productTaxRateSchema = z.coerce.number().pipe(z.union([z.literal(taxRates.reduced), z.literal(taxRates.standard)], "消費税率を選んでください"));
+
 export const productEditableStatuses = ["draft", "active", "soldout", "archived"] as const satisfies readonly ProductStatus[];
 
 export const productFormSchema = z
@@ -65,6 +69,7 @@ export const productFormSchema = z
     description: z.string().trim().max(4000, "4000文字以内で入力してください").default(""),
     highlights: json(z.array(z.string().trim().min(1).max(30, "タグは30文字以内")).max(8, "タグは8個までです")),
     cultivation: z.enum(cultivationKeys, "栽培方法を選択してください"),
+    taxRate: productTaxRateSchema.default(taxConfig.defaultProductRate),
     storageTips: z.string().trim().max(1000, "1000文字以内").default(""),
     harvestFrom: optionalInt(1, 12, "月を選択してください"),
     harvestTo: optionalInt(1, 12, "月を選択してください"),
@@ -204,3 +209,11 @@ export const staffAccessSchema = z.object({ memberId: z.uuid(), access: staffAcc
 export const staffMemberSchema = z.object({ memberId: z.uuid() });
 /** 招待リンクのトークン（base64url 32バイト = 43文字） */
 export const staffInviteTokenSchema = z.object({ token: z.string().regex(/^[A-Za-z0-9_-]{43}$/, "招待リンクが正しくありません") });
+
+/** 生産者の適格請求書発行事業者の登録番号（#10, 任意）。全角や空白・ハイフンはそろえる。空なら削除 */
+export const farmInvoiceNumberSchema = z.object({
+  invoiceRegistrationNumber: z
+    .string()
+    .transform((v) => v.normalize("NFKC").replace(/[\s-]/g, "").toUpperCase())
+    .refine((v) => v === "" || invoiceRegistrationNumberPattern.test(v), "登録番号は T から始まる14文字（T＋13桁の数字）で入力してください"),
+});

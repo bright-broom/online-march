@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { siteConfig } from "@/config/site";
+import { taxConfig, taxRates } from "@/config/tax";
 import { formatDate, formatNumber, formatPostalCode } from "@/lib/format";
 
 /**
@@ -32,6 +33,10 @@ export type ReceiptData = {
   discountTotal: number;
   paymentLabel: string;
   defaultName: string;
+  /** 明細（#10: 軽減税率の対象に印を付ける） */
+  items: { name: string; quantity: number; lineTotal: number; taxRate: number }[];
+  /** 税率ごとの対価の額（税込）と消費税額（#10, lib/tax.ts） */
+  taxLines: { rate: number; amount: number; tax: number }[];
 };
 
 export function ReceiptView({ data }: { data: ReceiptData }) {
@@ -81,6 +86,23 @@ export function ReceiptView({ data }: { data: ReceiptData }) {
         <p className="mt-6 text-sm">但し　{purpose}</p>
         <p className="mt-1 text-sm">上記正に領収いたしました。</p>
 
+        <table className="mt-8 w-full text-sm">
+          <caption className="text-muted-foreground mb-2 text-left text-xs">明細</caption>
+          <tbody className="[&_td]:py-1">
+            {data.items.map((it, i) => (
+              <tr key={i} className="border-b border-dashed">
+                <td>
+                  {it.name}
+                  {it.taxRate === taxRates.reduced && <span className="ml-0.5">{taxConfig.reducedMark}</span>}
+                </td>
+                <td className="num text-muted-foreground w-16 text-right">×{it.quantity}</td>
+                <td className="num w-28 text-right">¥{formatNumber(it.lineTotal)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {data.items.some((it) => it.taxRate === taxRates.reduced) && <p className="text-muted-foreground mt-1 text-xs">{taxConfig.reducedNote}</p>}
+
         <div className="mt-8 grid gap-8 sm:grid-cols-2">
           <table className="w-full text-sm">
             <caption className="text-muted-foreground mb-2 text-left text-xs">内訳</caption>
@@ -94,6 +116,12 @@ export function ReceiptView({ data }: { data: ReceiptData }) {
                 <tr><td className="text-muted-foreground">返金</td><td className="num text-right">−¥{formatNumber(data.refunded)}</td></tr>
               )}
               <tr className="border-t font-medium"><td className="pt-2">{data.refunded > 0 ? "合計（返金後）" : "合計"}</td><td className="num pt-2 text-right">¥{formatNumber(data.total)}</td></tr>
+              {data.taxLines.map((l) => (
+                <tr key={l.rate} className="text-xs">
+                  <td className="text-muted-foreground">{l.rate}%対象</td>
+                  <td className="num text-right">¥{formatNumber(l.amount)}（うち消費税 ¥{formatNumber(l.tax)}）</td>
+                </tr>
+              ))}
               <tr><td className="text-muted-foreground text-xs" colSpan={2}>お支払い方法：{data.paymentLabel}</td></tr>
             </tbody>
           </table>
@@ -103,6 +131,7 @@ export function ReceiptView({ data }: { data: ReceiptData }) {
               {siteConfig.name}
             </p>
             <p className="font-medium">{c.operator}</p>
+            {c.invoiceRegistrationNumber && <p className="num text-xs">登録番号 {c.invoiceRegistrationNumber}</p>}
             <p className="text-muted-foreground text-xs leading-relaxed">
               〒{formatPostalCode(c.postalCode.replace("-", ""))} {c.address}
               <br />

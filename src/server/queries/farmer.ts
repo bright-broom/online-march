@@ -724,3 +724,22 @@ export async function getFarmInvite(token: string, now: Date) {
   return { invite: row } as const;
 }
 
+
+/**
+ * 支払通知書（#10）。1つの精算の中身: 対象の出荷単位と、この精算で相殺した返金（精算済みの注文の返金, clawbackPayoutId）。
+ * 自分の農園の精算だけ（farmId で絞る）。
+ */
+export async function getPayoutStatement(farmId: string, payoutId: string) {
+  const payout = await db.query.payouts.findFirst({ where: and(eq(payouts.id, payoutId), eq(payouts.farmId, farmId)) });
+  if (!payout) return null;
+  const [orders, clawbacks] = await Promise.all([
+    getPayoutOrders(farmId, payoutId),
+    db
+      .select({ id: farmOrders.id, code: farmOrders.code, refundedAt: farmOrders.refundedAt, refundAmount: farmOrders.refundAmount })
+      .from(farmOrders)
+      .where(and(eq(farmOrders.farmId, farmId), eq(farmOrders.clawbackPayoutId, payoutId)))
+      .orderBy(asc(farmOrders.refundedAt)),
+  ]);
+  return { payout, orders, clawbacks };
+}
+export type PayoutStatement = NonNullable<Awaited<ReturnType<typeof getPayoutStatement>>>;

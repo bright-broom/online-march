@@ -87,6 +87,8 @@ export const routes = {
     reviews: "/farmer/reviews",
     messages: "/farmer/messages",
     payouts: "/farmer/payouts",
+    /** 支払通知書（#10, 精算ごと・印刷用） */
+    payoutStatement: (id: string) => `/farmer/payouts/${id}/statement`,
     /** Stripe Connect onboarding return: syncs the account status, then redirects to payouts. */
     stripeReturn: "/api/farmer/stripe-return",
     shop: "/farmer/shop",

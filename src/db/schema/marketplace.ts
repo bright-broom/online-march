@@ -113,6 +113,8 @@ export const farms = pgTable(
     stripeAccountId: text("stripe_account_id"),
     stripeOnboarded: boolean("stripe_onboarded").notNull().default(false),
     defaultCarrier: carrier("default_carrier").notNull().default("yamato"),
+    /** 生産者の適格請求書発行事業者の登録番号（T＋13桁, 任意, #10）。今は保存と表示だけ（売主の決定待ち） */
+    invoiceRegistrationNumber: text("invoice_registration_number"),
     leadTimeDays: integer("lead_time_days").notNull().default(2),
     /** 0=Sun … 6=Sat */
     shipWeekdays: jsonb("ship_weekdays").$type<number[]>().notNull().default([1, 2, 3, 4, 5, 6]),
@@ -149,6 +151,8 @@ export const products = pgTable(
     description: text("description").notNull().default(""),
     highlights: jsonb("highlights").$type<string[]>().notNull().default([]),
     cultivation: text("cultivation").notNull().default("conventional"),
+    /** 消費税率（%）。食品は 8（軽減税率）、食品以外は 10。config/tax.ts（#10） */
+    taxRate: integer("tax_rate").notNull().default(8),
     storageTips: text("storage_tips").notNull().default(""),
     harvestFrom: integer("harvest_from"),
     harvestTo: integer("harvest_to"),
@@ -349,6 +353,8 @@ export const orderItems = pgTable(
     quantity: integer("quantity").notNull(),
     weightGrams: integer("weight_grams").notNull(),
     lineTotal: integer("line_total").notNull(),
+    /** 購入時点の消費税率（%）。領収書の税率ごとの内訳に使う（#10）。後から商品の税率を変えても過去の注文は変わらない */
+    taxRate: integer("tax_rate").notNull().default(8),
   },
   (t) => [index("order_items_farm_order_idx").on(t.farmOrderId)],
 );

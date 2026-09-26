@@ -268,11 +268,14 @@ export async function getOrderSummary(userId: string, orderId: string) {
     },
     with: {
       farmOrders: {
-        columns: { id: true, code: true, status: true, estimatedDeliveryDate: true, shipByDate: true, carrier: true, refundedAt: true, refundAmount: true },
+        columns: {
+          id: true, code: true, status: true, estimatedDeliveryDate: true, shipByDate: true, carrier: true, refundedAt: true, refundAmount: true,
+          shippingFee: true, discount: true,
+        },
         orderBy: (t, { asc }) => asc(t.code),
         with: {
           farm: { columns: { name: true, slug: true } },
-          items: { columns: { id: true, productName: true, variantLabel: true, quantity: true, imageUrl: true, lineTotal: true, unitPrice: true } },
+          items: { columns: { id: true, productName: true, variantLabel: true, quantity: true, imageUrl: true, lineTotal: true, unitPrice: true, taxRate: true } },
         },
       },
     },

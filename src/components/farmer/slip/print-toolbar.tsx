@@ -5,7 +5,7 @@ import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 
 /** Screen-only toolbar for the 納品書 page. `autoPrint` opens the print dialog once on load. */
-export function PrintToolbar({ count, backHref, autoPrint }: { count: number; backHref: string; autoPrint?: boolean }) {
+export function PrintToolbar({ count, backHref, autoPrint, label }: { count: number; backHref: string; autoPrint?: boolean; label?: string }) {
   useEffect(() => {
     if (!autoPrint) return;
     const t = window.setTimeout(() => window.print(), 400);
@@ -16,7 +16,7 @@ export function PrintToolbar({ count, backHref, autoPrint }: { count: number; ba
       <Button asChild variant="ghost" size="sm">
         <Link href={backHref}><ArrowLeft />戻る</Link>
       </Button>
-      <p className="text-muted-foreground text-sm">{count}件の納品書（A4・1件1ページ）</p>
+      <p className="text-muted-foreground text-sm">{label ?? `${count}件の納品書（A4・1件1ページ）`}</p>
       <Button onClick={() => window.print()} className="rounded-full">
         <Printer />印刷する
       </Button>

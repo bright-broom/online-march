@@ -38,6 +38,7 @@ export default async function EditProductPage({ params }: PageProps<"/farmer/pro
           description: product.description,
           highlights: product.highlights,
           cultivation: product.cultivation,
+          taxRate: product.taxRate,
           storageTips: product.storageTips,
           harvestFrom: product.harvestFrom,
           harvestTo: product.harvestTo,

@@ -8,7 +8,7 @@ import { farms } from "@/db/schema";
 import { tags } from "@/lib/cache-tags";
 import { addDays, toYmd } from "@/lib/dates";
 import { features } from "@/lib/env";
-import { farmPauseSchema, shippingSettingsSchema, shopFormSchema } from "@/lib/validators/farmer";
+import { farmPauseSchema, shippingSettingsSchema, shopFormSchema, farmInvoiceNumberSchema } from "@/lib/validators/farmer";
 import { bankAccountSchema } from "@/lib/validators/bank-account";
 import { assertFarm } from "@/server/auth/guards";
 import { saveBankAccount } from "@/server/services/bank-account";
@@ -38,6 +38,16 @@ export async function saveFarmBankAccount(_prev: unknown, formData: FormData): P
     refresh();
     return { last4: data.accountNumber.slice(-4) };
   }, "振込先口座を保存しました");
+}
+
+/** 生産者の適格請求書発行事業者の登録番号（#10, 任意）。税の情報なのでオーナーだけ（"money"）。空にすると消える */
+export async function saveFarmInvoiceNumber(_prev: unknown, formData: FormData): Promise<ActionResult> {
+  return runAction(async () => {
+    const { farm } = await assertFarm("money");
+    const { invoiceRegistrationNumber } = parseInput(farmInvoiceNumberSchema, formToObject(formData));
+    await db.update(farms).set({ invoiceRegistrationNumber: invoiceRegistrationNumber || null }).where(eq(farms.id, farm.id));
+    refresh();
+  }, "登録番号を保存しました");
 }
 
 /** 出荷・配送設定. */
