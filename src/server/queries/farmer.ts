@@ -336,6 +336,8 @@ const orderListSelect = {
   boxCount: farmOrders.boxCount,
   totalWeightGrams: farmOrders.totalWeightGrams,
   labelPrintedAt: farmOrders.labelPrintedAt,
+  /** 回答していないお客さまのキャンセルの依頼（#18）。一覧と出荷センターで目立たせる */
+  cancelRequested: sql<boolean>`(${farmOrders.status} = 'preparing' and ${farmOrders.cancelRequestedAt} is not null and ${farmOrders.cancelRequestAnsweredAt} is null)`,
   address: orders.shippingAddress,
   desiredDeliveryDate: orders.desiredDeliveryDate,
   deliveryTimeSlot: orders.deliveryTimeSlot,
@@ -488,6 +490,8 @@ export async function matchOrdersByCode(farmId: string, codes: string[]) {
       status: farmOrders.status,
       carrier: farmOrders.carrier,
       recipientName: sql<string>`${orders.shippingAddress}->>'recipientName'`,
+      cancelRequestedAt: farmOrders.cancelRequestedAt,
+      cancelRequestAnsweredAt: farmOrders.cancelRequestAnsweredAt,
     })
     .from(farmOrders)
     .innerJoin(orders, eq(orders.id, farmOrders.orderId))

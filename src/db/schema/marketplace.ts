@@ -326,6 +326,17 @@ export const farmOrders = pgTable(
      */
     deliveryIssueAt: timestamp("delivery_issue_at", { withTimezone: true }),
     deliveryIssueNote: text("delivery_issue_note"),
+    /**
+     * お客さまの「キャンセルの依頼」（#18）。出荷準備中になった後は、お客さまは自分で取り消せず依頼になる。
+     * 生産者が承認すると全額返金（refundOrder）、断ると `cancelRequestAnswer = "declined"` でそのまま発送へ。
+     * 1つの出荷単位に1回だけ。回答するまで生産者は発送済みにできない（services/cancel-requests.ts）
+     */
+    cancelRequestedAt: timestamp("cancel_requested_at", { withTimezone: true }),
+    cancelRequestReason: text("cancel_request_reason"),
+    cancelRequestAnswer: text("cancel_request_answer").$type<"approved" | "declined">(),
+    cancelRequestAnsweredAt: timestamp("cancel_request_answered_at", { withTimezone: true }),
+    /** 断ったときの生産者からのひとこと（お客さまに届く） */
+    cancelRequestReply: text("cancel_request_reply"),
     labelPrintedAt: timestamp("label_printed_at", { withTimezone: true }),
     reminderSentAt: timestamp("reminder_sent_at", { withTimezone: true }),
     reviewRequestedAt: timestamp("review_requested_at", { withTimezone: true }),

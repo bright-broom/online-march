@@ -3,9 +3,12 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 import { farmOrderStatusMeta, farmOrderTransitions } from "@/config/status";
 import type { Carrier, FarmOrderStatus } from "@/db/schema";
-import { bulkShipSchema, cancelOrderSchema, idsSchema, shipOrderSchema, trackingImportSchema } from "@/lib/validators/farmer";
+import { orderCancelCopy } from "@/config/order-cancel";
+import { cancelRequestPending } from "@/lib/order-cancel";
+import { bulkShipSchema, cancelAnswerSchema, cancelOrderSchema, idsSchema, shipOrderSchema, trackingImportSchema } from "@/lib/validators/farmer";
 import { assertFarm } from "@/server/auth/guards";
 import { getPayoutOrders, matchOrdersByCode, type PayoutOrderRow } from "@/server/queries/farmer";
+import { answerCancelRequest } from "@/server/services/cancel-requests";
 import { transitionFarmOrder } from "@/server/services/orders";
 import { cancelFarmOrderAsFarmer } from "@/server/services/refunds";
 import { parseTrackingCsv } from "@/server/services/shipping/label-csv";
@@ -81,6 +84,16 @@ export async function cancelOrder(input: { id: string; reason: string }): Promis
   }, "注文をキャンセルしました。在庫を戻し、お支払い済みの場合はお客さまへ返金しました");
 }
 
+/** お客さまのキャンセルの依頼に回答する（#18）。承認で全額返金、お断りでそのまま発送へ。キャンセルと同じ権限 */
+export async function answerCancel(input: { id: string; approve: boolean; reply?: string }): Promise<ActionResult> {
+  return runAction(async () => {
+    const { user, farm } = await assertFarm("cancel");
+    const data = parseInput(cancelAnswerSchema, input);
+    await answerCancelRequest({ farmOrderId: data.id, farmId: farm.id, approve: data.approve, reply: data.reply, actorId: user.id, now: new Date() });
+    refresh();
+  }, input.approve ? orderCancelCopy.farmer.approveDone : orderCancelCopy.farmer.declineDone);
+}
+
 export type TrackingPreviewRow = {
   code: string;
   trackingNumber: string;
@@ -104,7 +117,8 @@ export async function previewTrackingImport(input: { text: string }): Promise<Ac
     const byCode = new Map(matches.map((m) => [m.code, m]));
     return unique.map((p) => {
       const m = byCode.get(p.code);
-      const shippable = m ? farmOrderTransitions[m.status].includes("shipped") : false;
+      const requested = m ? cancelRequestPending(m) : false; // 回答していないキャンセルの依頼がある（#18）
+      const shippable = m ? farmOrderTransitions[m.status].includes("shipped") && !requested : false;
       return {
         code: p.code,
         trackingNumber: p.trackingNumber,
@@ -113,7 +127,13 @@ export async function previewTrackingImport(input: { text: string }): Promise<Ac
         carrier: m?.carrier ?? null,
         status: m?.status ?? null,
         ok: Boolean(m && shippable),
-        reason: !m ? "この農園の注文ではありません" : !shippable ? `「${farmOrderStatusMeta[m.status].label}」のため登録できません` : null,
+        reason: !m
+          ? "この農園の注文ではありません"
+          : requested
+            ? "キャンセルの依頼に回答してから登録してください"
+            : !shippable
+              ? `「${farmOrderStatusMeta[m.status].label}」のため登録できません`
+              : null,
       };
     });
   });

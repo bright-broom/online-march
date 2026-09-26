@@ -12,6 +12,7 @@ import { fromYmd } from "@/lib/dates";
 import { formatDateTime, formatShortDate } from "@/lib/format";
 import type { OrderDetailFarmOrder } from "@/server/queries/account";
 import { ConfirmReceivedButton } from "./confirm-received-button";
+import { FarmOrderCancel } from "./farm-order-cancel";
 import { FulfillmentTracker } from "./fulfillment-tracker";
 import { ReviewDialog } from "./review-dialog";
 import { ShipmentTimeline } from "./shipment-timeline";
@@ -28,7 +29,8 @@ function Info({ icon: I, label, children }: { icon: typeof Truck; label: string;
   );
 }
 
-export function FarmOrderSection({ fo }: { fo: OrderDetailFarmOrder }) {
+/** multiFarm: 注文に取り消せる生産者が2軒以上ある（1軒なら注文全体のキャンセルを使う, #18） */
+export function FarmOrderSection({ fo, multiFarm = false }: { fo: OrderDetailFarmOrder; multiFarm?: boolean }) {
   const carrier = carriers[fo.carrier];
   const delivered = fo.status === "delivered";
   return (
@@ -56,6 +58,7 @@ export function FarmOrderSection({ fo }: { fo: OrderDetailFarmOrder }) {
 
       <CardContent className="space-y-6 py-5">
         <FulfillmentTracker status={fo.status} />
+        <FarmOrderCancel farmOrderId={fo.id} mode={fo.cancelMode} multiFarm={multiFarm} reply={fo.cancelRequestReply} />
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_16rem]">
           <ul className="divide-y rounded-xl border">

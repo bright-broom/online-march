@@ -284,6 +284,34 @@ export const emailTemplates = {
     };
   },
 
+  /** お客さまからのキャンセルの依頼（#18）。農園のオーナーへ */
+  farmerCancelRequested(p: { to: string; farmName: string; farmOrderId: string; code: string; reason: string }): EmailMessage {
+    return {
+      to: p.to,
+      subject: `【キャンセルの依頼】${p.code}`,
+      blocks: [
+        { type: "p", text: `${p.farmName} さま
+出荷準備中のご注文について、お客さまからキャンセルの依頼が届きました。承認するか、お断りするかを回答してください。回答するまで発送済みにはできません。` },
+        { type: "table", rows: [["受注番号", p.code], ["理由", p.reason]] },
+        { type: "button", label: "依頼を確認する", href: url(routes.farmer.order(p.farmOrderId)) },
+      ],
+    };
+  },
+
+  /** キャンセルの依頼をお断りした（#18）。承認したときは返金のお知らせ（refunded）が届く */
+  cancelRequestDeclined(p: { to: string; name: string; orderId: string; code: string; farmName: string; reply: string | null }): EmailMessage {
+    return {
+      to: p.to,
+      subject: `【キャンセルの依頼について】注文番号 ${p.code}`,
+      blocks: [
+        { type: "p", text: `${p.name} 様
+${p.farmName}へのキャンセルの依頼は、お断りとなりました。このままお届けします。` },
+        ...(p.reply ? [{ type: "p" as const, text: `${p.farmName}からのメッセージ：\n${p.reply}` }] : []),
+        { type: "button", label: "注文状況を確認する", href: url(routes.mypage.order(p.orderId)) },
+      ],
+    };
+  },
+
   payoutScheduled(p: { to: string; farmName: string; amount: number; scheduledFor: string; period: string }): EmailMessage {
     return {
       to: p.to,

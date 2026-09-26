@@ -5,10 +5,12 @@ import { z } from "zod";
 import { db } from "@/db";
 import { addresses, user } from "@/db/schema";
 import { isDemoEmail } from "@/config/demo";
-import { addressFormSchema, profileSchema } from "@/lib/validators/account";
+import { orderCancelCopy } from "@/config/order-cancel";
+import { addressFormSchema, cancelRequestSchema, profileSchema } from "@/lib/validators/account";
 import { assertUser } from "@/server/auth/guards";
 import { markThreadRead } from "@/server/queries/messages";
 import { AccountCloseBlocked, closeCustomerAccount } from "@/server/services/account-closure";
+import { cancelFarmOrderByCustomer, requestCancelByCustomer } from "@/server/services/cancel-requests";
 import { cancelOrderByCustomer, confirmReceivedByCustomer } from "@/server/services/orders";
 import { ActionError, formToObject, parseInput, runAction, type ActionResult } from "./_utils";
 
@@ -87,6 +89,26 @@ export async function cancelOrder(orderId: string): Promise<ActionResult> {
     const id = parseInput(idSchema, orderId);
     await cancelOrderByCustomer(id, me.id, new Date());
   }, "ご注文をキャンセルしました");
+}
+
+/** 生産者が準備を始める前の出荷単位を取り消す（#18）。その生産者の分を全額返金 */
+export async function cancelFarmOrder(farmOrderId: string): Promise<ActionResult> {
+  return runAction(async () => {
+    const me = await assertUser();
+    const id = parseInput(idSchema, farmOrderId);
+    await cancelFarmOrderByCustomer(id, me.id);
+    refresh();
+  }, orderCancelCopy.customer.cancelFarmOrderDone);
+}
+
+/** 出荷準備中の出荷単位に「キャンセルの依頼」を出す（#18）。生産者が承認すると返金 */
+export async function requestFarmOrderCancel(input: { farmOrderId: string; reason: string }): Promise<ActionResult> {
+  return runAction(async () => {
+    const me = await assertUser();
+    const data = parseInput(cancelRequestSchema, input);
+    await requestCancelByCustomer({ farmOrderId: data.farmOrderId, userId: me.id, reason: data.reason, now: new Date() });
+    refresh();
+  }, orderCancelCopy.customer.requestDone);
 }
 
 /** 「受け取りました」（#25）。発送済みの荷物をその場で配達完了にする */

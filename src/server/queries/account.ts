@@ -20,6 +20,7 @@ import {
   type FarmOrderStatus,
 } from "@/db/schema";
 import { tags } from "@/lib/cache-tags";
+import { customerCancelMode, WHOLE_ORDER_CANCELLABLE } from "@/lib/order-cancel";
 
 /**
  * Customer マイページ / checkout read models.
@@ -169,7 +170,9 @@ export async function getOrderDetail(userId: string, orderId: string) {
         columns: {
           id: true, code: true, status: true, subtotal: true, shippingFee: true, discount: true, carrier: true,
           boxSize: true, boxCount: true, trackingNumber: true, shipByDate: true, estimatedDeliveryDate: true,
-          shippedAt: true, deliveredAt: true, cancelledAt: true,
+          shippedAt: true, deliveredAt: true, cancelledAt: true, refundedAt: true,
+          // キャンセルの依頼（#18）。生産者のひとことはお断りのときだけお客さまに見せる
+          cancelRequestedAt: true, cancelRequestAnswer: true, cancelRequestAnsweredAt: true, cancelRequestReply: true,
         },
         orderBy: (t, { asc }) => asc(t.code),
         with: {
@@ -248,9 +251,9 @@ export async function getOrderDetail(userId: string, orderId: string) {
   const cancellable =
     (order.status === "pending_payment" || order.status === "paid") &&
     order.farmOrders.some((f) => f.status !== "cancelled") &&
-    order.farmOrders.every((f) => ["pending_payment", "paid", "preparing", "cancelled"].includes(f.status));
+    order.farmOrders.every((f) => WHOLE_ORDER_CANCELLABLE.includes(f.status));
 
-  return { ...order, farmOrders: farmOrdersOut, cancellable };
+  return { ...order, farmOrders: farmOrdersOut.map((fo) => ({ ...fo, cancelMode: customerCancelMode(order, fo) })), cancellable };
 }
 export type OrderDetail = NonNullable<Awaited<ReturnType<typeof getOrderDetail>>>;
 export type OrderDetailFarmOrder = OrderDetail["farmOrders"][number];

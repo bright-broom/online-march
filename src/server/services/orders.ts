@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, gte, inArray, isNull, lt, ne, or, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, isNotNull, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { catalogLimits, REMOVED_VARIANT_SORT } from "@/config/catalog";
 import { calcCommission } from "@/config/fees";
 import { couponOncePerUserCopy } from "@/config/payments";
@@ -7,6 +7,7 @@ import { routes } from "@/config/nav";
 import { shippingPolicy, shippingZones, type DeliveryTimeSlot } from "@/config/shipping";
 import { farmOrderStatusMeta, farmOrderTransitions } from "@/config/status";
 import { db } from "@/db";
+import { cancelRequestPending, WHOLE_ORDER_CANCELLABLE } from "@/lib/order-cancel";
 import type { Database } from "@/db/client";
 import {
   coupons,
@@ -502,6 +503,9 @@ export async function transitionFarmOrder(farmOrderId: string, to: FarmOrderStat
     throw new ActionError(`「${farmOrderStatusMeta[fo.status].label}」から「${farmOrderStatusMeta[to].label}」には変更できません`);
   }
   if (to === "shipped" && !opts.trackingNumber && !fo.trackingNumber) throw new ActionError("追跡番号を入力してください");
+  // お客さまのキャンセルの依頼（#18）に回答するまで、生産者は発送済みにできない。運営が発送済みにしたときは「お断り」で閉じる
+  const answerPendingRequest = to === "shipped" && cancelRequestPending(fo);
+  if (answerPendingRequest && opts.source === "farmer") throw new ActionError("お客さまからキャンセルの依頼が届いています。先に回答してください");
 
   const patch: Partial<typeof farmOrders.$inferInsert> = { status: to };
   if (to === "shipped") {
@@ -512,12 +516,26 @@ export async function transitionFarmOrder(farmOrderId: string, to: FarmOrderStat
     const fromShipDate = addDays(toYmd(opts.now), shippingZones[zoneOf(fo.order.shippingAddress.prefecture)].transitDays);
     if (!fo.estimatedDeliveryDate || fo.estimatedDeliveryDate < fromShipDate) patch.estimatedDeliveryDate = fromShipDate;
     if (opts.carrier) patch.carrier = opts.carrier;
+    if (answerPendingRequest) Object.assign(patch, { cancelRequestAnswer: "declined", cancelRequestAnsweredAt: opts.now });
   }
   if (to === "delivered") patch.deliveredAt = opts.now;
   if (to === "cancelled") patch.cancelledAt = opts.now;
 
   const updated = await db.transaction(async (tx) => {
-    const [row] = await tx.update(farmOrders).set(patch).where(and(eq(farmOrders.id, fo.id), eq(farmOrders.status, fo.status))).returning();
+    const [row] = await tx
+      .update(farmOrders)
+      .set(patch)
+      .where(
+        and(
+          eq(farmOrders.id, fo.id),
+          eq(farmOrders.status, fo.status),
+          // 返金の途中（refundOrder が行を押さえた後）の出荷単位は、準備にも発送にも進めない（#18）
+          to === "preparing" || to === "shipped" ? isNull(farmOrders.refundedAt) : undefined,
+          // 読んだ後にキャンセルの依頼が届いていたら、生産者は発送できない
+          to === "shipped" && opts.source === "farmer" ? or(isNull(farmOrders.cancelRequestedAt), isNotNull(farmOrders.cancelRequestAnsweredAt)) : undefined,
+        ),
+      )
+      .returning();
     if (!row) throw new ActionError("他の操作で状態が変更されました。再読み込みしてください。");
     const ev = eventFor[to];
     if (ev) {
@@ -584,12 +602,20 @@ export async function confirmReceivedByCustomer(farmOrderId: string, userId: str
 export async function cancelOrderByCustomer(orderId: string, userId: string, now: Date) {
   const order = await db.query.orders.findFirst({ where: and(eq(orders.id, orderId), eq(orders.userId, userId)), with: { farmOrders: true } });
   if (!order) throw new ActionError("注文が見つかりません");
-  const cancellable = order.farmOrders.every((f) => ["pending_payment", "paid", "preparing", "cancelled"].includes(f.status));
+  // 注文全体を取り消せるのは、どの生産者もまだ準備を始めていないときだけ（#18）。準備中の分は生産者ごとの「キャンセルの依頼」へ
+  if (order.farmOrders.some((f) => f.status === "preparing")) {
+    throw new ActionError("出荷準備が始まっている生産者の分があるため、注文全体はキャンセルできません。生産者ごとにキャンセル、またはキャンセルの依頼をしてください。");
+  }
+  const cancellable = order.farmOrders.every((f) => WHOLE_ORDER_CANCELLABLE.includes(f.status));
   if (!cancellable) throw new ActionError("発送済みの商品を含むためキャンセルできません。メッセージで生産者にご相談ください。");
   // 支払い済みなら返金の一本道へ（二重返金の防止・返金額の記録・返金メールがそこにある）
   if (order.paidAt && order.status === "paid") {
     const { refundOrder } = await import("./refunds");
-    await refundOrder({ orderId }, { source: "customer", note: "お客さまによるキャンセル" });
+    // 残りがすべて準備前なら、返金の行を押さえる更新の中でも「新規受注のまま」を確かめる（同時に「準備を始める」が押されても通らない。#18）
+    // （refundOrder が返金する対象＝まだ返金していない出荷単位。1つでも別の状態なら、ここでは確かめない）
+    const targets = order.farmOrders.filter((f) => f.refundedAt == null && f.status !== "refunded");
+    const onlyStatus = targets.length && targets.every((f) => f.status === "paid") ? ("paid" as const) : undefined;
+    await refundOrder({ orderId, onlyStatus }, { source: "customer", note: "お客さまによるキャンセル" });
     return;
   }
   for (const fo of order.farmOrders) {

@@ -134,6 +134,13 @@
       "when": 1790398636134,
       "tag": "0018_price_history",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1790400622722,
+      "tag": "0019_cancel_request",
+      "breakpoints": true
     }
   ]
 }

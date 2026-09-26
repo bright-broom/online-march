@@ -141,7 +141,17 @@ Stripe で自動送金する農家には「振込済みにする」を出さな�
   二重返金の防止、`farm_orders.refundedAt/refundAmount` の記録（売上明細CSV・翌月相殺が使う）、タイムライン、
   お客さまへの返金メール（`emailTemplates.refunded`）がそこにまとまっている。Stripe を直接呼ばないこと。
   回帰テスト `services/__tests__/cancel-refund.test.ts`。
-- 顧客キャンセル（発送前のみ）: 支払い済みなら `refundOrder`（注文全体）→ 全額返金・orders.refunded。未決済ならキャンセルだけ。
+- 顧客キャンセル（#18。オーナーの決定は Issue #18 のコメント、文言と数値は `config/order-cancel.ts`、判定は `lib/order-cancel.ts#customerCancelMode`）:
+  - **生産者が準備を始める前（新規受注）だけ**、お客さまが自分で取り消せる。注文全体（`cancelOrderByCustomer`。1軒でも出荷準備中なら断る）か、
+    複数の農家の注文なら農家ごと（`services/cancel-requests.ts#cancelFarmOrderByCustomer`＝その出荷単位を送料込みで `refundOrder`）。
+    未決済ならキャンセルだけ
+  - **出荷準備中になった後は「キャンセルの依頼」**（`requestCancelByCustomer`、出荷単位ごとに1回）。農園のオーナーに知らせる。
+    生産者（キャンセルの権限＝オーナーと「すべて」のスタッフ）が承認すると `refundOrder` で全額返金、お断りするとお客さまに知らせてそのまま発送。
+    **回答するまで生産者は発送済みにできない**（1件・一括・送り状の取り込みとも）。運営が発送済みにしたときは「お断り」で閉じる
+  - 猶予は無い（「準備を始める」で締め切り。生産者の画面にその旨を出す）
+  - 同時に押されたとき: `refundOrder` の `onlyStatus` で、返金の行を押さえる更新の中で状態を確かめる（取り消しは「新規受注」、承認は「出荷準備中」のときだけ）。
+    押さえた行（`refundedAt` あり）は準備にも発送にも進めない（`transitionFarmOrder`）。依頼の記録・回答も、状態を条件にした更新で1回だけ
+  - 回帰テスト `services/__tests__/cancel-request.test.ts`
 - 生産者キャンセル（発送前のみ, `refunds.ts#cancelFarmOrderAsFarmer`）: 支払い済みなら `refundOrder`（その出荷単位）で返金。
   **2026-09-24 まではキャンセルで在庫を戻すだけで返金されていなかった**（画面には「返金は運営が行います」とあったが運営に通知はなかった）。
 - お支払い期限切れ（`expireUnpaidOrder`）: お支払い番号を受け取った人（`payment_due_at` あり＝コンビニ払い）にだけ

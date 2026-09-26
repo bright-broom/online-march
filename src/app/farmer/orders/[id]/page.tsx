@@ -8,6 +8,7 @@ import { DeliveryIssueAlert } from "@/components/common/delivery-issue-alert";
 import { StatusBadge } from "@/components/common/status-badge";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { CopyButton } from "@/components/farmer/copy-button";
+import { CancelRequestCard } from "@/components/farmer/orders/cancel-request-card";
 import { OrderActionPanel } from "@/components/farmer/orders/order-action-panel";
 import { OrderTimeline } from "@/components/farmer/orders/order-timeline";
 import { ShipByBadge } from "@/components/farmer/ship-by";
@@ -19,6 +20,7 @@ import { bpsToPercent } from "@/config/fees";
 import { routes } from "@/config/nav";
 import { carriers, deliveryTimeSlots, type DeliveryTimeSlot } from "@/config/shipping";
 import { fromYmd, toYmd } from "@/lib/dates";
+import { cancelRequestPending } from "@/lib/order-cancel";
 import { formatDate, formatDateTime, formatNumber, formatPostalCode, formatWeight } from "@/lib/format";
 import { requireFarm } from "@/server/auth/guards";
 import { getFarmOrder } from "@/server/queries/farmer";
@@ -49,6 +51,7 @@ export default async function FarmerOrderPage({ params }: PageProps<"/farmer/ord
   const gift = fo.order.gift;
   const slot = fo.order.deliveryTimeSlot ? deliveryTimeSlots[fo.order.deliveryTimeSlot as DeliveryTimeSlot]?.label : null;
   const isOpen = fo.status === "paid" || fo.status === "preparing";
+  const requested = cancelRequestPending(fo); // お客さまのキャンセルの依頼（#18）
 
   return (
     <div>
@@ -185,7 +188,12 @@ export default async function FarmerOrderPage({ params }: PageProps<"/farmer/ord
         </div>
 
         <aside className="space-y-6 lg:sticky lg:top-20 lg:self-start">
-          <OrderActionPanel id={fo.id} status={fo.status} carrier={fo.carrier} trackingNumber={fo.trackingNumber} allowCancel={canFarm(access, "cancel")} />
+          {requested && (
+            <CancelRequestCard id={fo.id} reason={fo.cancelRequestReason ?? ""} requestedAt={fo.cancelRequestedAt!} allowAnswer={canFarm(access, "cancel")} />
+          )}
+          <OrderActionPanel
+            id={fo.id} status={fo.status} carrier={fo.carrier} trackingNumber={fo.trackingNumber} allowCancel={canFarm(access, "cancel")} cancelRequested={requested}
+          />
           <Card>
             <CardHeader>
               <CardTitle>履歴</CardTitle>

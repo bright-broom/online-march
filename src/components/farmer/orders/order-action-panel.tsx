@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
+import { orderCancelCopy } from "@/config/order-cancel";
 import { carriers } from "@/config/shipping";
 import { farmOrderStatusMeta, farmOrderTransitions } from "@/config/status";
 import type { Carrier, FarmOrderStatus } from "@/db/schema/marketplace";
@@ -20,7 +21,7 @@ import { cancelOrder, shipOrder, startPreparing } from "@/server/actions/farmer-
 
 /** Next-step actions for a farm order, driven by config `farmOrderTransitions`. */
 export function OrderActionPanel({
-  id, status, carrier: initialCarrier, trackingNumber, allowCancel = true,
+  id, status, carrier: initialCarrier, trackingNumber, allowCancel = true, cancelRequested = false,
 }: {
   id: string;
   status: FarmOrderStatus;
@@ -28,6 +29,8 @@ export function OrderActionPanel({
   trackingNumber: string | null;
   /** 出荷担当のスタッフには出さない（キャンセルは返金を伴う, #24。サーバー側でも断る） */
   allowCancel?: boolean;
+  /** お客さまのキャンセルの依頼に回答していない（#18）。回答するまで発送済みにできない（サーバーでも断る） */
+  cancelRequested?: boolean;
 }) {
   const next = farmOrderTransitions[status];
   const [pending, start] = useTransition();
@@ -78,6 +81,7 @@ export function OrderActionPanel({
             出荷準備を開始
           </Button>
         )}
+        {canPrepare && <p className="text-muted-foreground -mt-2 text-xs">{orderCancelCopy.farmer.startPreparingNote}</p>}
 
         {canShip && (
           <form
@@ -122,10 +126,11 @@ export function OrderActionPanel({
                 <FieldError>{trackingError}</FieldError>
               </Field>
             </FieldGroup>
-            <Button type="submit" className="w-full" size="lg" variant={canPrepare ? "outline" : "default"} disabled={pending || !tracking.trim()}>
+            <Button type="submit" className="w-full" size="lg" variant={canPrepare ? "outline" : "default"} disabled={pending || !tracking.trim() || cancelRequested}>
               {pending ? <Spinner /> : <Truck />}
               発送済みにする
             </Button>
+            {cancelRequested && <p className="text-destructive text-xs">キャンセルの依頼に回答してから発送済みにしてください</p>}
           </form>
         )}
 

@@ -64,6 +64,7 @@ farm_bank_accounts (farm 1─1)  ← 振込先口座。口座番号は暗号化�
 | `orders` | 顧客の1決済。`shippingAddress` はスナップショット JSON。`paymentProvider` stripe/demo |
 | `farm_orders` | 農家別の出荷単位。金額内訳（subtotal, shippingFee, discount, commission*, payoutAmount）と出荷情報（carrier, boxSize/Count, tracking, shipByDate, ETA）をインライン保持 |
 | `order_items` | 購入時点の名称・価格スナップショット |
+| `farm_orders.cancelRequest*` | お客さまの「キャンセルの依頼」（#18）。出荷準備中になった後、お客さまは自分で取り消せず依頼になる。`cancelRequestedAt`・`cancelRequestReason`（お客さま）、`cancelRequestAnswer` approved/declined・`cancelRequestAnsweredAt`・`cancelRequestReply`（お断りのときの生産者のひとこと）。1つの出荷単位に1回。回答するまで生産者は発送済みにできない。docs/PAYMENTS.md「返金・キャンセル」 |
 | `shipment_events` | 追跡タイムライン（source: system/farmer/cron/carrier）。`actorId` は操作した人（オーナー・スタッフ・運営。#24。自動処理は null）で、生産者の注文画面の履歴に名前を出す |
 | `payouts` | 月次精算。`scheduledFor`=翌月15日 |
 | 在庫（`product_variants.stock`） | 予約は**条件付き更新**（`stock >= 数量` の行だけを減らす）で注文トランザクション内。同時注文は Postgres の行ロックで直列化され、売り越し・在庫マイナスは起きない。キャンセル・返金で戻す。回帰テスト `services/__tests__/stock-race.test.ts` |
@@ -91,6 +92,8 @@ pending_payment ─paid→ paid ─→ preparing ─→ shipped ─→ delivered
 ```
 
 - shipped には追跡番号必須。各遷移で `shipment_events` 追加 + 通知。
+- 返金の途中（`refundedAt` が入った）の出荷単位は preparing / shipped に進めない。お客さまのキャンセルの依頼に回答していない出荷単位は、生産者は shipped にできない（#18）。
+- お客さまが取り消せるのは paid（準備前）だけ。preparing では「キャンセルの依頼」になる（#18）。
 - 状態を直接 UPDATE しないこと（必ず service 経由）。
 
 ## 規格（variants）の論理削除

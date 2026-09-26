@@ -6,6 +6,7 @@ import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/common/empty-state";
 import { StatusBadge, ToneBadge } from "@/components/common/status-badge";
+import { orderCancelCopy } from "@/config/order-cancel";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -227,6 +228,7 @@ export function ShippingCenter({ rows, today, defaultCarrier }: { rows: Shipping
                       <span className="text-muted-foreground">{r.boxSize}サイズ×{r.boxCount}{slot && `・${slot}`}</span>
                       <span className="flex items-center gap-1.5">
                         <StatusBadge kind="farmOrder" status={r.status} className="text-[10px]" />
+                        {r.cancelRequested && <ToneBadge tone="danger" className="text-[10px]">{orderCancelCopy.farmer.listBadge}</ToneBadge>}
                         {r.labelPrintedAt && (
                           <span className="text-leaf inline-flex items-center gap-0.5 text-[10px] font-medium"><FileCheck2 className="size-3" />送り状済</span>
                         )}

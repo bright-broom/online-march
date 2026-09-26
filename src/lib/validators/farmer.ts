@@ -1,5 +1,6 @@
 /** Farmer dashboard input schemas (client + server). Messages are user-facing Japanese. */
 import { z } from "zod";
+import { orderCancelPolicy } from "@/config/order-cancel";
 import { normalizeTrackingNumber, trackingNumberPattern } from "@/lib/shipping";
 import { catalogLimits, categoryKeys, cultivationMethods } from "@/config/catalog";
 import { carriers } from "@/config/shipping";
@@ -117,6 +118,18 @@ export const shipOrderSchema = z.object({
 
 export const bulkShipSchema = z.object({
   rows: z.array(shipOrderSchema).min(1, "発送する注文がありません").max(200),
+});
+
+/** キャンセルの依頼への回答（#18）。お断りのひとことは任意 */
+export const cancelAnswerSchema = z.object({
+  id: z.uuid(),
+  approve: z.boolean(),
+  reply: z
+    .string()
+    .trim()
+    .max(orderCancelPolicy.replyMaxLength, `${orderCancelPolicy.replyMaxLength}文字以内で入力してください`)
+    .optional()
+    .transform((v) => v || null),
 });
 
 export const cancelOrderSchema = z.object({
