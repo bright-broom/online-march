@@ -1,8 +1,10 @@
 import { LifeBuoy, Store } from "lucide-react";
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PasswordForm } from "@/components/account/password-form";
+import { EmailSettings } from "@/components/account/email-settings";
 import { ProfileForm } from "@/components/account/profile-form";
 import { SignOutButton } from "@/components/account/sign-out-button";
 import { PageHeader } from "@/components/dashboard/page-header";
@@ -31,7 +33,13 @@ export default async function FarmerAccountPage() {
             <CardDescription>お名前はお客さまとのメッセージに表示されます。農園名や住所は「ショップページ」で変更できます。</CardDescription>
           </CardHeader>
           <CardContent>
-            <ProfileForm name={profile.name} phone={profile.phone} email={profile.email} />
+            <div className="space-y-6">
+              {/* reads the query string when coming back from the link in the email → Suspense (Cache Components) */}
+              <Suspense fallback={<p className="text-sm">{profile.email}</p>}>
+                <EmailSettings email={profile.email} emailVerified={profile.emailVerified} />
+              </Suspense>
+              <ProfileForm name={profile.name} phone={profile.phone} />
+            </div>
           </CardContent>
         </Card>
         <Card>

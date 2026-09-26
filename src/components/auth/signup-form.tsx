@@ -3,6 +3,7 @@ import { AlertCircle, ArrowRight, Mail, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
+import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -41,6 +42,8 @@ export function SignupForm() {
         setFormError(authErrorMessage(error));
         return;
       }
+      // 登録時に確認メールを送っている（#16）。確認しなくても使えるが、届くアドレスか確かめてもらう
+      toast.success(`${parsed.data.email} に確認メールを送りました`, { description: "メールのボタンを押して、アドレスの確認を済ませてください。" });
       router.replace(next ?? roleHome.customer);
       router.refresh();
     });

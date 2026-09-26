@@ -36,7 +36,7 @@
 | --- | --- | --- |
 | Stripe 本番キー | テストキー | アカウント有効化 →`sk_live_…` を `STRIPE_SECRET_KEY` に。本番でも Webhook 3本を作り直す（`docs/DEPLOY.md`） |
 | 決済手段 | サンドボックスでは カード・PayPay・コンビニ払い・Apple Pay・Google Pay が有効（2026-09-23 時点で✅） | **本番環境では有効化し直しが必要**（サンドボックスの設定は本番に引き継がれない）。[Stripe ダッシュボード → 決済手段](https://dashboard.stripe.com/settings/payment_methods) |
-| メール送信 | 未設定（**公開をブロック**） | `RESEND_API_KEY` と `EMAIL_FROM`（独自ドメイン）。未設定のままだと注文確認・返金のお知らせ・**パスワード再設定**のメールが届かない。パスワードを忘れたお客さまが自力で戻れなくなるので、2026-09-24 から本番公開チェックで blocker 扱い |
+| メール送信 | 未設定（**公開をブロック**） | `RESEND_API_KEY` と `EMAIL_FROM`（独自ドメイン）。未設定のままだと注文確認・返金のお知らせ・**パスワード再設定**・**メールアドレスの確認と変更**（#16）のメールが届かない（変更はリンクを開くまで起きないので、未設定の間はアドレスを変えられない）。パスワードを忘れたお客さまが自力で戻れなくなるので、2026-09-24 から本番公開チェックで blocker 扱い |
 | デモモード | 有効 | `DEMO_MODE=false`。デモアカウントはログイン不可になる（`src/config/demo.ts`） |
 | デモデータ | `@demo.awaji` のアカウントとシードデータが本番DBに入ったまま | 公開前に `npm run demo:purge`（`scripts/demo-purge.ts`）。運営アカウントは `npm run admin:promote -- --email <メール>` |
 | 特商法・運営者情報 | 仮の値 | `src/config/site.ts` の 代表者名 / 問い合わせメール / 電話番号 / 郵便番号 / 住所 / 受付時間 |
@@ -202,3 +202,4 @@
 | 停止中の農家の売上・返金の相殺も月次で精算する（#14） | `jobs/index.ts`（close-payouts） | `jobs/suspended-farm-payout.test.ts` |
 | 決済画面で「戻る」を押したら注文をすぐ取り消し、在庫とクーポンを戻して案内する（#17） | `services/orders.ts#abandonCheckout`, `actions/checkout.ts#cancelAbandonedCheckout`, `shop/cart/checkout-canceled-notice.tsx` | `services/__tests__/abandon-checkout.test.ts`, `authorization.test.ts` |
 | 出店審査: 見送り後の再申請（前回の内容入り）・審査中の準備案内・見送り／停止のメール（#15） | `actions/join.ts`, `actions/admin-farms.ts#setFarmStatus`, `shop/join/join-gate.tsx`, `lib/farms.ts`, `email/templates.ts#farmRejected/farmSuspended` | `actions/__tests__/farm-application.test.tsx` |
+| メールアドレスの確認（登録時・未確認の表示と再送）と変更（新しいアドレスで確認してから切り替え・デモは不可）（#16） | `server/auth/auth.ts`（emailVerification・changeEmail）, `components/account/email-settings.tsx`, `email/templates.ts#verifyEmail/changeEmail` | `auth/__tests__/email-change.test.ts` |

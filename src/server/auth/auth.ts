@@ -1,7 +1,8 @@
 import "server-only";
 import { betterAuth } from "better-auth";
+import { eq } from "drizzle-orm";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { APIError, createAuthMiddleware } from "better-auth/api";
+import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { nextCookies } from "better-auth/next-js";
 import { twoFactor } from "better-auth/plugins";
 import { isDemoEmail } from "@/config/demo";
@@ -48,6 +49,9 @@ export const auth = betterAuth({
       // Better Auth 1.7 の再設定リクエストはこのパス（旧名 /forget-password のルールだけでは効いていなかった）
       "/request-password-reset": { window: 3600, max: 5 },
       "/reset-password": { window: 3600, max: 5 },
+      // メールを送る窓口（#16）: 他人のアドレスへ確認メールを連打させない
+      "/change-email": { window: 3600, max: 5 },
+      "/send-verification-email": { window: 3600, max: 5 },
     },
   },
   emailAndPassword: {
@@ -66,7 +70,30 @@ export const auth = betterAuth({
     // 乗っ取られて再設定した場合に、乗っ取った側のログインも切れるように
     revokeSessionsOnPasswordReset: true,
   },
+  /**
+   * メールアドレスの確認（#16）。登録時に確認メールを送るが、確認前でもログイン・購入はできる（打ち間違いに気づいて
+   * 直せるようにするのが目的で、締め出すためではない）。未確認はアカウント設定に出て、そこから再送・変更できる。
+   * アドレス変更の確認メールもここを通る（新しいアドレスへ送る。リンクを開くまで変更されない）。
+   */
+  emailVerification: {
+    sendOnSignUp: true,
+    autoSignInAfterVerification: true,
+    expiresIn: 60 * 60 * 24,
+    sendVerificationEmail: async ({ user: u, url }) => {
+      if (isDemoEmail(u.email)) return;
+      // 変更のときは Better Auth が user.email を新しいアドレスに差し替えて渡してくる
+      const current = await db.query.user.findFirst({ where: eq(user.id, u.id), columns: { email: true } });
+      const changing = Boolean(current && current.email !== u.email);
+      await sendEmail(
+        changing
+          ? emailTemplates.changeEmail({ to: u.email, name: u.name, url })
+          : emailTemplates.verifyEmail({ to: u.email, name: u.name, url }),
+      );
+    },
+  },
   user: {
+    // 新しいアドレスに届いたリンクを開いたときに切り替わる（確認前の即時変更 updateEmailWithoutVerification は使わない）
+    changeEmail: { enabled: true },
     additionalFields: {
       role: { type: "string", required: false, defaultValue: "customer", input: false },
       phone: { type: "string", required: false },
@@ -86,6 +113,11 @@ export const auth = betterAuth({
      * still in the database.
      */
     before: createAuthMiddleware(async (ctx) => {
+      // 共有のデモアカウントのアドレスを誰かが自分のものに変えて乗っ取れないように（#16）
+      if (ctx.path === "/change-email") {
+        const s = await getSessionFromCtx(ctx);
+        if (s && isDemoEmail(s.user.email)) throw new APIError("FORBIDDEN", { message: "デモアカウントのメールアドレスは変更できません" });
+      }
       if (features.demo) return;
       const email = typeof ctx.body?.email === "string" ? ctx.body.email : "";
       if (email && isDemoEmail(email)) {

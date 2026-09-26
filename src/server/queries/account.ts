@@ -440,7 +440,7 @@ export type ThreadFarm = NonNullable<Awaited<ReturnType<typeof getThreadFarm>>>;
 
 export async function getProfile(userId: string) {
   const [row] = await db
-    .select({ id: user.id, name: user.name, email: user.email, phone: user.phone, createdAt: user.createdAt })
+    .select({ id: user.id, name: user.name, email: user.email, emailVerified: user.emailVerified, phone: user.phone, createdAt: user.createdAt })
     .from(user)
     .where(eq(user.id, userId));
   return row ?? null;

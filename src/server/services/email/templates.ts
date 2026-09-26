@@ -81,6 +81,32 @@ export const emailTemplates = {
     };
   },
 
+  /** 登録時のメールアドレス確認（#16）。確認しなくても使えるが、注文確認やパスワード再設定が届くアドレスか確かめる */
+  verifyEmail(p: { to: string; name: string; url: string }): EmailMessage {
+    return {
+      to: p.to,
+      subject: "【メールアドレスのご確認】",
+      blocks: [
+        { type: "p", text: `${p.name} 様\nご登録ありがとうございます。下のボタンを押して、このメールアドレスでお知らせを受け取れることをご確認ください。` },
+        { type: "button", label: "メールアドレスを確認する", href: p.url },
+        { type: "note", text: "このリンクの有効期限は24時間です。お心当たりがない場合はこのメールを破棄してください。" },
+      ],
+    };
+  },
+
+  /** メールアドレス変更の確認（#16）。新しいアドレスへ送る。リンクを開くまでアドレスは変わらない */
+  changeEmail(p: { to: string; name: string; url: string }): EmailMessage {
+    return {
+      to: p.to,
+      subject: "【メールアドレス変更のご確認】",
+      blocks: [
+        { type: "p", text: `${p.name} 様\nメールアドレスの変更を受け付けました。下のボタンを押すと、ログインとお知らせのメールアドレスがこのアドレスに変わります。` },
+        { type: "button", label: "このアドレスに変更する", href: p.url },
+        { type: "note", text: "このリンクの有効期限は24時間です。ボタンを押すまでメールアドレスは変更されません。お心当たりがない場合はこのメールを破棄してください。" },
+      ],
+    };
+  },
+
   /** 返金（運営の返金・生産者のキャンセル・お客さまのキャンセル、すべてここ） */
   refunded(p: { to: string; name: string; orderId: string; code: string; amount: number; reason: string | null; viaCard: boolean }): EmailMessage {
     return {

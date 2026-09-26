@@ -10,7 +10,7 @@ import { updateProfile } from "@/server/actions/account";
 
 type Result = Awaited<ReturnType<typeof updateProfile>>;
 
-export function ProfileForm({ name, phone, email }: { name: string; phone: string | null; email: string }) {
+export function ProfileForm({ name, phone }: { name: string; phone: string | null }) {
   const router = useRouter();
   const [state, formAction] = useActionState<Result | null, FormData>(async (prev, fd) => {
     const res = await updateProfile(prev, fd);
@@ -26,11 +26,6 @@ export function ProfileForm({ name, phone, email }: { name: string; phone: strin
   return (
     <form action={formAction} className="space-y-5">
       <FieldGroup className="gap-4">
-        <Field>
-          <FieldLabel htmlFor="profile-email">メールアドレス</FieldLabel>
-          <Input id="profile-email" value={email} readOnly disabled />
-          <FieldDescription>ログインと注文確認メールに使われます。</FieldDescription>
-        </Field>
         <Field data-invalid={!!fe?.name}>
           <FieldLabel htmlFor="profile-name">お名前</FieldLabel>
           <Input id="profile-name" name="name" defaultValue={name} autoComplete="name" maxLength={40} aria-invalid={!!fe?.name || undefined} />
