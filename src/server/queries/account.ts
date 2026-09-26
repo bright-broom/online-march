@@ -114,11 +114,13 @@ export async function getCustomerAnnouncements(limit = 3) {
 
 export type OrderListFilter = "all" | "active" | "completed" | "cancelled";
 
-export async function listOrders(userId: string, limit?: number) {
+/** 注文履歴。`offset` でページ送り（#21）。件数は countOrders */
+export async function listOrders(userId: string, limit?: number, offset = 0) {
   const rows = await db.query.orders.findMany({
     where: eq(orders.userId, userId),
-    orderBy: (t, { desc: d }) => d(t.createdAt),
+    orderBy: (t, { desc: d }) => [d(t.createdAt), d(t.id)],
     limit,
+    offset,
     columns: { id: true, code: true, status: true, total: true, createdAt: true, desiredDeliveryDate: true },
     with: {
       farmOrders: {
@@ -148,6 +150,11 @@ export async function listOrders(userId: string, limit?: number) {
   });
 }
 export type OrderListItem = Awaited<ReturnType<typeof listOrders>>[number];
+
+export async function countOrders(userId: string) {
+  const [{ n }] = await db.select({ n: count() }).from(orders).where(eq(orders.userId, userId));
+  return n;
+}
 
 export async function getOrderDetail(userId: string, orderId: string) {
   const order = await db.query.orders.findFirst({

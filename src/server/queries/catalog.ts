@@ -631,10 +631,26 @@ export async function getProductReviews(
     summarize(eq(reviews.productId, productId)),
     reviewsBase()
       .where(and(eq(reviews.productId, productId), eq(reviews.isPublished, true)))
-      .orderBy(desc(reviews.createdAt))
+      .orderBy(desc(reviews.createdAt), desc(reviews.id))
       .limit(limit),
   ]);
   return { summary, items: rows.map(toReview) };
+}
+
+/**
+ * 商品レビューの続き（#21）。商品ページはキャッシュされた静的な枠なので、最初の20件のあとは「もっと見る」でここから読む。
+ * 公開中のものだけ、新しい順。offset は件数（ページ番号ではない）。
+ */
+export async function getMoreProductReviews(productId: string, offset: number, limit = 20): Promise<{ items: ReviewDTO[]; hasMore: boolean }> {
+  "use cache";
+  cacheLife("catalog");
+  cacheTag(tags.reviews, tags.productReviews(productId));
+  const rows = await reviewsBase()
+    .where(and(eq(reviews.productId, productId), eq(reviews.isPublished, true)))
+    .orderBy(desc(reviews.createdAt), desc(reviews.id))
+    .limit(limit + 1)
+    .offset(offset);
+  return { items: rows.slice(0, limit).map(toReview), hasMore: rows.length > limit };
 }
 
 export async function getFarmReviews(

@@ -139,6 +139,9 @@
 
 - 複数のテストファイルを渡すとき、zsh は `$T` を空白で分割しない。`T=(a.test.ts b.test.ts); npx vitest run "${T[@]}"` と配列にする
   （分割されないとテストが1本も走らず、何を壊しても「赤くならない」ように見える）
+- 壊すと**止まらなくなる**テストがある（「続きが無くなるまで読む」ループで、続きが進まなくなる壊し方など）。ループには回数の上限を付け、
+  壊して走らせるときは `timeout 200 npx vitest run …` で包む。止まったまま放っておくと、壊したファイルが戻らない。
+  `pkill -f <テスト名>` は同じ文字列を含む自分のシェルまで止めて、後始末（`cp` で戻す）が走らなくなる（2026-09-26 に実際に起きた）
 - 置き換えは `sed` より Python の `str.replace` が確実（BSD sed は GNU と文法が違い、黙って何も変えないことがある）。
   置き換えの前に「その文字列が本当にあるか」を assert する
 
@@ -244,3 +247,4 @@
 | #21 追跡番号: 手入力・CSV・運営で決まりを1つに／CSVは見出しの列を読み電話番号を取り違えない／未使用の `payouts.status=processing` は残して画面に出さない | `lib/shipping.ts#trackingNumberPattern`, `services/shipping/label-csv.ts#parseTrackingCsv`, `validators/admin.ts` | `services/__tests__/tracking-csv.test.ts` |
 | #21 案内・通知: 在庫わずか／売り切れを生産者へ（しきい値を下回った・0 になった注文で1回）、出荷期限切れは毎日リマインド、メッセージ（同じやり取りは30分に1通）・レビュー返信（初回のみ）・振込完了のメール、Stripe 登録リンク切れの案内 | `services/orders.ts#createOrder`, `jobs/index.ts`（ship-reminders）, `actions/messages.ts`, `actions/reviews.ts#replyToReview`, `services/payouts.ts#notifyPaid`, `app/farmer/payouts/page.tsx` | `services/__tests__/notices.test.ts` |
 | #21 画面の基本: 生産者画面の noindex・管理画面の「本文へスキップ」・エリア別のエラー画面（メニューを残す）・Apple／PWA 用アイコン（180／192／512, maskable） | `app/farmer/layout.tsx`, `layout/dashboard-shell.tsx`, `common/area-error.tsx`, `app/{admin,farmer,mypage}/error.tsx`, `shop/brand-icon.tsx`, `app/apple-icon.tsx`, `app/icons/*`, `app/manifest.ts` | `components/__tests__/ui-basics.test.tsx` |
+| #21 ページングと検索: 注文履歴のページ送り（50件ずつ）・商品レビューの「もっと見る」・運営の注文／ユーザーをサーバー側で全件から検索（% と _ はそのまま） | `queries/account.ts#listOrders/countOrders`, `app/mypage/orders/page.tsx`, `queries/catalog.ts#getMoreProductReviews`, `shop/more-reviews.tsx`, `queries/admin.ts#getAdminOrders/getAdminUsers`, `admin/server-search.tsx` | `queries/__tests__/paging-search.test.ts` |

@@ -2,8 +2,10 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { farmFollows, favorites } from "@/db/schema";
+import { z } from "zod";
 import { assertUser } from "@/server/auth/guards";
-import { runAction, type ActionResult } from "./_utils";
+import { getMoreProductReviews, type ReviewDTO } from "@/server/queries/catalog";
+import { parseInput, runAction, type ActionResult } from "./_utils";
 
 /** Toggle a product favorite. Returns the new state. */
 export async function toggleFavorite(productId: string): Promise<ActionResult<{ favorited: boolean }>> {
@@ -32,5 +34,16 @@ export async function toggleFollow(farmId: string): Promise<ActionResult<{ follo
     }
     await db.insert(farmFollows).values({ userId: me.id, farmId });
     return { following: true };
+  });
+}
+
+/**
+ * 商品レビューの「もっと見る」（#21）。ログイン不要（公開中のレビューだけを返す読み取り）。
+ * offset は 0 以上・上限あり（大きな値で重いクエリを投げさせない）。
+ */
+export async function loadMoreProductReviews(input: { productId: string; offset: number }): Promise<ActionResult<{ items: ReviewDTO[]; hasMore: boolean }>> {
+  return runAction(async () => {
+    const { productId, offset } = parseInput(z.object({ productId: z.uuid(), offset: z.number().int().min(0).max(5000) }), input);
+    return getMoreProductReviews(productId, offset);
   });
 }

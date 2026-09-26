@@ -1,5 +1,5 @@
 import "server-only";
-import { and, count, countDistinct, desc, eq, gte, inArray, isNotNull, lt, lte, ne, sql } from "drizzle-orm";
+import { and, count, countDistinct, desc, eq, gte, ilike, inArray, isNotNull, lt, lte, ne, or, sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 import { categoryKeys } from "@/config/catalog";
 import { shippingZones, type ShippingZoneKey } from "@/config/shipping";
@@ -476,7 +476,14 @@ export type AdminReviewRow = Awaited<ReturnType<typeof getAdminReviews>>[number]
 
 /* ───────────────────────── Orders ───────────────────────── */
 
-export async function getAdminOrders(status?: OrderStatus, limit = 500) {
+/** 検索語を ILIKE の部分一致に（% と _ はそのままの文字として扱う） */
+const likeOf = (q: string) => `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+
+/**
+ * 運営の注文一覧。`q` は注文番号・メール・会員名・お届け先の名前をサーバー側で探す（#21。以前は最新500件の中だけを画面で絞っていた）。
+ */
+export async function getAdminOrders(status?: OrderStatus, limit = 500, q?: string) {
+  const like = q ? likeOf(q) : null;
   const [rows, counts] = await Promise.all([
     db
       .select({
@@ -494,7 +501,14 @@ export async function getAdminOrders(status?: OrderStatus, limit = 500) {
       })
       .from(orders)
       .innerJoin(user, eq(user.id, orders.userId))
-      .where(status ? eq(orders.status, status) : undefined)
+      .where(
+        and(
+          status ? eq(orders.status, status) : undefined,
+          like
+            ? or(ilike(orders.code, like), ilike(orders.email, like), ilike(user.name, like), sql`${orders.shippingAddress}->>'recipientName' ilike ${like}`)
+            : undefined,
+        ),
+      )
       .orderBy(desc(orders.createdAt))
       .limit(limit),
     db.select({ status: orders.status, n: count() }).from(orders).groupBy(orders.status),
@@ -524,7 +538,9 @@ export type AdminOrderDetail = NonNullable<Awaited<ReturnType<typeof getAdminOrd
 
 /* ───────────────────────── Users ───────────────────────── */
 
-export async function getAdminUsers() {
+/** 運営のユーザー一覧。`q` は名前・メール・農園名をサーバー側で探す（#21） */
+export async function getAdminUsers(q?: string, limit = 500) {
+  const like = q ? likeOf(q) : null;
   const rows = await db
     .select({
       id: user.id,
@@ -539,7 +555,9 @@ export async function getAdminUsers() {
     })
     .from(user)
     .leftJoin(farms, eq(farms.ownerId, user.id))
-    .orderBy(desc(user.createdAt));
+    .where(like ? or(ilike(user.name, like), ilike(user.email, like), ilike(farms.name, like)) : undefined)
+    .orderBy(desc(user.createdAt))
+    .limit(limit);
   const counts = rows.reduce<Partial<Record<UserRole, number>>>((a, r) => ({ ...a, [r.role]: (a[r.role] ?? 0) + 1 }), {});
   return { rows, counts };
 }
