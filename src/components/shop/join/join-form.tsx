@@ -45,7 +45,12 @@ function TextField({
 }
 
 /** 出店申請フォーム. Values survive validation errors (no auto form reset: we submit via transition). */
-export function JoinForm({ defaultRepresentative }: { defaultRepresentative: string }) {
+/** Values of a rejected application, so it can be corrected and re-submitted (#15). */
+export type JoinFormDefaults = Partial<Record<"farmName" | "representative" | "tagline" | "story" | "postalCode" | "prefecture" | "city" | "addressLine" | "phone", string>> & {
+  cultivationMethods?: string[];
+};
+
+export function JoinForm({ defaults = {} }: { defaults?: JoinFormDefaults }) {
   const [state, formAction] = useActionState<State, FormData>(submitFarmApplication, null);
   const [pending, startTransition] = useTransition();
   const topRef = useRef<HTMLDivElement>(null);
@@ -93,16 +98,17 @@ export function JoinForm({ defaultRepresentative }: { defaultRepresentative: str
       <FieldSet>
         <FieldLegend className="heading-display text-lg">農園について</FieldLegend>
         <FieldGroup className="grid gap-5 sm:grid-cols-2">
-          <TextField name="farmName" label="農園名" placeholder="例）阿波ファーム" required maxLength={40} errors={fe?.farmName} />
-          <TextField name="representative" label="代表者名" defaultValue={defaultRepresentative} autoComplete="name" required maxLength={40} errors={fe?.representative} />
+          <TextField name="farmName" label="農園名" placeholder="例）阿波ファーム" defaultValue={defaults.farmName} required maxLength={40} errors={fe?.farmName} />
+          <TextField name="representative" label="代表者名" defaultValue={defaults.representative} autoComplete="name" required maxLength={40} errors={fe?.representative} />
           <div className="sm:col-span-2">
-            <TextField name="tagline" label="ひとことで紹介" placeholder="例）三代つづく、吊り小屋熟成の玉ねぎ" required maxLength={40} errors={fe?.tagline} description="ショップページや商品カードに表示されます（40文字まで）" />
+            <TextField name="tagline" label="ひとことで紹介" placeholder="例）三代つづく、吊り小屋熟成の玉ねぎ" defaultValue={defaults.tagline} required maxLength={40} errors={fe?.tagline} description="ショップページや商品カードに表示されます（40文字まで）" />
           </div>
           <Field data-invalid={!!fe?.story?.length} className="sm:col-span-2">
             <FieldLabel htmlFor="story">農園のストーリー</FieldLabel>
             <Textarea
               id="story"
               name="story"
+              defaultValue={defaults.story}
               rows={6}
               required
               minLength={30}
@@ -123,7 +129,7 @@ export function JoinForm({ defaultRepresentative }: { defaultRepresentative: str
           {(Object.keys(cultivationMethods) as CultivationKey[]).map((k) => (
             <FieldLabel key={k} htmlFor={`cm-${k}`}>
               <Field orientation="horizontal">
-                <Checkbox id={`cm-${k}`} name="cultivationMethods[]" value={k} />
+                <Checkbox id={`cm-${k}`} name="cultivationMethods[]" value={k} defaultChecked={defaults.cultivationMethods?.includes(k)} />
                 <FieldContent>
                   <FieldTitle>{cultivationMethods[k].label}</FieldTitle>
                   <FieldDescription>{cultivationMethods[k].description}</FieldDescription>
@@ -139,10 +145,10 @@ export function JoinForm({ defaultRepresentative }: { defaultRepresentative: str
         <FieldLegend className="heading-display text-lg">所在地・連絡先</FieldLegend>
         <FieldDescription>出荷元住所として送り状に使用します（一般には公開されません）。</FieldDescription>
         <FieldGroup className="grid gap-5 sm:grid-cols-2">
-          <TextField name="postalCode" label="郵便番号" placeholder="656-0000" inputMode="numeric" autoComplete="postal-code" required errors={fe?.postalCode} />
+          <TextField name="postalCode" label="郵便番号" placeholder="656-0000" defaultValue={defaults.postalCode} inputMode="numeric" autoComplete="postal-code" required errors={fe?.postalCode} />
           <Field data-invalid={!!fe?.prefecture?.length}>
             <FieldLabel htmlFor="prefecture">都道府県</FieldLabel>
-            <Select name="prefecture" defaultValue={shippingPolicy.originPrefecture}>
+            <Select name="prefecture" defaultValue={defaults.prefecture ?? shippingPolicy.originPrefecture}>
               <SelectTrigger id="prefecture" className="h-11 w-full" aria-invalid={!!fe?.prefecture?.length}>
                 <SelectValue />
               </SelectTrigger>
@@ -156,9 +162,9 @@ export function JoinForm({ defaultRepresentative }: { defaultRepresentative: str
             </Select>
             <FieldError errors={fe?.prefecture?.map((message) => ({ message }))} />
           </Field>
-          <TextField name="city" label="市区町村" placeholder="南あわじ市八木" autoComplete="address-level2" required errors={fe?.city} />
-          <TextField name="addressLine" label="番地・建物名" autoComplete="address-line1" required errors={fe?.addressLine} />
-          <TextField name="phone" label="電話番号" type="tel" placeholder="0799-00-0000" autoComplete="tel" required errors={fe?.phone} />
+          <TextField name="city" label="市区町村" placeholder="南あわじ市八木" defaultValue={defaults.city} autoComplete="address-level2" required errors={fe?.city} />
+          <TextField name="addressLine" label="番地・建物名" defaultValue={defaults.addressLine} autoComplete="address-line1" required errors={fe?.addressLine} />
+          <TextField name="phone" label="電話番号" type="tel" placeholder="0799-00-0000" defaultValue={defaults.phone} autoComplete="tel" required errors={fe?.phone} />
         </FieldGroup>
       </FieldSet>
 

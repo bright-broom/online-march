@@ -40,7 +40,7 @@ const intentCopy: Record<FarmStatusIntent, { title: string; description: string;
   },
   suspend: {
     title: "ショップを停止しますか？",
-    description: "停止中の生産者の商品はストアから自動的に非表示になります。進行中の注文の出荷は継続できます。",
+    description: "停止中の生産者の商品はストアから自動的に非表示になります。進行中の注文の出荷は継続でき、その売上は通常どおり精算・振込されます。",
     confirm: "停止する",
     destructive: true,
     reason: true,

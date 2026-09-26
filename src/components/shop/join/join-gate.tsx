@@ -1,9 +1,11 @@
-import { Clock3, LayoutDashboard, LogIn, UserPlus } from "lucide-react";
+import { Check, Clock3, LayoutDashboard, LogIn, RotateCcw, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { StatusBadge } from "@/components/common/status-badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { joinContent } from "@/config/content";
 import { roleHome, routes } from "@/config/nav";
+import { isRejectedApplication } from "@/lib/farms";
 import { formatDate } from "@/lib/format";
 import { getSessionUser } from "@/server/auth/session";
 import { getFarmApplication } from "@/server/queries/catalog";
@@ -21,7 +23,7 @@ function Notice({ icon: IconC, title, children }: { icon: React.ComponentType<{ 
   );
 }
 
-/** Request-time: decides between guest CTA / farmer note / pending status / the form. Render inside <Suspense>. */
+/** Request-time: decides between guest CTA / farmer note / pending status / rejected (re-apply) / the form. Render inside <Suspense>. */
 export async function JoinGate() {
   const user = await getSessionUser();
   const next = encodeURIComponent(routes.join);
@@ -64,13 +66,37 @@ export async function JoinGate() {
   }
 
   const application = await getFarmApplication(user.id);
+  if (application && isRejectedApplication(application)) {
+    return (
+      <div className="space-y-8">
+        <Notice icon={RotateCcw} title={joinContent.rejected.title}>
+          <p className="text-muted-foreground max-w-md text-sm leading-relaxed">{joinContent.rejected.lead}</p>
+          <Button asChild variant="outline" className="h-11 rounded-full px-6">
+            <Link href={routes.mypage.notifications}>お知らせを見る</Link>
+          </Button>
+        </Notice>
+        <JoinForm defaults={{ ...application, farmName: application.name }} />
+      </div>
+    );
+  }
   if (application) {
     return (
       <Notice icon={Clock3} title={`「${application.name}」の申請を受け付けています`}>
         <StatusBadge kind="farm" status={application.status} />
         <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
-          {formatDate(application.createdAt)}に申請いただきました。運営が内容を確認し、結果をお知らせでご連絡します。
+          {formatDate(application.createdAt)}に申請いただきました。{joinContent.pending.lead}
         </p>
+        <div className="bg-background w-full max-w-md rounded-2xl p-5 text-left">
+          <p className="text-sm font-medium">{joinContent.pending.prepareTitle}</p>
+          <ul className="text-muted-foreground mt-3 space-y-2 text-sm leading-relaxed">
+            {joinContent.pending.prepare.map((item) => (
+              <li key={item} className="flex gap-2">
+                <Check className="text-leaf mt-0.5 size-4 shrink-0" />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
         <Button asChild variant="outline" className="h-11 rounded-full px-6">
           <Link href={routes.mypage.notifications}>お知らせを見る</Link>
         </Button>
@@ -78,7 +104,7 @@ export async function JoinGate() {
     );
   }
 
-  return <JoinForm defaultRepresentative={user.name} />;
+  return <JoinForm defaults={{ representative: user.name }} />;
 }
 
 export function JoinGateSkeleton() {

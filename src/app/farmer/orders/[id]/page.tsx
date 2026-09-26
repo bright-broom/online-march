@@ -4,19 +4,23 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
+import { DeliveryIssueAlert } from "@/components/common/delivery-issue-alert";
 import { StatusBadge } from "@/components/common/status-badge";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { CopyButton } from "@/components/farmer/copy-button";
+import { CancelRequestCard } from "@/components/farmer/orders/cancel-request-card";
 import { OrderActionPanel } from "@/components/farmer/orders/order-action-panel";
 import { OrderTimeline } from "@/components/farmer/orders/order-timeline";
 import { ShipByBadge } from "@/components/farmer/ship-by";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { canFarm } from "@/config/farm-staff";
 import { bpsToPercent } from "@/config/fees";
 import { routes } from "@/config/nav";
 import { carriers, deliveryTimeSlots, type DeliveryTimeSlot } from "@/config/shipping";
 import { fromYmd, toYmd } from "@/lib/dates";
+import { cancelRequestPending } from "@/lib/order-cancel";
 import { formatDate, formatDateTime, formatNumber, formatPostalCode, formatWeight } from "@/lib/format";
 import { requireFarm } from "@/server/auth/guards";
 import { getFarmOrder } from "@/server/queries/farmer";
@@ -34,7 +38,9 @@ function Row({ label, children, strong }: { label: React.ReactNode; children: Re
 
 export default async function FarmerOrderPage({ params }: PageProps<"/farmer/orders/[id]">) {
   const { id } = await params;
-  const { farm } = await requireFarm();
+  const { farm, access } = await requireFarm("ship");
+  // 手数料と受取額は精算の情報なのでオーナーだけ（#24）。キャンセルは「すべて」のスタッフまで
+  const seesMoney = canFarm(access, "money");
   const fo = /^[0-9a-f-]{36}$/i.test(id) ? await getFarmOrder(farm.id, id) : null;
   if (!fo) notFound();
   await connection();
@@ -45,6 +51,7 @@ export default async function FarmerOrderPage({ params }: PageProps<"/farmer/ord
   const gift = fo.order.gift;
   const slot = fo.order.deliveryTimeSlot ? deliveryTimeSlots[fo.order.deliveryTimeSlot as DeliveryTimeSlot]?.label : null;
   const isOpen = fo.status === "paid" || fo.status === "preparing";
+  const requested = cancelRequestPending(fo); // お客さまのキャンセルの依頼（#18）
 
   return (
     <div>
@@ -67,6 +74,7 @@ export default async function FarmerOrderPage({ params }: PageProps<"/farmer/ord
           </>
         }
       />
+      <DeliveryIssueAlert status={fo.status} at={fo.deliveryIssueAt} note={fo.deliveryIssueNote} audience="farmer" />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-w-0 space-y-6">
@@ -166,17 +174,26 @@ export default async function FarmerOrderPage({ params }: PageProps<"/farmer/ord
               <dl className="space-y-2">
                 <Row label="商品小計">{formatNumber(fo.subtotal)}円</Row>
                 <Row label="送料">{formatNumber(fo.shippingFee)}円</Row>
-                <Row label={`販売手数料 ${bpsToPercent(fo.commissionRateBps)}%`}>−{formatNumber(fo.commissionAmount)}円</Row>
-                <Separator />
-                <Row label="お受取額" strong>{formatNumber(fo.payoutAmount)}円</Row>
-                {fo.discount > 0 && <p className="text-muted-foreground text-xs">※ クーポン割引 {formatNumber(fo.discount)}円 は運営負担のため、お受取額は変わりません。</p>}
+                {seesMoney && (
+                  <>
+                    <Row label={`販売手数料 ${bpsToPercent(fo.commissionRateBps)}%`}>−{formatNumber(fo.commissionAmount)}円</Row>
+                    <Separator />
+                    <Row label="お受取額" strong>{formatNumber(fo.payoutAmount)}円</Row>
+                  </>
+                )}
+                {seesMoney && fo.discount > 0 && <p className="text-muted-foreground text-xs">※ クーポン割引 {formatNumber(fo.discount)}円 は運営負担のため、お受取額は変わりません。</p>}
               </dl>
             </CardContent>
           </Card>
         </div>
 
         <aside className="space-y-6 lg:sticky lg:top-20 lg:self-start">
-          <OrderActionPanel id={fo.id} status={fo.status} carrier={fo.carrier} trackingNumber={fo.trackingNumber} />
+          {requested && (
+            <CancelRequestCard id={fo.id} reason={fo.cancelRequestReason ?? ""} requestedAt={fo.cancelRequestedAt!} allowAnswer={canFarm(access, "cancel")} />
+          )}
+          <OrderActionPanel
+            id={fo.id} status={fo.status} carrier={fo.carrier} trackingNumber={fo.trackingNumber} allowCancel={canFarm(access, "cancel")} cancelRequested={requested}
+          />
           <Card>
             <CardHeader>
               <CardTitle>履歴</CardTitle>

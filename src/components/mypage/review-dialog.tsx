@@ -1,5 +1,6 @@
 "use client";
 import { PenLine } from "lucide-react";
+import dynamic from "next/dynamic";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useActionState, useRef, useState } from "react";
@@ -9,9 +10,17 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { catalogLimits } from "@/config/catalog";
 import { createReview, updateReview } from "@/server/actions/reviews";
 import { StarPicker } from "./star-picker";
+
+// 写真を付けるときだけ読み込む（圧縮・アップロードの処理が重いため）
+const ImageUploader = dynamic(() => import("@/components/common/image-uploader"), {
+  ssr: false,
+  loading: () => <Skeleton className="aspect-[4/1] min-h-24 w-full rounded-xl" />,
+});
 
 type ReviewResult = Awaited<ReturnType<typeof createReview>> | Awaited<ReturnType<typeof updateReview>>;
 
@@ -26,13 +35,14 @@ export function ReviewDialog({
   variantLabel?: string;
   imageUrl?: string | null;
   trigger?: React.ReactNode;
-  review?: { id: string; rating: number; title: string; body: string };
+  review?: { id: string; rating: number; title: string; body: string; images?: string[] };
 }) {
   const router = useRouter();
   const editing = Boolean(review);
   const [open, setOpen] = useState(false);
   const [rating, setRating] = useState(review?.rating ?? 0);
   const [body, setBody] = useState(review?.body ?? "");
+  const [photos, setPhotos] = useState<string[]>(review?.images ?? []);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const [state, formAction] = useActionState<ReviewResult | null, FormData>(async (prev, fd) => {
     const res = review ? await updateReview(prev, fd) : await createReview(prev, fd);
@@ -114,6 +124,15 @@ export function ReviewDialog({
               />
               <FieldDescription className="text-right">{body.length}/2000（10文字以上）</FieldDescription>
               {fe?.body && <FieldError>{fe.body[0]}</FieldError>}
+            </Field>
+            <Field data-invalid={!!fe?.images}>
+              <FieldLabel>写真（任意・{catalogLimits.maxReviewImages}枚まで）</FieldLabel>
+              <input type="hidden" name="images" value={JSON.stringify(photos)} />
+              {open && (
+                <ImageUploader value={photos} onChange={setPhotos} max={catalogLimits.maxReviewImages} folder="reviews" maxDimension={1600} coverLabel={false} altText={`${productName}の写真`} />
+              )}
+              <FieldDescription>届いた玉ねぎや、作った料理の写真など。商品ページに公開されます。</FieldDescription>
+              {fe?.images && <FieldError>{fe.images[0]}</FieldError>}
             </Field>
           </FieldGroup>
           <DialogFooter>

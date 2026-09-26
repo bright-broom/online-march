@@ -1,13 +1,18 @@
 "use server";
 import { and, eq } from "drizzle-orm";
 import { updateTag } from "next/cache";
+import { z } from "zod";
 import { routes } from "@/config/nav";
+import { rateLimits } from "@/config/rate-limits";
 import { db } from "@/db";
-import { farmOrders, farms, orderItems, orders, reviews } from "@/db/schema";
+import { farmOrders, farms, orderItems, orders, products, reviews, user } from "@/db/schema";
 import { tags } from "@/lib/cache-tags";
 import { reviewEditSchema, reviewReplySchema, reviewSchema } from "@/lib/validators/engagement";
 import { assertFarm, assertRole, assertUser } from "@/server/auth/guards";
+import { emailTemplates } from "@/server/services/email/templates";
 import { notify } from "@/server/services/notify";
+import { recordAudit } from "@/server/services/audit";
+import { consumeRateLimit } from "@/server/services/rate-limit";
 import { recomputeRatings } from "@/server/services/orders";
 import { ActionError, formToObject, parseInput, runAction, type ActionResult } from "./_utils";
 
@@ -16,6 +21,7 @@ export async function createReview(_prev: unknown, formData: FormData): Promise<
   return runAction(async () => {
     const me = await assertUser();
     const data = parseInput(reviewSchema, formToObject(formData));
+    if (!(await consumeRateLimit("review", me.id))) throw new ActionError(rateLimits.review.message);
     const [owned] = await db
       .select({ farmId: farmOrders.farmId, status: farmOrders.status })
       .from(orderItems)
@@ -43,9 +49,10 @@ export async function updateReview(_prev: unknown, formData: FormData): Promise<
   return runAction(async () => {
     const me = await assertUser();
     const data = parseInput(reviewEditSchema, formToObject(formData));
+    if (!(await consumeRateLimit("review", me.id))) throw new ActionError(rateLimits.review.message);
     const mine = await db.query.reviews.findFirst({ where: and(eq(reviews.id, data.reviewId), eq(reviews.userId, me.id)) });
     if (!mine) throw new ActionError("レビューが見つかりません");
-    await db.update(reviews).set({ rating: data.rating, title: data.title, body: data.body }).where(eq(reviews.id, mine.id));
+    await db.update(reviews).set({ rating: data.rating, title: data.title, body: data.body, images: data.images }).where(eq(reviews.id, mine.id));
     await recomputeRatings(mine.productId, mine.farmId); // 星が変われば商品・生産者の平均も変わる
     updateTag(tags.productReviews(mine.productId));
   }, "レビューを更新しました");
@@ -67,21 +74,38 @@ export async function deleteReview(reviewId: string): Promise<ActionResult> {
 /** Farmer replies to a review on their product. */
 export async function replyToReview(input: { reviewId: string; reply: string }): Promise<ActionResult> {
   return runAction(async () => {
-    const { farm } = await assertFarm();
+    const { farm } = await assertFarm("catalog");
     const data = parseInput(reviewReplySchema, input);
     const review = await db.query.reviews.findFirst({ where: and(eq(reviews.id, data.reviewId), eq(reviews.farmId, farm.id)) });
     if (!review) throw new ActionError("レビューが見つかりません");
     await db.update(reviews).set({ reply: data.reply, repliedAt: new Date() }).where(eq(reviews.id, review.id));
     updateTag(tags.productReviews(review.productId));
+    // 書いた人に知らせる（#21）。返信を直したときは知らせ直さない
+    if (!review.reply) {
+      const [author] = await db.select({ id: user.id, name: user.name, email: user.email, deletedAt: user.deletedAt }).from(user).where(eq(user.id, review.userId));
+      const product = await db.query.products.findFirst({ where: eq(products.id, review.productId), columns: { name: true, slug: true } });
+      if (author && !author.deletedAt && product) {
+        const href = routes.product(product.slug);
+        await notify({
+          userId: author.id, type: "review", title: `${farm.name}からレビューに返信が届きました`, body: data.reply.slice(0, 80), href,
+          email: emailTemplates.reviewReplied({ to: author.email, name: author.name, farmName: farm.name, productName: product.name, href }),
+        });
+      }
+    }
   }, "返信を公開しました");
 }
 
-/** Admin moderation: publish / unpublish a review. */
+/** Admin moderation: publish / unpublish a review. Recorded in the audit log (#19). */
 export async function setReviewPublished(input: { reviewId: string; published: boolean }): Promise<ActionResult> {
   return runAction(async () => {
-    await assertRole("admin");
-    const [r] = await db.update(reviews).set({ isPublished: input.published }).where(eq(reviews.id, input.reviewId)).returning();
+    const me = await assertRole("admin");
+    const data = parseInput(z.object({ reviewId: z.uuid(), published: z.boolean() }), input);
+    const [r] = await db.update(reviews).set({ isPublished: data.published }).where(eq(reviews.id, data.reviewId)).returning();
     if (!r) throw new ActionError("レビューが見つかりません");
+    await recordAudit(me, {
+      action: "review.published", target: { type: "review", id: r.id },
+      summary: `レビュー（★${r.rating}）を${data.published ? "公開" : "非公開に"}`, detail: { published: data.published, productId: r.productId },
+    });
     await recomputeRatings(r.productId, r.farmId);
   }, input.published ? "レビューを公開しました" : "レビューを非公開にしました");
 }

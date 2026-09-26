@@ -111,3 +111,15 @@ export function scheduleDelivery(input: {
   }
   return { earliestShipDate, earliestDeliveryDate, latestSelectableDate, shipByDate, estimatedDeliveryDate };
 }
+
+/* ─────────────── tracking numbers (#21) ─────────────── */
+
+/**
+ * 追跡番号の決まりは1つだけ（生産者の手入力・CSV取込・運営の入力で同じ）。全角は半角に、空白とハイフンは取り除いてから、
+ * 英数字 8〜20 桁。ヤマト・日本郵便・佐川の番号（11〜13桁の数字）も、業者が変わっても収まる幅にしてある。
+ */
+export const trackingNumberPattern = /^[0-9A-Za-z]{8,20}$/;
+export const normalizeTrackingNumber = (v: string) => v.normalize("NFKC").replace(/[\s\-‐―−ー]/g, "");
+export const isTrackingNumber = (v: string) => trackingNumberPattern.test(normalizeTrackingNumber(v));
+/** 日本の電話番号の形（0 から始まる 10〜11 桁）。見出しの無い CSV で、電話番号を追跡番号と取り違えないために使う */
+export const looksLikePhoneNumber = (v: string) => /^0\d{9,10}$/.test(normalizeTrackingNumber(v));

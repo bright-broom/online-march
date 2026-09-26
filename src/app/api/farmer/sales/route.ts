@@ -13,7 +13,7 @@ import { buildSalesCsv } from "@/server/services/sales-csv";
 export async function GET(req: NextRequest) {
   let farm: Awaited<ReturnType<typeof assertFarm>>["farm"];
   try {
-    ({ farm } = await assertFarm()); // session role === farmer + owns a farm
+    ({ farm } = await assertFarm("money")); // session role === farmer + owns a farm
   } catch (e) {
     return NextResponse.json({ error: e instanceof ActionError ? e.message : "権限がありません" }, { status: 403 });
   }

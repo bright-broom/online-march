@@ -102,9 +102,12 @@ function ProductJsonLd({ p }: { p: ProductDetailDTO }) {
   );
 }
 
+/** 最初に出すレビューの数。続きは「もっと見る」（#21） */
+const REVIEW_PAGE_SIZE = 20;
+
 async function ProductReviews({ productId }: { productId: string }) {
-  const { summary, items } = await getProductReviews(productId);
-  return <ReviewsBlock summary={summary} items={items} emptyText="お届け後、購入された方がレビューを投稿できます。" />;
+  const { summary, items } = await getProductReviews(productId, REVIEW_PAGE_SIZE);
+  return <ReviewsBlock summary={summary} items={items} emptyText="お届け後、購入された方がレビューを投稿できます。" more={{ productId, pageSize: REVIEW_PAGE_SIZE }} />;
 }
 
 async function RelatedProducts({ product }: { product: ProductDetailDTO }) {

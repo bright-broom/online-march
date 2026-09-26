@@ -1,6 +1,7 @@
 import { CalendarClock, Coins, Landmark } from "lucide-react";
 import type { Metadata } from "next";
 import { connection } from "next/server";
+import { AccountingExportCard } from "@/components/admin/payouts/accounting-export-card";
 import { PayoutsTable } from "@/components/admin/payouts/payouts-table";
 import { FilterTabs, PanelCard } from "@/components/admin/primitives";
 import { RunJobButton } from "@/components/admin/run-job-button";
@@ -11,20 +12,26 @@ import { feeConfig } from "@/config/fees";
 import { routes } from "@/config/nav";
 import { payoutStatusMeta } from "@/config/status";
 import type { PayoutStatus } from "@/db/schema/marketplace";
+import { monthKey } from "@/lib/dates";
 import { formatYen } from "@/lib/format";
 import { requireRole } from "@/server/auth/guards";
 import { getAdminPayouts } from "@/server/queries/admin";
 
 export const metadata: Metadata = { title: "精算・振込" };
 
-const statuses = Object.keys(payoutStatusMeta) as PayoutStatus[];
+// processing は使っていない値（db/schema の payoutStatus の説明）なので、絞り込みにも出さない
+const statuses = (Object.keys(payoutStatusMeta) as PayoutStatus[]).filter((s) => s !== "processing");
 
 export default async function AdminPayoutsPage({ searchParams }: PageProps<"/admin/payouts">) {
   await requireRole("admin", routes.admin.payouts);
   const sp = await searchParams;
   const status = statuses.find((s) => s === sp.status);
   await connection();
-  const { list, summary } = await getAdminPayouts(new Date());
+  const now = new Date();
+  const { list, summary } = await getAdminPayouts(now);
+  // 会計CSVの対象月: 今月（JST）から11か月前まで。各月の15日で数えて、月の長さや時差に左右されないように
+  const [y, m] = monthKey(now).split("-").map(Number);
+  const accountingMonths = Array.from({ length: 12 }, (_, i) => monthKey(new Date(Date.UTC(y, m - 1 - i, 15))));
   const rows = status ? list.filter((p) => p.status === status) : list;
 
   // monthly closing volume (by period end), last 12 closings
@@ -77,6 +84,7 @@ export default async function AdminPayoutsPage({ searchParams }: PageProps<"/adm
             />
           </PanelCard>
         )}
+        <AccountingExportCard months={accountingMonths} />
         <div className="space-y-4">
           <FilterTabs
             basePath={routes.admin.payouts}

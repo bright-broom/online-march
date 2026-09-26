@@ -2,9 +2,10 @@ import "server-only";
 import { and, eq, lte, ne } from "drizzle-orm";
 import { routes } from "@/config/nav";
 import { db } from "@/db";
-import { farms, payouts, type Payout } from "@/db/schema";
+import { farms, payouts, user, type Payout } from "@/db/schema";
 import { toYmd } from "@/lib/dates";
 import { formatYen } from "@/lib/format";
+import { emailTemplates } from "./email/templates";
 import { notify } from "./notify";
 import { alertAdmins } from "./ops-alerts";
 
@@ -86,8 +87,16 @@ async function recordTransfer(p: Payout, ownerId: string, transferId: string, no
   return Boolean(marked);
 }
 
-const notifyPaid = (p: Payout, ownerId: string) =>
-  notify({ userId: ownerId, type: "payout", title: "売上のお振込が完了しました", body: `${p.periodEnd.slice(0, 7)}分｜${formatYen(p.amount)}`, href: routes.farmer.payouts });
+/** 振込完了はお知らせとメールで（#21。Stripe の自動送金・運営の銀行振込のどちらも） */
+async function notifyPaid(p: Payout, ownerId: string) {
+  const [owner] = await db.select({ email: user.email }).from(user).where(eq(user.id, ownerId));
+  const [farm] = await db.select({ name: farms.name }).from(farms).where(eq(farms.id, p.farmId));
+  const period = p.periodEnd.slice(0, 7);
+  await notify({
+    userId: ownerId, type: "payout", title: "売上のお振込が完了しました", body: `${period}分｜${formatYen(p.amount)}`, href: routes.farmer.payouts,
+    email: owner && farm ? emailTemplates.payoutPaid({ to: owner.email, farmName: farm.name, period, amount: p.amount }) : undefined,
+  });
+}
 
 export type ManualPayoutResult =
   | { kind: "not_found" }

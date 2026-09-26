@@ -16,6 +16,7 @@ import {
   Megaphone,
   MessageCircle,
   Package,
+  ScrollText,
   Settings,
   ShoppingBag,
   Star,
@@ -26,6 +27,7 @@ import {
   Wallet,
   type LucideIcon,
 } from "lucide-react";
+import type { FarmCapability } from "./farm-staff";
 
 export type NavItem = {
   title: string;
@@ -34,6 +36,8 @@ export type NavItem = {
   description?: string;
   /** key for live badge counts (see server/queries/badges.ts) */
   badge?: "newOrders" | "toShip" | "unreadMessages" | "pendingFarms" | "unreadNotifications";
+  /** 生産者画面: この権限が無いスタッフにはメニューを出さない（#24。ページ側のガードと同じ値にする） */
+  capability?: FarmCapability;
 };
 export type NavGroup = { title: string; items: NavItem[] };
 
@@ -50,6 +54,8 @@ export const routes = {
   guide: "/guide",
   faq: "/faq",
   join: "/join",
+  /** PWA 用アイコン（app/icons/[192|512]/route.tsx） */
+  pwaIcon: (px: 192 | 512) => `/icons/${px}`,
   login: "/login",
   signup: "/signup",
   forgotPassword: "/forgot-password",
@@ -81,12 +87,17 @@ export const routes = {
     reviews: "/farmer/reviews",
     messages: "/farmer/messages",
     payouts: "/farmer/payouts",
+    /** 支払通知書（#10, 精算ごと・印刷用） */
+    payoutStatement: (id: string) => `/farmer/payouts/${id}/statement`,
     /** Stripe Connect onboarding return: syncs the account status, then redirects to payouts. */
     stripeReturn: "/api/farmer/stripe-return",
     shop: "/farmer/shop",
     settings: "/farmer/settings",
     account: "/farmer/account",
+    staff: "/farmer/staff",
   },
+  /** スタッフの招待リンク（#24）。生産者画面の外（まだ所属していない人が開く） */
+  staffInvite: (token: string) => `/join/staff/${token}`,
   admin: {
     root: "/admin",
     farms: "/admin/farms",
@@ -99,7 +110,10 @@ export const routes = {
     coupons: "/admin/coupons",
     announcements: "/admin/announcements",
     automation: "/admin/automation",
+    audit: "/admin/audit",
     settings: "/admin/settings",
+    /** 会計CSV（#21）のダウンロード */
+    accountingCsv: "/api/admin/accounting",
   },
 } as const;
 
@@ -176,24 +190,25 @@ export const mypageNav: NavGroup[] = [
 export const farmerNav: NavGroup[] = [
   {
     title: "ダッシュボード",
-    items: [{ title: "概要", href: routes.farmer.root, icon: LayoutDashboard }],
+    items: [{ title: "概要", href: routes.farmer.root, icon: LayoutDashboard, capability: "money" }],
   },
   {
     title: "販売",
     items: [
-      { title: "受注管理", href: routes.farmer.orders, icon: ClipboardList, badge: "newOrders" },
-      { title: "出荷センター", href: routes.farmer.shipping, icon: Truck, badge: "toShip" },
-      { title: "商品管理", href: routes.farmer.products, icon: Boxes },
-      { title: "メッセージ", href: routes.farmer.messages, icon: MessageCircle, badge: "unreadMessages" },
-      { title: "レビュー", href: routes.farmer.reviews, icon: Star },
+      { title: "受注管理", href: routes.farmer.orders, icon: ClipboardList, badge: "newOrders", capability: "ship" },
+      { title: "出荷センター", href: routes.farmer.shipping, icon: Truck, badge: "toShip", capability: "ship" },
+      { title: "商品管理", href: routes.farmer.products, icon: Boxes, capability: "catalog" },
+      { title: "メッセージ", href: routes.farmer.messages, icon: MessageCircle, badge: "unreadMessages", capability: "messages" },
+      { title: "レビュー", href: routes.farmer.reviews, icon: Star, capability: "catalog" },
     ],
   },
   {
     title: "お金とお店",
     items: [
-      { title: "売上・精算", href: routes.farmer.payouts, icon: Wallet },
-      { title: "ショップページ", href: routes.farmer.shop, icon: Store },
-      { title: "出荷・配送設定", href: routes.farmer.settings, icon: Settings },
+      { title: "売上・精算", href: routes.farmer.payouts, icon: Wallet, capability: "money" },
+      { title: "ショップページ", href: routes.farmer.shop, icon: Store, capability: "shop" },
+      { title: "出荷・配送設定", href: routes.farmer.settings, icon: Settings, capability: "shop" },
+      { title: "スタッフ", href: routes.farmer.staff, icon: Users, capability: "staff" },
       { title: "アカウント", href: routes.farmer.account, icon: CircleUserRound },
     ],
   },
@@ -220,6 +235,7 @@ export const adminNav: NavGroup[] = [
       { title: "クーポン", href: routes.admin.coupons, icon: BadgePercent },
       { title: "お知らせ", href: routes.admin.announcements, icon: Megaphone },
       { title: "配送自動化", href: routes.admin.automation, icon: Bot },
+      { title: "操作記録", href: routes.admin.audit, icon: ScrollText },
       { title: "プラットフォーム設定", href: routes.admin.settings, icon: Settings },
     ],
   },

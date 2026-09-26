@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { orderCancelPolicy } from "@/config/order-cancel";
 import { prefectures } from "@/config/shipping";
 
 /** Normalizes full-width digits / hyphens so "６５６－０１２３" becomes "6560123". */
@@ -101,3 +102,9 @@ export function fieldErrorsOf(error: z.ZodError): Record<string, string> {
   }
   return out;
 }
+
+/** お客さまのキャンセルの依頼（#18） */
+export const cancelRequestSchema = z.object({
+  farmOrderId: z.uuid(),
+  reason: z.string().trim().min(2, "理由を入力してください").max(orderCancelPolicy.reasonMaxLength, `${orderCancelPolicy.reasonMaxLength}文字以内で入力してください`),
+});

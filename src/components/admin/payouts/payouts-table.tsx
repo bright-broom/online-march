@@ -1,8 +1,9 @@
 "use client";
 import type { ColumnDef } from "@tanstack/react-table";
-import { BadgeCheck, CircleDashed, FileText, Landmark } from "lucide-react";
+import { BadgeCheck, CircleDashed, Eye, FileText, Landmark } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { toast } from "sonner";
 import { Price } from "@/components/common/price";
 import { StatusBadge } from "@/components/common/status-badge";
 import { DataTable } from "@/components/dashboard/data-table";
@@ -12,8 +13,9 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { bpsToPercent } from "@/config/fees";
 import { routes } from "@/config/nav";
+import { bankAccountTypes, type BankAccountType } from "@/config/payments";
 import { formatDate, formatDateTime, formatYen } from "@/lib/format";
-import { markPayoutPaid } from "@/server/actions/admin-ops";
+import { markPayoutPaid, revealFarmBankAccount } from "@/server/actions/admin-ops";
 import type { AdminPayoutRow } from "@/server/queries/admin";
 import { ConfirmAction } from "../confirm-action";
 
@@ -122,6 +124,7 @@ function PayoutSheet({ payout: p, onOpenChange }: { payout: AdminPayoutRow | nul
                 {p.paidAt && <span className="text-muted-foreground">振込日時 {formatDateTime(p.paidAt)}</span>}
                 {p.stripeTransferId && <code className="bg-muted rounded px-1.5 py-0.5 text-[11px]">{p.stripeTransferId}</code>}
               </div>
+              {!p.autoTransfer && p.status !== "paid" && <BankAccountBlock payout={p} />}
               {p.status !== "paid" && p.transferError && (
                 <p className="text-destructive text-xs leading-relaxed">
                   送金できませんでした：{p.transferError}
@@ -170,6 +173,38 @@ function Stat({ label, value, strong }: { label: string; value: string; strong?:
     <div>
       <p className="text-muted-foreground text-xs">{label}</p>
       <p className={strong ? "num text-lg font-semibold" : "num"}>{value}</p>
+    </div>
+  );
+}
+
+/** 銀行振込するときの振込先（#20）。口座番号の全桁は「表示」を押したときだけ取りに行き、操作記録に残る */
+function BankAccountBlock({ payout: p }: { payout: AdminPayoutRow }) {
+  const [full, setFull] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+  const a = p.bankAccount;
+  if (!a) {
+    return <p className="text-destructive text-xs">振込先口座が未登録です。生産者に「売上・精算」画面から登録してもらってください。</p>;
+  }
+  const reveal = () =>
+    startTransition(async () => {
+      const res = await revealFarmBankAccount({ farmId: p.farmId });
+      if (res.ok) setFull(res.data.accountNumber);
+      else toast.error(res.error);
+    });
+  return (
+    <div className="bg-muted/50 space-y-1 rounded-xl p-4 text-sm">
+      <p className="text-muted-foreground text-xs font-medium">振込先口座</p>
+      <p>{a.bankName}（{a.bankCode}） {a.branchName}（{a.branchCode}）</p>
+      <p className="num flex flex-wrap items-center gap-2">
+        {bankAccountTypes[a.accountType as BankAccountType] ?? a.accountType} {full ?? `＊＊＊${a.accountNumberLast4}`}
+        {!full && (
+          <Button type="button" variant="ghost" size="sm" onClick={reveal} disabled={pending}>
+            <Eye />全桁を表示
+          </Button>
+        )}
+      </p>
+      <p>{a.holderKana}</p>
+      {full && <p className="text-muted-foreground text-[11px]">表示したことは操作記録に残ります。</p>}
     </div>
   );
 }

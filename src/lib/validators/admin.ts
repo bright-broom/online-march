@@ -1,5 +1,7 @@
 /** zod schemas for the 運営 (admin) console. Shared by client forms and server actions. */
 import { z } from "zod";
+import { userModerationCopy } from "@/config/content";
+import { trackingNumberSchema } from "./farmer";
 
 const ymd = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "日付を選択してください");
 const optionalYmd = z.preprocess((v) => (v === "" || v == null ? null : v), ymd.nullable());
@@ -39,12 +41,8 @@ export const userRoleSchema = z.object({
 export const adminTransitionSchema = z.object({
   farmOrderId: z.uuid(),
   to: z.enum(["preparing", "shipped", "delivered", "cancelled"]),
-  trackingNumber: z
-    .string()
-    .trim()
-    .max(40)
-    .optional()
-    .transform((v) => (v ? v.replace(/[^\dA-Za-z-]/g, "") : undefined)),
+  // 空なら既存の番号のまま（lib/shipping.ts の決まりで検証。生産者の入力・CSV取込と同じ）
+  trackingNumber: z.union([z.literal("").transform(() => undefined), trackingNumberSchema]).optional(),
   carrier: z.enum(["yamato", "japanpost", "sagawa"]).optional(),
   note: z.string().trim().max(200, "200文字以内で入力してください").optional(),
 });
@@ -70,6 +68,7 @@ export const couponSchema = z
     value: z.coerce.number().int("整数で入力してください").min(1, "1以上で入力してください"),
     minSubtotal: z.coerce.number().int().min(0, "0円以上で入力してください").default(0),
     maxUses: optionalInt(1, "1以上の整数で入力してください"),
+    oncePerUser: checkbox,
     startsAt: optionalYmd,
     endsAt: optionalYmd,
     isActive: checkbox,
@@ -91,6 +90,20 @@ export const announcementSchema = z.object({
 });
 
 export const idSchema = z.object({ id: z.uuid() });
+
+/** 運営によるユーザーの利用停止・再開（#21）。user.id は Better Auth の文字列 id（uuid とは限らない） */
+export const userSuspendSchema = z.object({
+  userId: z.string().min(1).max(64),
+  suspended: z.boolean(),
+  reason: z.string().trim().max(userModerationCopy.reasonMax, `${userModerationCopy.reasonMax}文字以内で入力してください`).default(""),
+});
+export const userIdSchema = z.object({ userId: z.string().min(1).max(64) });
+
+/** 運営向け会計CSV（#21）。月は YYYY-MM。文字コードは既定で UTF-8（BOM 付き） */
+export const accountingCsvQuerySchema = z.object({
+  month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "対象月が正しくありません"),
+  encoding: z.enum(["utf8", "sjis"]).default("utf8"),
+});
 
 /** Marker for admin refund notes in shipment_events (farm_orders has no refund column). */
 

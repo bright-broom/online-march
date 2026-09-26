@@ -2,7 +2,7 @@ import "server-only";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { routes } from "@/config/nav";
 import { db } from "@/db";
-import { farmOrders, orders, shipmentEvents, type FarmOrder } from "@/db/schema";
+import { farmOrders, orders, shipmentEvents, type FarmOrder, type FarmOrderStatus } from "@/db/schema";
 import { tags } from "@/lib/cache-tags";
 import { features } from "@/lib/env";
 import { formatYen } from "@/lib/format";
@@ -26,8 +26,11 @@ const byAdmin: RefundActor = { source: "admin", note: "運営によりキャン�
  *  - Stripe: partial refund per farm order, or the remaining balance for a whole order. Demo: state only.
  *  - delivered → refunded; paid/preparing → cancelled (stock restored); shipped/unpaid are rejected.
  *  - farm_orders.refundedAt / refundAmount record the money movement; a `refund` event is added to the timeline.
+ *  - onlyStatus: refund only while the farm order is still in that status, checked in the same update that claims
+ *    the row (お客さまの取り消しは「新規受注」の間だけ、依頼の承認は「出荷準備中」の間だけ。#18). A claimed row cannot be
+ *    moved to preparing / shipped (transitionFarmOrder), so a farmer pressing 準備を始める at the same moment loses.
  */
-export async function refundOrder(data: { orderId: string; farmOrderId?: string }, actor: RefundActor = byAdmin) {
+export async function refundOrder(data: { orderId: string; farmOrderId?: string; onlyStatus?: FarmOrderStatus }, actor: RefundActor = byAdmin) {
   const order = await db.query.orders.findFirst({
     where: eq(orders.id, data.orderId),
     with: { farmOrders: true },
@@ -62,13 +65,14 @@ export async function refundOrder(data: { orderId: string; farmOrderId?: string 
   const claimed = await db
     .update(farmOrders)
     .set({ refundedAt: now })
-    .where(and(inArray(farmOrders.id, targets.map((f) => f.id)), isNull(farmOrders.refundedAt)))
+    .where(and(inArray(farmOrders.id, targets.map((f) => f.id)), isNull(farmOrders.refundedAt), data.onlyStatus && eq(farmOrders.status, data.onlyStatus)))
     .returning({ id: farmOrders.id });
   const release = async () => {
     if (claimed.length) await db.update(farmOrders).set({ refundedAt: null }).where(inArray(farmOrders.id, claimed.map((c) => c.id)));
   };
   if (claimed.length !== targets.length) {
     await release();
+    if (data.onlyStatus && targets.every((f) => !isRefunded(f))) throw new ActionError("注文の状態が変わったため処理できませんでした。画面を再読み込みしてください");
     throw new ActionError("この注文は別の処理で返金されました");
   }
 
@@ -127,7 +131,7 @@ export async function refundOrder(data: { orderId: string; farmOrderId?: string 
  * 生産者によるキャンセル。支払い済みの出荷単位は返金まで行う（以前は在庫を戻すだけで、お客さまは引き落とされたままだった）。
  * 未決済のものは返金せずにキャンセルだけする。在庫は transitionFarmOrder が戻す。
  */
-export async function cancelFarmOrderAsFarmer(input: { farmOrderId: string; farmId: string; reason: string; now: Date }) {
+export async function cancelFarmOrderAsFarmer(input: { farmOrderId: string; farmId: string; reason: string; now: Date; actorId?: string }) {
   const fo = await db.query.farmOrders.findFirst({
     where: and(eq(farmOrders.id, input.farmOrderId), eq(farmOrders.farmId, input.farmId)),
     with: { order: true },
@@ -139,6 +143,6 @@ export async function cancelFarmOrderAsFarmer(input: { farmOrderId: string; farm
     const { amount } = await refundOrder({ orderId: fo.orderId, farmOrderId: fo.id }, { source: "farmer", note });
     return { refunded: amount };
   }
-  await transitionFarmOrder(fo.id, "cancelled", { source: "farmer", farmId: input.farmId, now: input.now, note });
+  await transitionFarmOrder(fo.id, "cancelled", { source: "farmer", farmId: input.farmId, now: input.now, note, actorId: input.actorId });
   return { refunded: 0 };
 }

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { EmptyState } from "@/components/common/empty-state";
 import { RatingStars } from "@/components/common/rating";
+import { ReviewPhotos } from "@/components/common/review-photos";
 import { ToneBadge } from "@/components/common/status-badge";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { LinkTabs } from "@/components/farmer/link-tabs";
@@ -17,7 +18,7 @@ import { getFarmReviews, getFarmReviewStats } from "@/server/queries/farmer";
 export const metadata: Metadata = { title: "レビュー" };
 
 export default async function FarmerReviewsPage({ searchParams }: PageProps<"/farmer/reviews">) {
-  const { farm } = await requireFarm();
+  const { farm } = await requireFarm("catalog");
   const sp = await searchParams;
   const unrepliedOnly = sp.filter === "unreplied";
   const [stats, reviews] = await Promise.all([getFarmReviewStats(farm.id), getFarmReviews(farm.id, { unrepliedOnly })]);
@@ -74,6 +75,7 @@ export default async function FarmerReviewsPage({ searchParams }: PageProps<"/fa
                       </div>
                       {r.title && <p className="font-medium">{r.title}</p>}
                       <p className="text-sm leading-relaxed whitespace-pre-wrap">{r.body}</p>
+                      <ReviewPhotos images={r.images} alt={`${r.productName}のレビュー`} size={64} />
                       <p className="text-muted-foreground text-xs">
                         {r.customerName} さん・
                         <Link href={routes.product(r.productSlug)} className="hover:text-foreground underline-offset-2 hover:underline" target="_blank">{r.productName}</Link>

@@ -20,6 +20,8 @@ export type SessionUser = {
 export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
   const s = await auth.api.getSession({ headers: await headers() });
   if (!s) return null;
-  const u = s.user as typeof s.user & { role?: UserRole; twoFactorEnabled?: boolean | null };
+  const u = s.user as typeof s.user & { role?: UserRole; twoFactorEnabled?: boolean | null; suspendedAt?: Date | null };
+  // 利用停止中（#21）。セッションは停止の操作で消しているが、万一残っていてもログインしていない扱いにする
+  if (u.suspendedAt) return null;
   return { id: u.id, name: u.name, email: u.email, image: u.image ?? null, role: u.role ?? "customer", twoFactorEnabled: Boolean(u.twoFactorEnabled) };
 });

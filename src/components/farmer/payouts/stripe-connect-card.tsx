@@ -26,7 +26,7 @@ export function StripeConnectCard({ stripeEnabled, onboarded, hasAccount }: { st
           <CardDescription>{cycle}</CardDescription>
         </CardHeader>
         <CardContent className="text-muted-foreground space-y-2 text-sm leading-relaxed">
-          <p>現在は運営からの銀行振込でお支払いしています。振込先口座の登録・変更は運営までご連絡ください。</p>
+          <p>現在は運営からの銀行振込でお支払いしています。振込先は下の「振込先口座」から登録・変更できます。</p>
           <p className="text-xs">オンライン決済（Stripe）が有効になると、ここから振込先をご自身で登録できるようになります。</p>
         </CardContent>
       </Card>
@@ -46,7 +46,7 @@ export function StripeConnectCard({ stripeEnabled, onboarded, hasAccount }: { st
         <p className="text-muted-foreground text-sm leading-relaxed">
           {onboarded
             ? "売上は登録済みの口座へ自動でお振込します。口座や本人情報の変更は下のボタンから行えます。"
-            : "Stripe（決済サービス）の画面で、本人確認と振込先口座を登録します。5分ほどで完了します。登録が済むまで精算は「振込予定」のまま保留されます。"}
+            : "Stripe（決済サービス）の画面で、本人確認と振込先口座を登録します。5分ほどで完了します。登録が済むまで精算は「振込予定」のまま保留されます。Stripe を使わない場合は、下の「振込先口座」を登録すると運営が銀行振込します。"}
         </p>
         <form action={action}>
           <SubmitButton pending={pending} variant={onboarded ? "outline" : "default"} className="w-full sm:w-auto">

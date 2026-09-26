@@ -13,7 +13,7 @@ import { buildLabelCsv, defaultItemName } from "@/server/services/shipping/label
 export async function GET(req: NextRequest) {
   let farm: Awaited<ReturnType<typeof assertFarm>>["farm"];
   try {
-    ({ farm } = await assertFarm()); // session role === farmer + owns a farm
+    ({ farm } = await assertFarm("ship")); // session role === farmer + owns a farm
   } catch (e) {
     const message = e instanceof ActionError ? e.message : "権限がありません";
     return NextResponse.json({ error: message }, { status: 403 });

@@ -2,6 +2,7 @@ import "server-only";
 import { routes } from "@/config/nav";
 import { carriers, deliveryTimeSlots, type DeliveryTimeSlot } from "@/config/shipping";
 import type { Carrier } from "@/db/schema";
+import { siteConfig } from "@/config/site";
 import { siteUrl } from "@/lib/env";
 import { paymentMethodLabel } from "@/config/payments";
 import { formatDate, formatDateTime, formatYen } from "@/lib/format";
@@ -80,6 +81,84 @@ export const emailTemplates = {
     };
   },
 
+  /** メッセージが届いた（#21）。本文は最初の数十文字だけ（全文はサイトで読む） */
+  messageReceived(p: { to: string; fromName: string; preview: string; href: string }): EmailMessage {
+    return {
+      to: p.to,
+      subject: `【メッセージ】${p.fromName}さんから届きました`,
+      blocks: [
+        { type: "p", text: `${p.fromName}さんからメッセージが届きました。\n\n「${p.preview}」` },
+        { type: "button", label: "メッセージを読む・返信する", href: url(p.href) },
+        { type: "note", text: "続けて届いたメッセージは、しばらくの間メールではお知らせしません。サイトのメッセージ画面でご確認ください。" },
+      ],
+    };
+  },
+
+  /** 生産者がレビューに返信した（#21） */
+  reviewReplied(p: { to: string; name: string; farmName: string; productName: string; href: string }): EmailMessage {
+    return {
+      to: p.to,
+      subject: `【レビューへの返信】${p.farmName}から返信が届きました`,
+      blocks: [
+        { type: "p", text: `${p.name} 様\n「${p.productName}」にお寄せいただいたレビューに、${p.farmName}から返信が届きました。` },
+        { type: "button", label: "返信を読む", href: url(p.href) },
+      ],
+    };
+  },
+
+  /** 売上のお振込が済んだ（#21。Stripe の自動送金・運営の銀行振込のどちらも） */
+  payoutPaid(p: { to: string; farmName: string; period: string; amount: number }): EmailMessage {
+    return {
+      to: p.to,
+      subject: `【お振込完了】${p.period}分 ${formatYen(p.amount)}`,
+      blocks: [
+        { type: "p", text: `${p.farmName} さま\n${p.period}分の売上をお振込しました。` },
+        { type: "table", rows: [["お振込額", formatYen(p.amount)]] },
+        { type: "note", text: "口座への反映は金融機関によって1〜2営業日かかることがあります。" },
+        { type: "button", label: "明細を見る", href: url(routes.farmer.payouts) },
+      ],
+    };
+  },
+
+  /** 運営への障害のお知らせ（#12）。本文は運営画面のお知らせと同じ */
+  opsAlert(p: { to: string; title: string; body: string; href: string }): EmailMessage {
+    return {
+      to: p.to,
+      subject: `【運営】${p.title}`,
+      blocks: [
+        { type: "p", text: p.body },
+        { type: "button", label: "運営画面を開く", href: url(p.href) },
+        { type: "note", text: "同じ内容のお知らせは一定時間まとめて送ります。詳しい内容は Vercel のログをエラーIDで検索してください。" },
+      ],
+    };
+  },
+
+  /** 登録時のメールアドレス確認（#16）。確認しなくても使えるが、注文確認やパスワード再設定が届くアドレスか確かめる */
+  verifyEmail(p: { to: string; name: string; url: string }): EmailMessage {
+    return {
+      to: p.to,
+      subject: "【メールアドレスのご確認】",
+      blocks: [
+        { type: "p", text: `${p.name} 様\nご登録ありがとうございます。下のボタンを押して、このメールアドレスでお知らせを受け取れることをご確認ください。` },
+        { type: "button", label: "メールアドレスを確認する", href: p.url },
+        { type: "note", text: "このリンクの有効期限は24時間です。お心当たりがない場合はこのメールを破棄してください。" },
+      ],
+    };
+  },
+
+  /** メールアドレス変更の確認（#16）。新しいアドレスへ送る。リンクを開くまでアドレスは変わらない */
+  changeEmail(p: { to: string; name: string; url: string }): EmailMessage {
+    return {
+      to: p.to,
+      subject: "【メールアドレス変更のご確認】",
+      blocks: [
+        { type: "p", text: `${p.name} 様\nメールアドレスの変更を受け付けました。下のボタンを押すと、ログインとお知らせのメールアドレスがこのアドレスに変わります。` },
+        { type: "button", label: "このアドレスに変更する", href: p.url },
+        { type: "note", text: "このリンクの有効期限は24時間です。ボタンを押すまでメールアドレスは変更されません。お心当たりがない場合はこのメールを破棄してください。" },
+      ],
+    };
+  },
+
   /** 返金（運営の返金・生産者のキャンセル・お客さまのキャンセル、すべてここ） */
   refunded(p: { to: string; name: string; orderId: string; code: string; amount: number; reason: string | null; viaCard: boolean }): EmailMessage {
     return {
@@ -142,7 +221,7 @@ export const emailTemplates = {
   shipReminder(p: { to: string; farmName: string; count: number; overdue: number }): EmailMessage {
     return {
       to: p.to,
-      subject: `【出荷リマインド】明日までの出荷が${p.count}件あります`,
+      subject: p.overdue ? `【至急】出荷期限を過ぎたご注文が${p.overdue}件あります` : `【出荷リマインド】明日までの出荷が${p.count}件あります`,
       blocks: [
         { type: "p", text: `${p.farmName} さま\n出荷期限が近いご注文が ${p.count} 件あります。${p.overdue ? `うち ${p.overdue} 件は期限を過ぎています。` : ""}` },
         { type: "button", label: "出荷センターを開く", href: url(routes.farmer.shipping) },
@@ -157,6 +236,78 @@ export const emailTemplates = {
       blocks: [
         { type: "p", text: `${p.farmName} さま\n出店申請を承認しました。商品を登録して販売を始めましょう。` },
         { type: "button", label: "ダッシュボードへ", href: url(routes.farmer.root) },
+      ],
+    };
+  },
+
+  /** 出店申請の見送り（#15）。内容を直せば /join から出し直せる */
+  farmRejected(p: { to: string; name: string; farmName: string; reason?: string }): EmailMessage {
+    return {
+      to: p.to,
+      subject: "【出店申請について】審査結果のお知らせ",
+      blocks: [
+        { type: "p", text: `${p.name} さま\n「${p.farmName}」の出店申請をご検討いただきありがとうございました。慎重に確認しましたが、今回は出店を見送らせていただきます。` },
+        ...(p.reason ? [{ type: "p" as const, text: `運営からのメッセージ：\n${p.reason}` }] : []),
+        { type: "note", text: `内容を見直して、出店申請ページからもう一度お申し込みいただけます。ご不明な点は ${siteConfig.contact.email} までお問い合わせください。` },
+        { type: "button", label: "出店申請ページを開く", href: url(`${routes.join}#apply`) },
+      ],
+    };
+  },
+
+  /** 農園スタッフの招待（#24）。リンクは招待されたアドレスのアカウントでだけ使える */
+  farmStaffInvite(p: { to: string; farmName: string; inviterName: string; accessLabel: string; url: string; expiresDays: number }): EmailMessage {
+    return {
+      to: p.to,
+      subject: `【${p.farmName}】スタッフとして招待されました`,
+      blocks: [
+        { type: "p", text: `${p.inviterName} さんから「${p.farmName}」のスタッフ（権限：${p.accessLabel}）として招待されました。` },
+        { type: "button", label: "招待を確認する", href: p.url },
+        {
+          type: "note",
+          text: `このメールアドレスで会員登録・ログインしてから参加してください（まだの方は無料で登録できます）。リンクの有効期限は${p.expiresDays}日です。心当たりがない場合は、このメールを破棄してください。`,
+        },
+      ],
+    };
+  },
+
+  /** 承認済みショップの一時停止（#15）。進行中の注文の出荷と精算は続く */
+  farmSuspended(p: { to: string; farmName: string; reason?: string }): EmailMessage {
+    return {
+      to: p.to,
+      subject: "【重要】ショップを一時停止しました",
+      blocks: [
+        { type: "p", text: `${p.farmName} さま\nショップを一時停止しました。停止中は商品がストアに表示されず、新しいご注文は入りません。` },
+        ...(p.reason ? [{ type: "p" as const, text: `運営からのメッセージ：\n${p.reason}` }] : []),
+        { type: "note", text: `進行中のご注文の発送は引き続き行え、その売上は通常どおり精算されます。ご不明な点は ${siteConfig.contact.email} までお問い合わせください。` },
+        { type: "button", label: "ダッシュボードを開く", href: url(routes.farmer.root) },
+      ],
+    };
+  },
+
+  /** お客さまからのキャンセルの依頼（#18）。農園のオーナーへ */
+  farmerCancelRequested(p: { to: string; farmName: string; farmOrderId: string; code: string; reason: string }): EmailMessage {
+    return {
+      to: p.to,
+      subject: `【キャンセルの依頼】${p.code}`,
+      blocks: [
+        { type: "p", text: `${p.farmName} さま
+出荷準備中のご注文について、お客さまからキャンセルの依頼が届きました。承認するか、お断りするかを回答してください。回答するまで発送済みにはできません。` },
+        { type: "table", rows: [["受注番号", p.code], ["理由", p.reason]] },
+        { type: "button", label: "依頼を確認する", href: url(routes.farmer.order(p.farmOrderId)) },
+      ],
+    };
+  },
+
+  /** キャンセルの依頼をお断りした（#18）。承認したときは返金のお知らせ（refunded）が届く */
+  cancelRequestDeclined(p: { to: string; name: string; orderId: string; code: string; farmName: string; reply: string | null }): EmailMessage {
+    return {
+      to: p.to,
+      subject: `【キャンセルの依頼について】注文番号 ${p.code}`,
+      blocks: [
+        { type: "p", text: `${p.name} 様
+${p.farmName}へのキャンセルの依頼は、お断りとなりました。このままお届けします。` },
+        ...(p.reply ? [{ type: "p" as const, text: `${p.farmName}からのメッセージ：\n${p.reply}` }] : []),
+        { type: "button", label: "注文状況を確認する", href: url(routes.mypage.order(p.orderId)) },
       ],
     };
   },

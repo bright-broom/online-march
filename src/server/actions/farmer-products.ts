@@ -9,6 +9,7 @@ import { productFormSchema, productStatusChangeSchema } from "@/lib/validators/f
 import { assertFarm } from "@/server/auth/guards";
 import { REMOVED_VARIANT_SORT } from "@/server/queries/farmer";
 import { claimFirstPublish, notifyFollowersOfNewProduct } from "@/server/services/product-launch";
+import { syncPriceHistory } from "@/server/services/price-history";
 import { ActionError, formToObject, parseInput, runAction, type ActionResult } from "./_utils";
 
 function bustProductCaches(farmId: string, productId: string) {
@@ -24,7 +25,7 @@ function bustProductCaches(farmId: string, productId: string) {
  */
 export async function saveProduct(_prev: unknown, formData: FormData): Promise<ActionResult<{ id: string; created: boolean }>> {
   return runAction(async () => {
-    const { farm } = await assertFarm();
+    const { farm } = await assertFarm("catalog");
     const input = parseInput(productFormSchema, formToObject(formData));
     const now = new Date();
     const fields = {
@@ -35,6 +36,7 @@ export async function saveProduct(_prev: unknown, formData: FormData): Promise<A
       description: input.description,
       highlights: input.highlights,
       cultivation: input.cultivation,
+      taxRate: input.taxRate,
       storageTips: input.storageTips,
       harvestFrom: input.harvestFrom,
       harvestTo: input.harvestTo,
@@ -121,6 +123,8 @@ export async function saveProduct(_prev: unknown, formData: FormData): Promise<A
         }
       }
       const firstPublished = await claimFirstPublish(tx, productId, now);
+      // 販売の記録と「通常価格」の表示（#11）。価格・公開状態・規格の削除が変わりうるので毎回
+      await syncPriceHistory(tx, productId, now);
       return { id: productId, created, firstPublished };
     });
 
@@ -133,7 +137,7 @@ export async function saveProduct(_prev: unknown, formData: FormData): Promise<A
 /** Quick action: 公開 / 非公開 / アーカイブ. */
 export async function setProductStatus(input: { id: string; status: "draft" | "active" | "archived" }): Promise<ActionResult> {
   return runAction(async () => {
-    const { farm } = await assertFarm();
+    const { farm } = await assertFarm("catalog");
     const data = parseInput(productStatusChangeSchema, input);
     const product = await db.query.products.findFirst({
       where: and(eq(products.id, data.id), eq(products.farmId, farm.id)),
@@ -145,7 +149,9 @@ export async function setProductStatus(input: { id: string; status: "draft" | "a
       if (!product.variants.length) throw new ActionError("公開するには規格を1つ以上登録してください");
     }
     await db.update(products).set({ status: data.status }).where(and(eq(products.id, product.id), eq(products.farmId, farm.id)));
-    const firstPublished = await claimFirstPublish(db, product.id, new Date());
+    const now = new Date();
+    const firstPublished = await claimFirstPublish(db, product.id, now);
+    await syncPriceHistory(db, product.id, now); // 公開をやめたら販売の記録を閉じる（#11）
     bustProductCaches(farm.id, product.id);
     if (firstPublished) await notifyFollowersOfNewProduct(product.id);
   }, input.status === "active" ? "商品を公開しました" : input.status === "archived" ? "商品をアーカイブしました" : "商品を非公開にしました");
@@ -154,7 +160,7 @@ export async function setProductStatus(input: { id: string; status: "draft" | "a
 /** Quick action: duplicate as a draft (images + visible variants). */
 export async function duplicateProduct(id: string): Promise<ActionResult<{ id: string }>> {
   return runAction(async () => {
-    const { farm } = await assertFarm();
+    const { farm } = await assertFarm("catalog");
     const src = await db.query.products.findFirst({
       where: and(eq(products.id, id), eq(products.farmId, farm.id)),
       with: {
@@ -177,6 +183,7 @@ export async function duplicateProduct(id: string): Promise<ActionResult<{ id: s
           description: src.description,
           highlights: src.highlights,
           cultivation: src.cultivation,
+          taxRate: src.taxRate,
           storageTips: src.storageTips,
           harvestFrom: src.harvestFrom,
           harvestTo: src.harvestTo,

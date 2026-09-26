@@ -27,6 +27,10 @@
     {
       "path": "/api/cron/backup-db",
       "schedule": "30 17 * * *"
+    },
+    {
+      "path": "/api/cron/compare-prices",
+      "schedule": "45 19 * * *"
     }
   ]
 }

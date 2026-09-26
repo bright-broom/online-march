@@ -4,6 +4,7 @@ import { MessageSquareReply } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { RatingStars } from "@/components/common/rating";
+import { ReviewPhotos } from "@/components/common/review-photos";
 import { DataTable } from "@/components/dashboard/data-table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -18,6 +19,7 @@ const filters = {
   published: "公開中",
   hidden: "非公開",
   low: "★2以下",
+  photos: "写真あり",
 } as const;
 type Filter = keyof typeof filters;
 
@@ -27,7 +29,7 @@ export function ReviewsTable({ rows }: { rows: AdminReviewRow[] }) {
   const data = useMemo(
     () =>
       rows.filter((r) =>
-        filter === "published" ? r.isPublished : filter === "hidden" ? !r.isPublished : filter === "low" ? r.rating <= 2 : true,
+        filter === "published" ? r.isPublished : filter === "hidden" ? !r.isPublished : filter === "low" ? r.rating <= 2 : filter === "photos" ? r.images.length > 0 : true,
       ),
     [rows, filter],
   );
@@ -42,6 +44,8 @@ export function ReviewsTable({ rows }: { rows: AdminReviewRow[] }) {
         <div className={cn("max-w-md min-w-56 space-y-0.5", !r.isPublished && "opacity-60")}>
           {r.title && <p className="truncate font-medium">{r.title}</p>}
           <p className="text-muted-foreground line-clamp-2 text-xs leading-relaxed">{r.body}</p>
+          {/* 写真に問題があればレビューごと非公開にする（写真は商品ページから消える） */}
+          <ReviewPhotos images={r.images} alt={`${r.productName}のレビュー`} size={48} className="pt-1" />
           {r.reply && (
             <Tooltip>
               <TooltipTrigger asChild>

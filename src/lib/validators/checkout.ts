@@ -48,6 +48,8 @@ export const placeOrderSchema = z.object({
 }).refine((v) => v.addressId || v.newAddress, { path: ["address"], message: "お届け先を選択してください" });
 export type PlaceOrderInput = z.input<typeof placeOrderSchema>;
 
+export const abandonCheckoutSchema = z.object({ orderId: z.uuid() });
+
 export const confirmCheckoutSchema = z.object({
   orderId: z.uuid(),
   sessionId: z.string().min(1).max(255),

@@ -16,7 +16,12 @@ user 1─* orders 1─* farm_orders *─1 farms
 reviews (user, product, farm, farm_order)   favorites (user, product)   farm_follows (user, farm)
 messages (farm, customer, sender)           notifications (user)        coupons / announcements
 platform_settings (key/value)               job_runs (automation log)
+admin_audit_logs (actor user, action, target, summary, detail)  ← 運営の操作記録。追記のみ
+farm_bank_accounts (farm 1─1)  ← 振込先口座。口座番号は暗号化・下4桁だけ平文
 ```
+
+`admin_audit_logs`（#19）: 運営が行った変更の操作を1件ずつ残す。`action` は `config/audit.ts#auditActions` のキー、
+`actorEmail` は操作時点の控え（`actorId` は退会しても `set null` で行は残る）。消す・書き換える経路は作らない。
 
 ## 退会（アカウント削除）
 
@@ -31,22 +36,47 @@ platform_settings (key/value)               job_runs (automation log)
 - レビューの表示名は「退会したお客さま」になる
 - 進行中の注文（`farm_orders` が pending_payment / paid / preparing / shipped）があるうちは退会できない
 - 実装 `server/services/account-closure.ts`、回帰テスト `services/__tests__/account-closure.test.ts`
+- **運営による匿名化**（#21, /admin/users）: お客さまからの削除依頼などで、運営が同じ処理を行う（`actions/admin-users.ts#anonymizeUser`）。
+  購入者だけ・進行中の注文があるとできない・取り消せない。操作記録には元のアドレスを書かない（user id で追う）。
+  ただし、それより前の操作記録（利用停止など）の要約に入っているアドレスはそのまま残る（運営の操作の証跡のため書き換えない）
+
+## 利用停止（#21）
+
+`user.suspendedAt` が入っている間は利用停止中（理由は `user.suspendedReason`、運営のメモ）。/admin/users から運営が停止・再開する
+（`actions/admin-users.ts#setUserSuspended`、操作記録 `user.suspend`）。
+
+- ログインできない: Better Auth の `databaseHooks.session.create.before`（`server/auth/auth.ts`）がセッションを作らせない。
+  パスワード・二段階認証・メール確認後の自動ログインのどの入口でも同じ
+- 停止した時点のセッションは消す。万一残っていても `getSessionUser` が停止中なら null を返す
+- 注文・レビュー・ショップはそのまま（進行中の注文は通常どおり発送。返金が要れば運営が `refundOrder`）。
+  生産者を停止してもショップは公開のまま。ショップも止めるなら出店の停止（`farms.status`）
+- 自分自身・運営ユーザーは停止・匿名化できない（運営は先にロールを変える。最後の1人の決まりが効く）
+- 回帰テスト `server/auth/__tests__/user-suspension.test.ts`
 
 ## テーブル要点
 
 | Table | 要点 |
 | --- | --- |
-| `farms` | 出品者ショップ。`status` pending/active/suspended。`commissionRateBps` null=既定。出荷設定: `defaultCarrier` `leadTimeDays` `shipWeekdays` `freeShippingThreshold`。評価は `ratingSum/Count` 非正規化 |
+| `farms` | 出品者ショップ。`status` pending/active/suspended（**却下＝`approvedAt` が空のまま suspended**。`lib/farms.ts#isRejectedApplication`。却下された申請だけ /join から同じ行を書き換えて出し直せる, #15）。`commissionRateBps` null=既定。出荷設定: `defaultCarrier` `leadTimeDays` `shipWeekdays` `freeShippingThreshold`。評価は `ratingSum/Count` 非正規化 |
 | `products` | `category` enum, `variety`, `cultivation`(config key), `harvestFrom/To`(月), `status`, `soldCount`/`rating*` 非正規化 |
-| `product_variants` | 規格（5kg 等）。`price` `compareAtPrice` `stock` `weightGrams`（送料計算に使用） |
+| `product_variants` | 規格（5kg 等）。`price` `compareAtPrice` `stock` `weightGrams`（送料計算に使用）。`compareAtPrice` は生産者が入れた「通常価格」で、**お客さまには出さない**。出すのは販売の記録で確かめた `displayCompareAtPrice`（#11, 下の「通常価格の打ち消し表示」） |
+| `variant_price_periods` | 規格ごとの「その価格で公開していた期間」（#11）。商品が `active` かつ規格が削除されていない間、今の価格で1行が開いている（`endedAt` null）。価格を変える・非公開／アーカイブ／売り切れにすると閉じる。`services/price-history.ts#syncPriceHistory` だけが書く |
 | `orders` | 顧客の1決済。`shippingAddress` はスナップショット JSON。`paymentProvider` stripe/demo |
 | `farm_orders` | 農家別の出荷単位。金額内訳（subtotal, shippingFee, discount, commission*, payoutAmount）と出荷情報（carrier, boxSize/Count, tracking, shipByDate, ETA）をインライン保持 |
 | `order_items` | 購入時点の名称・価格スナップショット |
-| `shipment_events` | 追跡タイムライン（source: system/farmer/cron/carrier） |
+| `farm_orders.cancelRequest*` | お客さまの「キャンセルの依頼」（#18）。出荷準備中になった後、お客さまは自分で取り消せず依頼になる。`cancelRequestedAt`・`cancelRequestReason`（お客さま）、`cancelRequestAnswer` approved/declined・`cancelRequestAnsweredAt`・`cancelRequestReply`（お断りのときの生産者のひとこと）。1つの出荷単位に1回。回答するまで生産者は発送済みにできない。docs/PAYMENTS.md「返金・キャンセル」 |
+| `shipment_events` | 追跡タイムライン（source: system/farmer/cron/carrier）。`actorId` は操作した人（オーナー・スタッフ・運営。#24。自動処理は null）で、生産者の注文画面の履歴に名前を出す |
 | `payouts` | 月次精算。`scheduledFor`=翌月15日 |
 | 在庫（`product_variants.stock`） | 予約は**条件付き更新**（`stock >= 数量` の行だけを減らす）で注文トランザクション内。同時注文は Postgres の行ロックで直列化され、売り越し・在庫マイナスは起きない。キャンセル・返金で戻す。回帰テスト `services/__tests__/stock-race.test.ts` |
 | `payouts.transferError` / `transferAttemptedAt` | 自動送金が通らなかった理由と試行時刻（送金成功で null に戻す）。/admin/payouts に表示 |
 | `payouts.refundAdjustment` / `farm_orders.clawbackPayoutId` | 精算済み注文の返金を翌月精算で相殺した額と、相殺した精算の参照（二重控除防止） |
+| `reviews.images` | お客さまの写真（#21）。URL の配列（最大 `catalogLimits.maxReviewImages`=3）。付けられるのはこのサイトが reviews フォルダに置いたものだけ（`validators/engagement.ts#reviewImageUrlPattern`。よその画像を商品ページに出させない）。問題があれば運営がレビューごと非公開にする（写真だけを消す操作はない）。付けずに終わった写真・外した写真のファイルは Blob に残る（容量が問題になったら掃除のジョブを足す） |
+| `farm_orders.deliveryIssueAt/Note` | 配達の問題（#25。持ち戻り・返送・予定を大きく過ぎても届かない）。入っている間は自動で配達完了にしない。発送済みのあいだだけ画面に出す。docs/SHIPPING.md §5 |
+| `products.taxRate` / `order_items.taxRate` | 消費税率（%）。商品は既定 8（食品）、食品以外は 10。注文明細には購入時点の率を控える（#10）。docs/PAYMENTS.md「インボイス」 |
+| `farms.invoiceRegistrationNumber` | 生産者の適格請求書発行事業者の登録番号（任意, T＋13桁, #10）。今は保存だけ |
+| `coupons.oncePerUser` | お一人さま1回まで（#21）。docs/PAYMENTS.md |
+| `user.suspendedAt/suspendedReason` | 運営による利用停止（#21）。下の「利用停止」 |
+| `farm_members` | 農園のスタッフ（#24）。オーナーが招待（`email`・`access` all/shipping・`tokenHash`＝招待リンクの sha256・7日有効）→ 招待されたアドレスの**購入者**アカウントで参加すると `userId`・`acceptedAt` が入り、`tokenHash` は消える。1人1農園（`userId` 一意）・1農園5人まで（招待中を含む、`config/farm-staff.ts`）。ロールは変えない。外す＝行を消す（ガードが毎回 DB を見るので次のリクエストから入れない）。退会で所属と招待中の行も消す。スタッフのままでは出店申請できない |
 | `farm_orders.refundedAt/refundAmount` | 返金の事実（金額・日時）。返金は `services/refunds.ts#refundOrder` のみ。タイムラインに `refund` イベント |
 
 ## 状態機械
@@ -62,12 +92,30 @@ pending_payment ─paid→ paid ─→ preparing ─→ shipped ─→ delivered
 ```
 
 - shipped には追跡番号必須。各遷移で `shipment_events` 追加 + 通知。
+- 返金の途中（`refundedAt` が入った）の出荷単位は preparing / shipped に進めない。お客さまのキャンセルの依頼に回答していない出荷単位は、生産者は shipped にできない（#18）。
+- お客さまが取り消せるのは paid（準備前）だけ。preparing では「キャンセルの依頼」になる（#18）。
 - 状態を直接 UPDATE しないこと（必ず service 経由）。
 
 ## 規格（variants）の論理削除
 
 注文から参照されている規格は物理削除せず `stock=0` かつ `sortOrder >= REMOVED_VARIANT_SORT`（config/catalog.ts, 10000）にする。
 ストア・カート見積り・生産者画面はすべてこの値未満のみ表示/受付。
+
+## 通常価格の打ち消し表示（#11）
+
+二重価格表示（景品表示法）の運用ルール。オーナーの決定（Issue #11 のコメント, 2026-09-26）: **販売の記録がある価格だけ表示／
+値下げ前の直近8週間の過半をその価格で販売し、最後に販売してから2週間以内に値下げした場合／記録がたまるまで隠す**。
+
+- 値下げの始まり S＝通常価格で最後に公開していた期間が終わったあと、最初に公開した時点。非公開をはさんでも、値下げ中に価格を変えても S は動かない
+  （公開し直して8週間の上限を逃れられない）
+- 表示する条件: [S − 8週間, S] のうち通常価格で公開していた時間が4週間を超える／通常価格の最後の販売から S まで2週間以内／今が S から8週間以内。
+  数値は `config/catalog.ts#comparePricePolicy`、判定は純関数 `lib/compare-price.ts#compareAtVerdict`
+- 記録（`variant_price_periods`）は商品の保存・公開状態の変更（生産者・運営のアーカイブ）で付ける。**商品が `active` の間だけ**数える
+  （農家の停止・お休みは見ていない。停止中はストアに出ないので表示の問題は起きない）
+- 判定の結果を `product_variants.displayCompareAtPrice` に持ち、ストア（商品ページ・一覧のカード・お気に入り）はこの列だけを読む。
+  8週間の上限は時間で切れるので、毎日の自動処理 `compare-prices` が見直す（ついでに、記録の無い公開中の商品の記録を始める＝この機能を入れる前からの商品）
+- 生産者の商品編集画面の規格ごとに「表示中／表示していない理由」を出す（`queries/farmer.ts#getCompareAtNotes`）
+- この機能を入れた時点では記録が無いので、既存の通常価格はいったん**すべて表示されなくなる**（決定どおり）。4週間以上通常価格で売ってから値下げすると出る
 
 ## 非正規化カウンタ
 

@@ -10,7 +10,7 @@ import { getShippingQueue } from "@/server/queries/farmer";
 export const metadata: Metadata = { title: "出荷センター" };
 
 export default async function ShippingCenterPage() {
-  const { farm } = await requireFarm();
+  const { farm } = await requireFarm("ship");
   await connection();
   const today = toYmd(new Date());
   const rows = await getShippingQueue(farm.id);

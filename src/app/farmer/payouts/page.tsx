@@ -4,6 +4,8 @@ import { connection } from "next/server";
 import { BarBreakdownChart } from "@/components/charts";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { StatCard } from "@/components/dashboard/stat-card";
+import { BankAccountCard } from "@/components/farmer/payouts/bank-account-card";
+import { InvoiceNumberCard } from "@/components/farmer/payouts/invoice-number-card";
 import { PayoutsTable } from "@/components/farmer/payouts/payouts-table";
 import { SalesExportCard } from "@/components/farmer/payouts/sales-export-card";
 import { StripeConnectCard } from "@/components/farmer/payouts/stripe-connect-card";
@@ -13,21 +15,22 @@ import { fromYmd } from "@/lib/dates";
 import { features } from "@/lib/env";
 import { formatDate, formatNumber } from "@/lib/format";
 import { requireFarm } from "@/server/auth/guards";
-import { getFarmMonthlyFinance, getUnsettledSummary, listFarmPayouts } from "@/server/queries/farmer";
+import { getFarmBankAccount, getFarmMonthlyFinance, getUnsettledSummary, listFarmPayouts } from "@/server/queries/farmer";
 import { getPlatformSettings } from "@/server/queries/settings";
 
 export const metadata: Metadata = { title: "売上・精算" };
 
 export default async function FarmerPayoutsPage({ searchParams }: PageProps<"/farmer/payouts">) {
-  const { farm } = await requireFarm();
+  const { farm } = await requireFarm("money");
   const sp = await searchParams;
   await connection();
   const now = new Date();
-  const [monthly, payouts, summary, settings] = await Promise.all([
+  const [monthly, payouts, summary, settings, bankAccount] = await Promise.all([
     getFarmMonthlyFinance(farm.id),
     listFarmPayouts(farm.id),
     getUnsettledSummary(farm.id, now),
     getPlatformSettings(),
+    getFarmBankAccount(farm.id),
   ]);
   const rateBps = farm.commissionRateBps ?? settings.commissionRateBps;
   const trend = monthly.map((m) => m.gross);
@@ -38,6 +41,13 @@ export default async function FarmerPayoutsPage({ searchParams }: PageProps<"/fa
     <div className="space-y-6">
       <PageHeader title="売上・精算" description="月末で締めて、翌月にお振込します。手数料は商品代金にだけかかり、送料はそのままお受け取りいただけます。" />
 
+      {sp.stripe === "refresh" && (
+        <Alert>
+          <Landmark />
+          <AlertTitle>登録用のリンクの有効期限が切れました</AlertTitle>
+          <AlertDescription>Stripe の登録画面は、開いてから時間がたつと使えなくなります。下の「登録を続ける」をもう一度押してください。入力済みの内容は保存されています。</AlertDescription>
+        </Alert>
+      )}
       {sp.stripe === "return" && (
         <Alert className="border-leaf/40 bg-leaf/5">
           <Landmark />
@@ -80,7 +90,11 @@ export default async function FarmerPayoutsPage({ searchParams }: PageProps<"/fa
             />
           </CardContent>
         </Card>
-        <StripeConnectCard stripeEnabled={features.stripe} onboarded={farm.stripeOnboarded} hasAccount={Boolean(farm.stripeAccountId)} />
+        <div className="space-y-6">
+          <StripeConnectCard stripeEnabled={features.stripe} onboarded={farm.stripeOnboarded} hasAccount={Boolean(farm.stripeAccountId)} />
+          <BankAccountCard account={bankAccount} stripeOnboarded={features.stripe && farm.stripeOnboarded} />
+          <InvoiceNumberCard value={farm.invoiceRegistrationNumber} />
+        </div>
       </div>
 
       <section className="space-y-3">

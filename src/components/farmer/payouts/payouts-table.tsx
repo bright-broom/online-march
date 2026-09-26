@@ -1,6 +1,6 @@
 "use client";
 import type { ColumnDef } from "@tanstack/react-table";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, FileText } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -87,6 +87,9 @@ export function PayoutsTable({ rows }: { rows: FarmPayoutRow[] }) {
                   <Separator />
                   <div className="flex justify-between font-semibold"><dt>お振込額</dt><dd className="num">{yen(open.amount)}</dd></div>
                 </dl>
+                <Button asChild variant="outline" size="sm" className="w-full rounded-full">
+                  <Link href={routes.farmer.payoutStatement(open.id)}><FileText />支払通知書を開く（印刷・PDF）</Link>
+                </Button>
                 {pending || !orders ? (
                   <div className="space-y-2">{Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-14 rounded-lg" />)}</div>
                 ) : orders.length ? (

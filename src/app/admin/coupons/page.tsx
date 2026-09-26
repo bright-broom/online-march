@@ -23,6 +23,7 @@ export default async function AdminCouponsPage() {
     value: c.value,
     minSubtotal: c.minSubtotal,
     maxUses: c.maxUses,
+    oncePerUser: c.oncePerUser,
     usedCount: c.usedCount,
     startsYmd: c.startsAt ? toYmd(c.startsAt) : null,
     endsYmd: c.endsAt ? toYmd(c.endsAt) : null,

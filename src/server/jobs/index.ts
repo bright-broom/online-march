@@ -1,5 +1,6 @@
 import "server-only";
-import { and, desc, eq, inArray, isNotNull, isNull, lt, lte } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, lt, lte, or } from "drizzle-orm";
+import { comparePricePolicy } from "@/config/catalog";
 import { feeConfig } from "@/config/fees";
 import { opsConfig } from "@/config/ops";
 import { routes } from "@/config/nav";
@@ -13,10 +14,11 @@ import { emailTemplates } from "@/server/services/email/templates";
 import { features } from "@/lib/env";
 import { sendEmail } from "@/server/services/email";
 import { notify } from "@/server/services/notify";
-import { expireUnpaidOrder, markOrderPaid, transitionFarmOrder } from "@/server/services/orders";
+import { expireUnpaidOrder, markOrderPaid } from "@/server/services/orders";
 import { alertAdmins } from "@/server/services/ops-alerts";
 import { executeDuePayouts } from "@/server/services/payouts";
-import { fetchTrackingStatus } from "@/server/services/shipping/tracking";
+import { refreshAllDisplayCompareAt } from "@/server/services/price-history";
+import { syncDeliveries } from "@/server/services/shipping/delivery";
 
 /**
  * Shipping/finance automation. Each job is idempotent and safe to re-run.
@@ -81,7 +83,7 @@ export const jobs = {
 
   "ship-reminders": {
     label: "出荷期限リマインド",
-    description: "出荷期限が明日以前の未発送注文を生産者にメールとアプリ通知でお知らせします",
+    description: "出荷期限が明日以前の未発送注文を生産者にメールとアプリ通知でお知らせします（期限を過ぎた注文は発送されるまで毎日）",
     schedule: "毎朝8時",
     maxAgeHours: 30,
     async run(now) {
@@ -91,7 +93,17 @@ export const jobs = {
         .from(farmOrders)
         .innerJoin(farms, eq(farms.id, farmOrders.farmId))
         .innerJoin(user, eq(user.id, farms.ownerId))
-        .where(and(inArray(farmOrders.status, ["paid", "preparing"]), lte(farmOrders.shipByDate, tomorrow), isNull(farmOrders.reminderSentAt)));
+        .where(
+          and(
+            inArray(farmOrders.status, ["paid", "preparing"]),
+            or(
+              // 期限が近い: 1回だけ
+              and(lte(farmOrders.shipByDate, tomorrow), isNull(farmOrders.reminderSentAt)),
+              // 期限を過ぎた: 発送されるまで毎日1回（前回が今日より前なら）。#21
+              and(lt(farmOrders.shipByDate, toYmd(now)), lt(farmOrders.reminderSentAt, new Date(`${toYmd(now)}T00:00:00+09:00`))),
+            ),
+          ),
+        );
       const byFarm = new Map<string, typeof due>();
       for (const d of due) (byFarm.get(d.farm.id) ?? byFarm.set(d.farm.id, []).get(d.farm.id)!).push(d);
       const today = toYmd(now);
@@ -111,21 +123,11 @@ export const jobs = {
 
   "sync-tracking": {
     label: "配送状況の同期",
-    description: `発送済みの荷物の配達状況を確認し、完了を自動反映します（API非対応時は発送${shippingPolicy.autoDeliveredAfterDays}日後に自動完了）`,
+    description: `発送済みの荷物の配達状況を確認し、完了を自動反映します（配送業者の API が無いときは、お届け予定日の${shippingPolicy.autoDeliveredAfterEtaDays}日後に自動完了。届けられなかった荷物は止めて知らせます）`,
     schedule: "3時間ごと",
     maxAgeHours: 30,
     async run(now) {
-      const shipped = await db.select().from(farmOrders).where(eq(farmOrders.status, "shipped"));
-      let delivered = 0;
-      for (const fo of shipped) {
-        const status = fo.trackingNumber ? await fetchTrackingStatus(fo.carrier, fo.trackingNumber) : null;
-        const autoDue = fo.shippedAt && now.getTime() - fo.shippedAt.getTime() > shippingPolicy.autoDeliveredAfterDays * DAY;
-        if (status?.status === "delivered" || (!status && autoDue)) {
-          await transitionFarmOrder(fo.id, "delivered", { source: "cron", now, note: status ? "配達完了（配送業者連携）" : "お届け予定日を過ぎたため配達完了としました" });
-          delivered++;
-        }
-      }
-      return { checked: shipped.length, delivered };
+      return syncDeliveries(now);
     },
   },
 
@@ -152,6 +154,18 @@ export const jobs = {
     },
   },
 
+  "compare-prices": {
+    label: "通常価格の表示の見直し",
+    description: `「通常価格」の打ち消し表示を販売の記録から見直します（値下げが${comparePricePolicy.maxSaleDays / 7}週間を超えたら表示をやめる。#11）`,
+    schedule: "毎日 早朝",
+    maxAgeHours: 30,
+    async run(now) {
+      const changed = await refreshAllDisplayCompareAt(now);
+      if (changed.length) expireTags(tags.products, ...changed.map((id) => tags.product(id)));
+      return { updated: changed.length };
+    },
+  },
+
   "backup-db": {
     label: "データベースのバックアップ",
     description: `全テーブルを JSON に書き出し、非公開の Blob ストアへ保存します（${opsConfig.backup.keepDays}日より古い分は削除）`,
@@ -174,9 +188,11 @@ export const jobs = {
       const monthStart = startOfMonthYmd(now);
       const payoutDay = `${monthStart.slice(0, 8)}${String(feeConfig.payout.payoutDay).padStart(2, "0")}`;
       const periodEnd = addDays(monthStart, -1);
-      const activeFarms = await db.select().from(farms).where(eq(farms.status, "active"));
+      // Every farm, not only active ones: a suspended farm still ships its open orders and is owed for them, and its
+      // refund clawbacks must be deducted too (#14). Farms with nothing to settle are skipped below.
+      const allFarms = await db.select().from(farms);
       let created = 0;
-      for (const farm of activeFarms) {
+      for (const farm of allFarms) {
         const cutoff = new Date(`${monthStart}T00:00:00+09:00`);
         const rows = await db
           .select()

@@ -20,6 +20,7 @@ import {
   type FarmOrderStatus,
 } from "@/db/schema";
 import { tags } from "@/lib/cache-tags";
+import { customerCancelMode, WHOLE_ORDER_CANCELLABLE } from "@/lib/order-cancel";
 
 /**
  * Customer マイページ / checkout read models.
@@ -114,11 +115,13 @@ export async function getCustomerAnnouncements(limit = 3) {
 
 export type OrderListFilter = "all" | "active" | "completed" | "cancelled";
 
-export async function listOrders(userId: string, limit?: number) {
+/** 注文履歴。`offset` でページ送り（#21）。件数は countOrders */
+export async function listOrders(userId: string, limit?: number, offset = 0) {
   const rows = await db.query.orders.findMany({
     where: eq(orders.userId, userId),
-    orderBy: (t, { desc: d }) => d(t.createdAt),
+    orderBy: (t, { desc: d }) => [d(t.createdAt), d(t.id)],
     limit,
+    offset,
     columns: { id: true, code: true, status: true, total: true, createdAt: true, desiredDeliveryDate: true },
     with: {
       farmOrders: {
@@ -149,6 +152,11 @@ export async function listOrders(userId: string, limit?: number) {
 }
 export type OrderListItem = Awaited<ReturnType<typeof listOrders>>[number];
 
+export async function countOrders(userId: string) {
+  const [{ n }] = await db.select({ n: count() }).from(orders).where(eq(orders.userId, userId));
+  return n;
+}
+
 export async function getOrderDetail(userId: string, orderId: string) {
   const order = await db.query.orders.findFirst({
     where: and(eq(orders.id, orderId), eq(orders.userId, userId)),
@@ -162,7 +170,9 @@ export async function getOrderDetail(userId: string, orderId: string) {
         columns: {
           id: true, code: true, status: true, subtotal: true, shippingFee: true, discount: true, carrier: true,
           boxSize: true, boxCount: true, trackingNumber: true, shipByDate: true, estimatedDeliveryDate: true,
-          shippedAt: true, deliveredAt: true, cancelledAt: true,
+          shippedAt: true, deliveredAt: true, cancelledAt: true, refundedAt: true,
+          // キャンセルの依頼（#18）。生産者のひとことはお断りのときだけお客さまに見せる
+          cancelRequestedAt: true, cancelRequestAnswer: true, cancelRequestAnsweredAt: true, cancelRequestReply: true,
         },
         orderBy: (t, { asc }) => asc(t.code),
         with: {
@@ -241,9 +251,9 @@ export async function getOrderDetail(userId: string, orderId: string) {
   const cancellable =
     (order.status === "pending_payment" || order.status === "paid") &&
     order.farmOrders.some((f) => f.status !== "cancelled") &&
-    order.farmOrders.every((f) => ["pending_payment", "paid", "preparing", "cancelled"].includes(f.status));
+    order.farmOrders.every((f) => WHOLE_ORDER_CANCELLABLE.includes(f.status));
 
-  return { ...order, farmOrders: farmOrdersOut, cancellable };
+  return { ...order, farmOrders: farmOrdersOut.map((fo) => ({ ...fo, cancelMode: customerCancelMode(order, fo) })), cancellable };
 }
 export type OrderDetail = NonNullable<Awaited<ReturnType<typeof getOrderDetail>>>;
 export type OrderDetailFarmOrder = OrderDetail["farmOrders"][number];
@@ -261,11 +271,14 @@ export async function getOrderSummary(userId: string, orderId: string) {
     },
     with: {
       farmOrders: {
-        columns: { id: true, code: true, status: true, estimatedDeliveryDate: true, shipByDate: true, carrier: true, refundedAt: true, refundAmount: true },
+        columns: {
+          id: true, code: true, status: true, estimatedDeliveryDate: true, shipByDate: true, carrier: true, refundedAt: true, refundAmount: true,
+          shippingFee: true, discount: true,
+        },
         orderBy: (t, { asc }) => asc(t.code),
         with: {
           farm: { columns: { name: true, slug: true } },
-          items: { columns: { id: true, productName: true, variantLabel: true, quantity: true, imageUrl: true, lineTotal: true, unitPrice: true } },
+          items: { columns: { id: true, productName: true, variantLabel: true, quantity: true, imageUrl: true, lineTotal: true, unitPrice: true, taxRate: true } },
         },
       },
     },
@@ -307,8 +320,9 @@ export async function listFavoriteProducts(userId: string) {
       ...r,
       imageUrl: img?.url ?? null,
       imageAlt: img?.alt || r.name,
+      // 通常価格は販売の記録で確かめた値だけ（#11）
       variant: v
-        ? { id: v.id, label: v.label, price: v.price, compareAtPrice: v.compareAtPrice, stock: v.stock, weightGrams: v.weightGrams }
+        ? { id: v.id, label: v.label, price: v.price, compareAtPrice: v.displayCompareAtPrice, stock: v.stock, weightGrams: v.weightGrams }
         : null,
       purchasable: r.status === "active" && !!v && v.stock > 0,
     };
@@ -406,6 +420,7 @@ export async function listMyReviews(userId: string) {
       rating: reviews.rating,
       title: reviews.title,
       body: reviews.body,
+      images: reviews.images,
       reply: reviews.reply,
       repliedAt: reviews.repliedAt,
       isPublished: reviews.isPublished,
@@ -440,7 +455,7 @@ export type ThreadFarm = NonNullable<Awaited<ReturnType<typeof getThreadFarm>>>;
 
 export async function getProfile(userId: string) {
   const [row] = await db
-    .select({ id: user.id, name: user.name, email: user.email, phone: user.phone, createdAt: user.createdAt })
+    .select({ id: user.id, name: user.name, email: user.email, emailVerified: user.emailVerified, phone: user.phone, createdAt: user.createdAt })
     .from(user)
     .where(eq(user.id, userId));
   return row ?? null;

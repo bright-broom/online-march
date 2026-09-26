@@ -1,11 +1,12 @@
-import { MessageSquareText, Sprout } from "lucide-react";
-import Link from "next/link";
+import { MessageSquareText } from "lucide-react";
 import { EmptyState } from "@/components/common/empty-state";
 import { RatingStars } from "@/components/common/rating";
 import { Skeleton } from "@/components/ui/skeleton";
-import { routes } from "@/config/nav";
-import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { MoreReviews } from "./more-reviews";
+import { ReviewItem } from "./review-item";
+
+export { ReviewItem };
 import type { ReviewDTO, ReviewSummaryDTO } from "@/server/queries/catalog";
 
 export function ReviewSummaryPanel({ summary, className }: { summary: ReviewSummaryDTO; className?: string }) {
@@ -39,48 +40,19 @@ export function ReviewSummaryPanel({ summary, className }: { summary: ReviewSumm
   );
 }
 
-export function ReviewItem({ review, showProduct = false }: { review: ReviewDTO; showProduct?: boolean }) {
-  return (
-    <article className="space-y-3 py-6 first:pt-0">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <RatingStars value={review.rating} />
-        {review.title && <h3 className="text-sm font-semibold">{review.title}</h3>}
-      </div>
-      <p className="text-foreground/85 text-sm leading-relaxed whitespace-pre-line">{review.body}</p>
-      <p className="text-muted-foreground text-xs">
-        {review.author}・<time dateTime={review.createdAt}>{formatDate(review.createdAt)}</time>
-        {showProduct && (
-          <>
-            ・
-            <Link href={routes.product(review.product.slug)} className="hover:text-primary underline-offset-4 hover:underline">
-              {review.product.name}
-            </Link>
-          </>
-        )}
-      </p>
-      {review.reply && (
-        <div className="border-primary/40 bg-paper/70 ml-1 rounded-r-xl border-l-2 py-3 pr-4 pl-4">
-          <p className="text-primary flex items-center gap-1.5 text-xs font-semibold">
-            <Sprout className="size-3.5" />
-            {review.farm.name}からの返信
-          </p>
-          <p className="text-muted-foreground mt-1.5 text-sm leading-relaxed whitespace-pre-line">{review.reply}</p>
-        </div>
-      )}
-    </article>
-  );
-}
-
 export function ReviewsBlock({
   summary,
   items,
   showProduct = false,
   emptyText,
+  more,
 }: {
   summary: ReviewSummaryDTO;
   items: ReviewDTO[];
   showProduct?: boolean;
   emptyText: string;
+  /** 商品ページだけ: 最初の分で打ち切っていれば「もっと見る」を出す（#21） */
+  more?: { productId: string; pageSize: number };
 }) {
   if (!items.length) {
     return <EmptyState icon={MessageSquareText} title="まだレビューはありません" description={emptyText} className="bg-paper/60 border py-12" />;
@@ -92,6 +64,7 @@ export function ReviewsBlock({
         {items.map((r) => (
           <ReviewItem key={r.id} review={r} showProduct={showProduct} />
         ))}
+        {more && items.length >= more.pageSize && <MoreReviews productId={more.productId} offset={items.length} />}
       </div>
     </div>
   );

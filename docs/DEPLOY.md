@@ -23,7 +23,7 @@ npm run dev        # http://localhost:3000
 | Key | 必須 | 説明 |
 | --- | --- | --- |
 | `DATABASE_URL` | ✅ | Neon（pooled） |
-| `BETTER_AUTH_SECRET` | ✅ | `openssl rand -base64 32` |
+| `BETTER_AUTH_SECRET` | ✅ | `openssl rand -base64 32`。**変えると登録済みの振込先口座番号が読めなくなる**（暗号鍵を兼ねる, #20）。変えたら生産者に口座を登録し直してもらう |
 | `BETTER_AUTH_URL` / `NEXT_PUBLIC_SITE_URL` | ✅ | 本番URL（https://…） |
 | `CRON_SECRET` | ✅ | 任意の長い文字列（Vercel Cron が送信） |
 | `STRIPE_SECRET_KEY` | 本番 | 未設定ならデモ決済。まずテストキー（sk_test_）で検証 |
@@ -65,6 +65,20 @@ npm run dev        # http://localhost:3000
   `src/lib/__tests__/security-headers.test.ts` を更新する。
 - **Vercel Web Analytics / Speed Insights は現在プロジェクト側で無効**（本番でスクリプトが読み込まれていない）。
   有効化したあとブラウザのコンソールに CSP 違反が出た場合は、`script-src` に `https://va.vercel-scripts.com` を追加する。
+
+## エラー監視（#12）
+
+外部の監視サービスは使わず、運営のお知らせとメールで知らせる。
+
+- **ページ表示・Route Handler・Webhook**: `src/instrumentation.ts#onRequestError` が受ける（Node.js ランタイムのみ）。
+- **Server Action**: 想定外のエラーは `runAction` が利用者向けの文言に置き換えるので、そこから報告する（`ActionError` は報告しない）。
+- **自動処理（Cron）**: これまでどおり `SHIPPING.md` の運用アラートで知らせる。
+- 通知は `services/error-report.ts#reportServerError` → `ops-alerts.ts#alertAdmins`（admin 全員へ、お知らせ＋メール）。
+  本文は「どこで・パス・メッセージ・エラーID」。パスのクエリは落とす（トークンを残さない）。
+- 同じ内容は6時間に1回、内容が違っても1時間に5回まで（`serverErrorAlert`）。それ以上は Vercel のログにだけ残る。
+- 詳細は Vercel の **Logs** で `[server-error]` かエラーID（digest）を検索する。エラー画面にも同じエラーIDが出るので、
+  お客さまから問い合わせがあれば ID で突き合わせられる。
+- メールは Resend 設定後に届く。未設定の間は運営画面のお知らせ（ベル）だけ。
 
 ## Runbook: バックアップからの復元
 

@@ -8,6 +8,7 @@ const { db } = await import("@/db/client");
 const s = await import("@/db/schema");
 const { createOrder, markOrderPaid, transitionFarmOrder } = await import("@/server/services/orders");
 const { runJob } = await import("./index");
+const { toYmd } = await import("@/lib/dates");
 
 const DAY = 86_400_000;
 const address = { recipientName: "テスト", postalCode: "5300001", prefecture: "大阪府", city: "大阪市", line1: "1", phone: "0600000000" };
@@ -32,13 +33,14 @@ describe("automation jobs", () => {
     expect((await db.query.productVariants.findFirst({ where: eq(s.productVariants.id, variantId) }))!.stock).toBe(before);
   });
 
-  it("sync-tracking auto-delivers shipments older than the policy window", async () => {
+  it("sync-tracking auto-delivers shipments once their estimated delivery date has passed (#25)", async () => {
     const now = new Date();
     const { order } = await createOrder({ userId, email: "c@x.jp", lines: [{ variantId, quantity: 1 }], address, paymentProvider: "demo", now });
     await markOrderPaid(order.id, { now });
     const [fo] = await db.select().from(s.farmOrders).where(eq(s.farmOrders.orderId, order.id));
     await transitionFarmOrder(fo.id, "shipped", { source: "farmer", now, trackingNumber: "412345678999" });
-    await db.update(s.farmOrders).set({ shippedAt: new Date(now.getTime() - 5 * DAY) }).where(eq(s.farmOrders.id, fo.id));
+    // 発送は5日前、お届け予定日は2日前（予定日の翌日を過ぎている）
+    await db.update(s.farmOrders).set({ shippedAt: new Date(now.getTime() - 5 * DAY), estimatedDeliveryDate: toYmd(new Date(now.getTime() - 2 * DAY)) }).where(eq(s.farmOrders.id, fo.id));
     const r = await runJob("sync-tracking", "manual");
     expect(r.ok).toBe(true);
     expect((await db.query.farmOrders.findFirst({ where: eq(s.farmOrders.id, fo.id) }))!.status).toBe("delivered");

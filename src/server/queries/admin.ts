@@ -1,10 +1,12 @@
 import "server-only";
-import { and, count, countDistinct, desc, eq, gte, inArray, isNotNull, lt, lte, ne, sql } from "drizzle-orm";
+import { and, count, countDistinct, desc, eq, gte, ilike, inArray, isNotNull, lt, lte, ne, or, sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 import { categoryKeys } from "@/config/catalog";
 import { shippingZones, type ShippingZoneKey } from "@/config/shipping";
 import { db } from "@/db";
 import {
+  adminAuditLogs,
+  farmBankAccounts,
   announcements,
   coupons,
   farmOrders,
@@ -455,6 +457,7 @@ export async function getAdminReviews(limit = 200) {
       rating: reviews.rating,
       title: reviews.title,
       body: reviews.body,
+      images: reviews.images,
       reply: reviews.reply,
       isPublished: reviews.isPublished,
       createdAt: reviews.createdAt,
@@ -474,7 +477,14 @@ export type AdminReviewRow = Awaited<ReturnType<typeof getAdminReviews>>[number]
 
 /* ───────────────────────── Orders ───────────────────────── */
 
-export async function getAdminOrders(status?: OrderStatus, limit = 500) {
+/** 検索語を ILIKE の部分一致に（% と _ はそのままの文字として扱う） */
+const likeOf = (q: string) => `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+
+/**
+ * 運営の注文一覧。`q` は注文番号・メール・会員名・お届け先の名前をサーバー側で探す（#21。以前は最新500件の中だけを画面で絞っていた）。
+ */
+export async function getAdminOrders(status?: OrderStatus, limit = 500, q?: string) {
+  const like = q ? likeOf(q) : null;
   const [rows, counts] = await Promise.all([
     db
       .select({
@@ -492,7 +502,14 @@ export async function getAdminOrders(status?: OrderStatus, limit = 500) {
       })
       .from(orders)
       .innerJoin(user, eq(user.id, orders.userId))
-      .where(status ? eq(orders.status, status) : undefined)
+      .where(
+        and(
+          status ? eq(orders.status, status) : undefined,
+          like
+            ? or(ilike(orders.code, like), ilike(orders.email, like), ilike(user.name, like), sql`${orders.shippingAddress}->>'recipientName' ilike ${like}`)
+            : undefined,
+        ),
+      )
       .orderBy(desc(orders.createdAt))
       .limit(limit),
     db.select({ status: orders.status, n: count() }).from(orders).groupBy(orders.status),
@@ -522,7 +539,9 @@ export type AdminOrderDetail = NonNullable<Awaited<ReturnType<typeof getAdminOrd
 
 /* ───────────────────────── Users ───────────────────────── */
 
-export async function getAdminUsers() {
+/** 運営のユーザー一覧。`q` は名前・メール・農園名をサーバー側で探す（#21） */
+export async function getAdminUsers(q?: string, limit = 500) {
+  const like = q ? likeOf(q) : null;
   const rows = await db
     .select({
       id: user.id,
@@ -530,6 +549,9 @@ export async function getAdminUsers() {
       email: user.email,
       role: user.role,
       createdAt: user.createdAt,
+      suspendedAt: user.suspendedAt,
+      suspendedReason: user.suspendedReason,
+      deletedAt: user.deletedAt,
       farmId: farms.id,
       farmName: farms.name,
       orders: sql<number>`(select count(*) from orders o where o.user_id = ${user.id} and o.paid_at is not null)`.mapWith(Number),
@@ -537,7 +559,9 @@ export async function getAdminUsers() {
     })
     .from(user)
     .leftJoin(farms, eq(farms.ownerId, user.id))
-    .orderBy(desc(user.createdAt));
+    .where(like ? or(ilike(user.name, like), ilike(user.email, like), ilike(farms.name, like)) : undefined)
+    .orderBy(desc(user.createdAt))
+    .limit(limit);
   const counts = rows.reduce<Partial<Record<UserRole, number>>>((a, r) => ({ ...a, [r.role]: (a[r.role] ?? 0) + 1 }), {});
   return { rows, counts };
 }
@@ -547,9 +571,18 @@ export type AdminUserRow = Awaited<ReturnType<typeof getAdminUsers>>["rows"][num
 
 export async function getAdminPayouts(now: Date) {
   const rows = await db
-    .select({ p: payouts, farmName: farms.name, farmId: farms.id, stripeOnboarded: farms.stripeOnboarded, stripeAccountId: farms.stripeAccountId })
+    .select({
+      p: payouts,
+      farmName: farms.name,
+      farmId: farms.id,
+      stripeOnboarded: farms.stripeOnboarded,
+      stripeAccountId: farms.stripeAccountId,
+      // 振込先口座（#20）: 下4桁まで。全桁は revealFarmBankAccount（操作記録つき）
+      bank: { bankName: farmBankAccounts.bankName, bankCode: farmBankAccounts.bankCode, branchName: farmBankAccounts.branchName, branchCode: farmBankAccounts.branchCode, accountType: farmBankAccounts.accountType, accountNumberLast4: farmBankAccounts.accountNumberLast4, holderKana: farmBankAccounts.holderKana },
+    })
     .from(payouts)
     .innerJoin(farms, eq(farms.id, payouts.farmId))
+    .leftJoin(farmBankAccounts, eq(farmBankAccounts.farmId, farms.id))
     .orderBy(desc(payouts.periodEnd), farms.name);
   const ids = rows.map((r) => r.p.id);
   const items = ids.length
@@ -574,7 +607,7 @@ export async function getAdminPayouts(now: Date) {
   for (const it of items) if (it.payoutId) (byPayout.get(it.payoutId) ?? byPayout.set(it.payoutId, []).get(it.payoutId)!).push(it);
 
   const month = monthKey(now);
-  const list = rows.map(({ p, farmName, farmId, stripeOnboarded, stripeAccountId }) => ({
+  const list = rows.map(({ p, farmName, farmId, stripeOnboarded, stripeAccountId, bank }) => ({
     ...p,
     farmName,
     farmId,
@@ -583,6 +616,7 @@ export async function getAdminPayouts(now: Date) {
     autoTransfer: features.stripe && stripeOnboarded && Boolean(stripeAccountId),
     /** Stripe may already hold a transfer for this farm, so the manual mark checks Stripe first. */
     hasStripeAccount: features.stripe && Boolean(stripeAccountId),
+    bankAccount: bank?.accountNumberLast4 ? bank : null,
     items: byPayout.get(p.id) ?? [],
   }));
   const summary = {
@@ -631,3 +665,47 @@ export async function getJobRuns(limit = 300) {
   return db.select().from(jobRuns).orderBy(desc(jobRuns.startedAt)).limit(limit);
 }
 export type JobRunRow = Awaited<ReturnType<typeof getJobRuns>>[number];
+
+/** 運営の操作記録（#19）。新しい順。request-time（ページが requireRole の後に呼ぶ） */
+export async function getAuditLogs(limit = 1000) {
+  return db.select().from(adminAuditLogs).orderBy(desc(adminAuditLogs.createdAt)).limit(limit);
+}
+
+/**
+ * 運営向け会計CSV（#21）の明細。1行 = 1出荷単位。注文日（JST）で月を切り、未決済は除く（キャンセル・返金は含める）。
+ * ダウンロードのたびに最新を読むので "use cache" は付けない（生産者の売上明細 getSalesRows と同じ）。
+ */
+export async function getAccountingRows(month: string) {
+  const from = `${month}-01` as YMD;
+  const next = monthKey(new Date(fromYmd(from).getTime() + 32 * 86_400_000));
+  return db
+    .select({
+      orderedAt: farmOrders.createdAt,
+      orderCode: orders.code,
+      farmOrderCode: farmOrders.code,
+      farmName: farms.name,
+      status: farmOrders.status,
+      paymentMethod: orders.paymentMethod,
+      subtotal: farmOrders.subtotal,
+      shippingFee: farmOrders.shippingFee,
+      discount: farmOrders.discount,
+      commission: farmOrders.commissionAmount,
+      payoutAmount: farmOrders.payoutAmount,
+      refundAmount: farmOrders.refundAmount,
+      refundedAt: farmOrders.refundedAt,
+      payoutScheduledFor: payouts.scheduledFor,
+      payoutPaidAt: payouts.paidAt,
+    })
+    .from(farmOrders)
+    .innerJoin(orders, eq(orders.id, farmOrders.orderId))
+    .innerJoin(farms, eq(farms.id, farmOrders.farmId))
+    .leftJoin(payouts, eq(payouts.id, farmOrders.payoutId))
+    .where(
+      and(
+        ne(farmOrders.status, "pending_payment"),
+        gte(farmOrders.createdAt, fromYmd(from)),
+        lt(farmOrders.createdAt, fromYmd(`${next}-01` as YMD)),
+      ),
+    )
+    .orderBy(farmOrders.createdAt, farmOrders.code);
+}

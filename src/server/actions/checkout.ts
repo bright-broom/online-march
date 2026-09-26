@@ -7,9 +7,11 @@ import { db } from "@/db";
 import { addresses, orders, type AddressSnapshot, type Carrier } from "@/db/schema";
 import { tags } from "@/lib/cache-tags";
 import { features } from "@/lib/env";
-import { checkoutQuoteSchema, confirmCheckoutSchema, placeOrderSchema, type CheckoutQuoteInput, type PlaceOrderInput } from "@/lib/validators/checkout";
+import { abandonCheckoutSchema, checkoutQuoteSchema, confirmCheckoutSchema, placeOrderSchema, type CheckoutQuoteInput, type PlaceOrderInput } from "@/lib/validators/checkout";
+import { rateLimits } from "@/config/rate-limits";
 import { assertUser } from "@/server/auth/guards";
-import { createOrder, expireUnpaidOrder, markOrderPaid, quoteCart, type CartQuote } from "@/server/services/orders";
+import { consumeRateLimit, isRateLimited } from "@/server/services/rate-limit";
+import { abandonCheckout, createOrder, expireUnpaidOrder, markOrderPaid, quoteCart, type AbandonedCheckout, type CartQuote } from "@/server/services/orders";
 import { ActionError, parseInput, runAction, type ActionResult } from "./_utils";
 
 /* ───────────── DTO (client-safe: no owner ids / commission) ───────────── */
@@ -100,15 +102,21 @@ function toDto(q: CartQuote): CheckoutQuote {
 /** Authoritative re-quote of the client cart (prices, stock, shipping, schedule, coupon). */
 export async function getCheckoutQuote(input: CheckoutQuoteInput): Promise<ActionResult<CheckoutQuote>> {
   return runAction(async () => {
-    await assertUser();
+    const me = await assertUser();
     const data = parseInput(checkoutQuoteSchema, input);
+    // クーポンコードの総当たり対策（#21）: 使えないコードの入力を数え、上限を超えたらコードを見ずに断る（見積もり自体は返す）
+    const couponCode = data.couponCode || null;
+    const blocked = couponCode ? await isRateLimited("couponMiss", me.id) : false;
     const quote = await quoteCart({
       lines: data.lines,
       prefecture: data.prefecture,
       desiredDate: data.desiredDate ?? null,
-      couponCode: data.couponCode || null,
+      couponCode: blocked ? null : couponCode,
+      userId: me.id,
       now: new Date(),
     });
+    if (blocked) return { ...toDto(quote), couponError: rateLimits.couponMiss.message };
+    if (couponCode && quote.couponError) await consumeRateLimit("couponMiss", me.id);
     return toDto(quote);
   });
 }
@@ -244,5 +252,20 @@ export async function confirmStripeCheckout(input: { orderId: string; sessionId:
     const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : (session.payment_intent?.id ?? null);
     await markOrderPaid(order.id, { sessionId: session.id, paymentIntentId, now: new Date() });
     return { paid: true };
+  });
+}
+
+/**
+ * Called from /cart when the customer comes back from Stripe Checkout with「戻る」(#17).
+ * Cancels the unpaid order right away so its stock and coupon are not held for the full payment window.
+ */
+export async function cancelAbandonedCheckout(input: { orderId: string }): Promise<ActionResult<AbandonedCheckout>> {
+  return runAction(async () => {
+    const me = await assertUser();
+    const { orderId } = parseInput(abandonCheckoutSchema, input);
+    const order = await db.query.orders.findFirst({ where: and(eq(orders.id, orderId), eq(orders.userId, me.id)) });
+    if (!order) throw new ActionError("注文が見つかりません");
+    const stripe = features.stripe ? await import("@/server/services/payments/stripe") : null;
+    return abandonCheckout(order, new Date(), stripe && stripe.resolveStaleCheckout);
   });
 }

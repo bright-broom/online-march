@@ -10,7 +10,7 @@ import { requireFarm } from "@/server/auth/guards";
 export const metadata: Metadata = { title: "ショップページ" };
 
 export default async function FarmerShopPage() {
-  const { farm } = await requireFarm();
+  const { farm } = await requireFarm("shop");
   const isPublic = farm.status === "active";
   return (
     <div>

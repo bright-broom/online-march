@@ -2,19 +2,22 @@
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { refresh, updateTag } from "next/cache";
+import { shippingPolicy } from "@/config/shipping";
 import { db } from "@/db";
 import { farms } from "@/db/schema";
 import { tags } from "@/lib/cache-tags";
-import { toYmd } from "@/lib/dates";
+import { addDays, toYmd } from "@/lib/dates";
 import { features } from "@/lib/env";
-import { farmPauseSchema, shippingSettingsSchema, shopFormSchema } from "@/lib/validators/farmer";
+import { farmPauseSchema, shippingSettingsSchema, shopFormSchema, farmInvoiceNumberSchema } from "@/lib/validators/farmer";
+import { bankAccountSchema } from "@/lib/validators/bank-account";
 import { assertFarm } from "@/server/auth/guards";
+import { saveBankAccount } from "@/server/services/bank-account";
 import { ActionError, formToObject, parseInput, runAction, type ActionResult } from "./_utils";
 
 /** ショップページ編集 (public farm profile). */
 export async function saveShop(_prev: unknown, formData: FormData): Promise<ActionResult> {
   return runAction(async () => {
-    const { farm } = await assertFarm();
+    const { farm } = await assertFarm("shop");
     const data = parseInput(shopFormSchema, formToObject(formData));
     await db.update(farms).set(data).where(eq(farms.id, farm.id));
     updateTag(tags.farm(farm.id));
@@ -23,10 +26,34 @@ export async function saveShop(_prev: unknown, formData: FormData): Promise<Acti
   }, "ショップページを更新しました");
 }
 
+/**
+ * 振込先口座（#20）。Stripe を使わない農家に運営が銀行振込するための口座。自分の農園の分だけ登録・変更できる。
+ * 口座番号は暗号化して保存し、戻り値にも含めない。
+ */
+export async function saveFarmBankAccount(_prev: unknown, formData: FormData): Promise<ActionResult<{ last4: string }>> {
+  return runAction(async () => {
+    const { farm } = await assertFarm("money");
+    const data = parseInput(bankAccountSchema, formToObject(formData));
+    await saveBankAccount(farm.id, data);
+    refresh();
+    return { last4: data.accountNumber.slice(-4) };
+  }, "振込先口座を保存しました");
+}
+
+/** 生産者の適格請求書発行事業者の登録番号（#10, 任意）。税の情報なのでオーナーだけ（"money"）。空にすると消える */
+export async function saveFarmInvoiceNumber(_prev: unknown, formData: FormData): Promise<ActionResult> {
+  return runAction(async () => {
+    const { farm } = await assertFarm("money");
+    const { invoiceRegistrationNumber } = parseInput(farmInvoiceNumberSchema, formToObject(formData));
+    await db.update(farms).set({ invoiceRegistrationNumber: invoiceRegistrationNumber || null }).where(eq(farms.id, farm.id));
+    refresh();
+  }, "登録番号を保存しました");
+}
+
 /** 出荷・配送設定. */
 export async function saveShippingSettings(_prev: unknown, formData: FormData): Promise<ActionResult> {
   return runAction(async () => {
-    const { farm } = await assertFarm();
+    const { farm } = await assertFarm("shop");
     const data = parseInput(shippingSettingsSchema, formToObject(formData));
     await db
       .update(farms)
@@ -50,9 +77,13 @@ export async function saveShippingSettings(_prev: unknown, formData: FormData): 
  */
 export async function setFarmPause(input: { until: string | null }): Promise<ActionResult> {
   return runAction(async () => {
-    const { farm } = await assertFarm();
+    const { farm } = await assertFarm("shop");
     const { until } = parseInput(farmPauseSchema, input);
-    if (until && until < toYmd(new Date())) throw new ActionError("再開日は今日以降を選んでください");
+    const today = toYmd(new Date());
+    if (until && until < today) throw new ActionError("再開日は今日以降を選んでください");
+    if (until && until > addDays(today, shippingPolicy.maxPauseDays)) {
+      throw new ActionError(`お休みは${shippingPolicy.maxPauseDays}日先までにしてください（長く休む場合は、再開日が近づいたら延ばしてください）`);
+    }
     await db.update(farms).set({ pausedUntil: until }).where(eq(farms.id, farm.id));
     // 商品ページ・農園ページの「お休み中」表示に効かせる
     updateTag(tags.farm(farm.id));
@@ -66,7 +97,7 @@ export async function setFarmPause(input: { until: string | null }): Promise<Act
 /** Stripe Connect onboarding → redirects to Stripe (only when Stripe is configured). */
 export async function startStripeOnboarding(): Promise<ActionResult> {
   const result = await runAction(async () => {
-    const { user, farm } = await assertFarm();
+    const { user, farm } = await assertFarm("money");
     if (!features.stripe) throw new ActionError("現在はオンライン振込先登録を利用できません。運営からの銀行振込でお支払いします");
     const { createConnectOnboardingLink } = await import("@/server/services/payments/stripe");
     const link = await createConnectOnboardingLink({

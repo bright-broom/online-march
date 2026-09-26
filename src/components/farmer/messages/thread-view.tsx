@@ -11,7 +11,7 @@ import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { sendMessage } from "@/server/actions/messages";
 
-type Msg = { id: string; body: string; senderId: string; createdAt: Date | string; readAt: Date | string | null };
+type Msg = { id: string; body: string; senderId: string; senderName: string | null; createdAt: Date | string; readAt: Date | string | null };
 
 /** よく使う返信（タップで入力欄に挿入） */
 const quickReplies = [
@@ -20,7 +20,11 @@ const quickReplies = [
   "お問い合わせありがとうございます。確認して改めてご連絡いたします。",
 ];
 
-export function ThreadView({ farmId, customerId, viewerId, messages }: { farmId: string; customerId: string; viewerId: string; messages: Msg[] }) {
+/**
+ * 農園側（オーナー・スタッフ）のスレッド。お客さま以外が送ったものは「農園から」として右に並べ、送った人の名前を添える（#24）。
+ * お客さまの画面（components/messages/customer-thread.tsx）には送った人の名前を出さない。
+ */
+export function ThreadView({ farmId, customerId, messages }: { farmId: string; customerId: string; messages: Msg[] }) {
   const router = useRouter();
   const [body, setBody] = useState("");
   const [pending, start] = useTransition();
@@ -48,7 +52,7 @@ export function ThreadView({ farmId, customerId, viewerId, messages }: { farmId:
           <p className="text-muted-foreground py-10 text-center text-sm">まだメッセージはありません。最初のひとことを送ってみましょう。</p>
         )}
         {messages.map((m) => {
-          const mine = m.senderId === viewerId;
+          const mine = m.senderId !== customerId;
           return (
             <div key={m.id} className={cn("flex", mine ? "justify-end" : "justify-start")}>
               <div className={cn("max-w-[80%] space-y-1", mine && "items-end text-right")}>
@@ -61,6 +65,7 @@ export function ThreadView({ farmId, customerId, viewerId, messages }: { farmId:
                   {m.body}
                 </p>
                 <p className="text-muted-foreground px-1 text-[10px] tabular-nums">
+                  {mine && m.senderName && `${m.senderName}・`}
                   {formatDateTime(m.createdAt)}
                   {mine && m.readAt && "・既読"}
                 </p>

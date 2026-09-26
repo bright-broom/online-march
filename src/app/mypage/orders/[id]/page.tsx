@@ -39,6 +39,7 @@ export default async function OrderDetailPage({ params }: PageProps<"/mypage/ord
   const reorderItems = allItems.filter((i) => i.reorder).map((i) => ({ item: i.reorder!, quantity: Math.min(i.quantity, i.reorder!.maxQuantity) }));
   const slot = order.deliveryTimeSlot as DeliveryTimeSlot | null;
   const receiptAvailable = order.status === "paid";
+  const liveFarmOrders = order.farmOrders.filter((f) => f.status !== "cancelled" && f.status !== "refunded").length;
 
   return (
     <>
@@ -72,7 +73,7 @@ export default async function OrderDetailPage({ params }: PageProps<"/mypage/ord
             <PaymentPendingCard method={order.paymentMethod} voucherUrl={order.paymentVoucherUrl} dueAt={order.paymentDueAt} total={order.total} />
           )}
           {order.farmOrders.map((fo) => (
-            <FarmOrderSection key={fo.id} fo={fo} />
+            <FarmOrderSection key={fo.id} fo={fo} multiFarm={liveFarmOrders > 1} />
           ))}
         </div>
 

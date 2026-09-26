@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   const to = (path: string) => NextResponse.redirect(new URL(path, req.url));
   let farm: Awaited<ReturnType<typeof assertFarm>>["farm"];
   try {
-    ({ farm } = await assertFarm());
+    ({ farm } = await assertFarm("money"));
   } catch {
     return to(`${routes.login}?next=${encodeURIComponent(routes.farmer.payouts)}`);
   }

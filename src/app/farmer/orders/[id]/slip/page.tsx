@@ -14,7 +14,7 @@ const uuid = /^[0-9a-f-]{36}$/i;
 /** Printable 納品書. `?ids=a,b,c` prints several (bulk from 出荷センター); `?print=1` opens the print dialog. */
 export default async function SlipPage({ params, searchParams }: PageProps<"/farmer/orders/[id]/slip">) {
   const [{ id }, sp] = await Promise.all([params, searchParams]);
-  const { farm } = await requireFarm();
+  const { farm } = await requireFarm("ship");
   const extra = typeof sp.ids === "string" ? sp.ids.split(",") : [];
   const ids = [...new Set([id, ...extra])].filter((x) => uuid.test(x)).slice(0, 200);
   const orders = await getFarmOrdersForSlip(farm.id, ids);

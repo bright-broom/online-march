@@ -18,6 +18,8 @@ type AuthError = { code?: string; message?: string; status?: number } | null | u
 export function authErrorMessage(error: AuthError, fallback = "うまくいきませんでした。時間をおいて再度お試しください。") {
   if (!error) return fallback;
   if (error.status === 429) return "試行回数が多すぎます。しばらく待ってから再度お試しください。";
+  // our own hooks answer in Japanese already (e.g. デモアカウントのメールアドレスは変更できません)
+  if (error.status === 403 && error.message && /[ぁ-んァ-ン一-龥]/.test(error.message)) return error.message;
   switch (error.code) {
     case "INVALID_EMAIL_OR_PASSWORD":
       return "メールアドレスまたはパスワードが正しくありません。";
@@ -33,6 +35,7 @@ export function authErrorMessage(error: AuthError, fallback = "うまくいき�
     case "INVALID_PASSWORD":
       return "現在のパスワードが正しくありません。";
     case "INVALID_TOKEN":
+    case "TOKEN_EXPIRED":
       return "このリンクは有効期限が切れているか、すでに使われています。もう一度お手続きください。";
     case "EMAIL_NOT_VERIFIED":
       return "メールアドレスの確認が完了していません。";

@@ -20,6 +20,8 @@ import { user } from "./auth";
 /* ─────────────── enums ─────────────── */
 
 export const farmStatus = pgEnum("farm_status", ["pending", "active", "suspended"]);
+/** 農園スタッフの権限（#24）。all = オーナーと同じ（精算・振込先口座・スタッフ管理を除く）、shipping = 出荷担当。config/farm-staff.ts */
+export const farmMemberAccess = pgEnum("farm_member_access", ["all", "shipping"]);
 export const productStatus = pgEnum("product_status", ["draft", "active", "soldout", "archived"]);
 export const productCategory = pgEnum("product_category", [
   "onion",
@@ -55,6 +57,11 @@ export const shipmentEventType = pgEnum("shipment_event_type", [
   "note",
   "refund",
 ]);
+/**
+ * `processing` はどこからも使っていない（送金は pending → paid を1回の条件付き更新で行い、二重送金は冪等キーと
+ * Stripe への確認で防いでいる）。enum の値を消すにはマイグレーションを書き換えることになり「足すだけ」の決まり（AGENTS.md）に反するので、
+ * 値は残して画面にも出さない（#21）。使う日が来たら config/status.ts の説明と合わせて意味を決める。
+ */
 export const payoutStatus = pgEnum("payout_status", ["pending", "processing", "paid"]);
 export const couponType = pgEnum("coupon_type", ["percent", "fixed"]);
 export const notificationType = pgEnum("notification_type", [
@@ -106,6 +113,8 @@ export const farms = pgTable(
     stripeAccountId: text("stripe_account_id"),
     stripeOnboarded: boolean("stripe_onboarded").notNull().default(false),
     defaultCarrier: carrier("default_carrier").notNull().default("yamato"),
+    /** 生産者の適格請求書発行事業者の登録番号（T＋13桁, 任意, #10）。今は保存と表示だけ（売主の決定待ち） */
+    invoiceRegistrationNumber: text("invoice_registration_number"),
     leadTimeDays: integer("lead_time_days").notNull().default(2),
     /** 0=Sun … 6=Sat */
     shipWeekdays: jsonb("ship_weekdays").$type<number[]>().notNull().default([1, 2, 3, 4, 5, 6]),
@@ -142,6 +151,8 @@ export const products = pgTable(
     description: text("description").notNull().default(""),
     highlights: jsonb("highlights").$type<string[]>().notNull().default([]),
     cultivation: text("cultivation").notNull().default("conventional"),
+    /** 消費税率（%）。食品は 8（軽減税率）、食品以外は 10。config/tax.ts（#10） */
+    taxRate: integer("tax_rate").notNull().default(8),
     storageTips: text("storage_tips").notNull().default(""),
     harvestFrom: integer("harvest_from"),
     harvestTo: integer("harvest_to"),
@@ -171,7 +182,13 @@ export const productVariants = pgTable(
     label: text("label").notNull(),
     weightGrams: integer("weight_grams").notNull(),
     price: integer("price").notNull(),
+    /** 生産者が入れた「通常価格」。そのままお客さまには出さない（#11）。表示するのは下の displayCompareAtPrice */
     compareAtPrice: integer("compare_at_price"),
+    /**
+     * お客さまに打ち消し表示してよい「通常価格」（#11）。販売の記録（variant_price_periods）が条件を満たすときだけ入り、
+     * それ以外は null。services/price-history.ts が商品の保存・公開状態の変更と毎日の自動処理で決める
+     */
+    displayCompareAtPrice: integer("display_compare_at_price"),
     stock: integer("stock").notNull().default(0),
     sku: text("sku"),
     isDefault: boolean("is_default").notNull().default(false),
@@ -303,6 +320,23 @@ export const farmOrders = pgTable(
     /** set when money was returned to the customer for this farm order */
     refundedAt: timestamp("refunded_at", { withTimezone: true }),
     refundAmount: integer("refund_amount"),
+    /**
+     * 配達の問題（持ち戻り・返送・予定を大きく過ぎても届かない。#25）。入っている間は自動で配達完了にしない。
+     * 生産者と運営に知らせ、運営が判断する（配達完了にする・返金する）。配送業者の記録で配達完了になれば解ける
+     */
+    deliveryIssueAt: timestamp("delivery_issue_at", { withTimezone: true }),
+    deliveryIssueNote: text("delivery_issue_note"),
+    /**
+     * お客さまの「キャンセルの依頼」（#18）。出荷準備中になった後は、お客さまは自分で取り消せず依頼になる。
+     * 生産者が承認すると全額返金（refundOrder）、断ると `cancelRequestAnswer = "declined"` でそのまま発送へ。
+     * 1つの出荷単位に1回だけ。回答するまで生産者は発送済みにできない（services/cancel-requests.ts）
+     */
+    cancelRequestedAt: timestamp("cancel_requested_at", { withTimezone: true }),
+    cancelRequestReason: text("cancel_request_reason"),
+    cancelRequestAnswer: text("cancel_request_answer").$type<"approved" | "declined">(),
+    cancelRequestAnsweredAt: timestamp("cancel_request_answered_at", { withTimezone: true }),
+    /** 断ったときの生産者からのひとこと（お客さまに届く） */
+    cancelRequestReply: text("cancel_request_reply"),
     labelPrintedAt: timestamp("label_printed_at", { withTimezone: true }),
     reminderSentAt: timestamp("reminder_sent_at", { withTimezone: true }),
     reviewRequestedAt: timestamp("review_requested_at", { withTimezone: true }),
@@ -336,6 +370,8 @@ export const orderItems = pgTable(
     quantity: integer("quantity").notNull(),
     weightGrams: integer("weight_grams").notNull(),
     lineTotal: integer("line_total").notNull(),
+    /** 購入時点の消費税率（%）。領収書の税率ごとの内訳に使う（#10）。後から商品の税率を変えても過去の注文は変わらない */
+    taxRate: integer("tax_rate").notNull().default(8),
   },
   (t) => [index("order_items_farm_order_idx").on(t.farmOrderId)],
 );
@@ -351,6 +387,8 @@ export const shipmentEvents = pgTable(
     message: text("message").notNull().default(""),
     location: text("location"),
     source: text("source").notNull().default("system"),
+    /** 操作した人（生産者・スタッフ・運営。#24）。自動処理なら null */
+    actorId: text("actor_id").references(() => user.id, { onDelete: "set null" }),
     occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("shipment_events_fo_idx").on(t.farmOrderId)],
@@ -373,6 +411,8 @@ export const reviews = pgTable(
     rating: integer("rating").notNull(),
     title: text("title").notNull().default(""),
     body: text("body").notNull().default(""),
+    /** お客さまの写真（#21、最大 catalogLimits.maxReviewImages 枚）。自分でアップロードした reviews フォルダの URL だけ（validators/engagement.ts） */
+    images: jsonb("images").$type<string[]>().notNull().default([]),
     reply: text("reply"),
     repliedAt: timestamp("replied_at", { withTimezone: true }),
     isPublished: boolean("is_published").notNull().default(true),
@@ -465,6 +505,8 @@ export const coupons = pgTable("coupons", {
   value: integer("value").notNull(),
   minSubtotal: integer("min_subtotal").notNull().default(0),
   maxUses: integer("max_uses"),
+  /** お一人さま1回まで（キャンセルした注文は数えない）。#21 */
+  oncePerUser: boolean("once_per_user").notNull().default(false),
   usedCount: integer("used_count").notNull().default(0),
   startsAt: timestamp("starts_at", { withTimezone: true }),
   endsAt: timestamp("ends_at", { withTimezone: true }),
@@ -521,6 +563,102 @@ export const jobRuns = pgTable(
   (t) => [index("job_runs_job_idx").on(t.job, t.startedAt)],
 );
 
+/**
+ * Stripe を使わない農家の振込先口座（#20）。運営が銀行振込するときに見る。1農園1件。
+ * 口座番号は暗号化して保存し（services/bank-account.ts）、画面には下4桁だけ出す。farms とは別テーブルにして、
+ * 農園を読む多くのクエリに口座情報が紛れ込まないようにしている。
+ */
+export const farmBankAccounts = pgTable("farm_bank_accounts", {
+  farmId: uuid("farm_id")
+    .primaryKey()
+    .references(() => farms.id, { onDelete: "cascade" }),
+  bankName: text("bank_name").notNull(),
+  bankCode: text("bank_code").notNull(),
+  branchName: text("branch_name").notNull(),
+  branchCode: text("branch_code").notNull(),
+  /** config/payments.ts#bankAccountTypes */
+  accountType: text("account_type").notNull(),
+  /** AES-256-GCM（鍵は BETTER_AUTH_SECRET から導出）。平文では持たない */
+  accountNumberEnc: text("account_number_enc").notNull(),
+  accountNumberLast4: text("account_number_last4").notNull(),
+  /** 口座名義（全角カナ） */
+  holderKana: text("holder_kana").notNull(),
+  createdAt,
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * 規格ごとの販売の記録（#11, 二重価格表示の根拠）。「この価格で公開していた期間」を1行ずつ持つ。
+ * 公開中（商品が active・規格が削除されていない）に価格が変わるか、公開をやめたら endedAt を入れて閉じ、新しい行を開く。
+ * 消さない・書き換えない（閉じるだけ）。services/price-history.ts
+ */
+export const variantPricePeriods = pgTable(
+  "variant_price_periods",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    variantId: uuid("variant_id")
+      .notNull()
+      .references(() => productVariants.id, { onDelete: "cascade" }),
+    price: integer("price").notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+  },
+  (t) => [index("variant_price_periods_variant_idx").on(t.variantId, t.startedAt)],
+);
+
+/**
+ * 農園のスタッフ（#24）。オーナー（farms.ownerId）が招待し、招待されたアドレスのアカウントで参加すると userId が入る。
+ * 招待中は userId が null。トークンは sha256 だけを持つ（平文はメールのリンクにだけ出る）。
+ * 1人1農園まで（userId の一意制約）。1農園の人数上限は config/farm-staff.ts#farmStaffPolicy。
+ * ロールは変えない（購入者のアカウントのまま）。権限の判定は server/auth/guards.ts#farmAccessOf。
+ */
+export const farmMembers = pgTable(
+  "farm_members",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    farmId: uuid("farm_id")
+      .notNull()
+      .references(() => farms.id, { onDelete: "cascade" }),
+    /** 招待したアドレス（小文字） */
+    email: text("email").notNull(),
+    userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
+    access: farmMemberAccess("access").notNull(),
+    tokenHash: text("token_hash"),
+    invitedBy: text("invited_by").references(() => user.id, { onDelete: "set null" }),
+    invitedAt: timestamp("invited_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex("farm_members_farm_email_uq").on(t.farmId, t.email),
+    uniqueIndex("farm_members_user_uq").on(t.userId),
+    uniqueIndex("farm_members_token_uq").on(t.tokenHash),
+  ],
+);
+
+/**
+ * 運営の操作記録（#19）。誰が・いつ・何に・何をしたか。消さない・書き換えない（追記だけ）。
+ * actorEmail は操作した時点の控え（あとで退会・アドレス変更しても誰の操作か分かるように）。
+ */
+export const adminAuditLogs = pgTable(
+  "admin_audit_logs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    actorId: text("actor_id").references(() => user.id, { onDelete: "set null" }),
+    actorEmail: text("actor_email").notNull(),
+    /** config/audit.ts#auditActions のキー */
+    action: text("action").notNull(),
+    targetType: text("target_type"),
+    targetId: text("target_id"),
+    /** 画面に出す一文（例: 「阿波ファーム の手数料率を 10% → 8% に変更」） */
+    summary: text("summary").notNull(),
+    /** 変更前後の値など。金額・率は整数のまま */
+    detail: jsonb("detail").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt,
+  },
+  (t) => [index("admin_audit_logs_created_idx").on(t.createdAt), index("admin_audit_logs_target_idx").on(t.targetType, t.targetId)],
+);
+
 /* ─────────────── relations (for db.query.*) ─────────────── */
 
 export const farmsRelations = relations(farms, ({ one, many }) => ({
@@ -565,6 +703,7 @@ export const orderItemsRelations = relations(orderItems, ({ one }) => ({
 
 export const shipmentEventsRelations = relations(shipmentEvents, ({ one }) => ({
   farmOrder: one(farmOrders, { fields: [shipmentEvents.farmOrderId], references: [farmOrders.id] }),
+  actor: one(user, { fields: [shipmentEvents.actorId], references: [user.id] }),
 }));
 
 export const reviewsRelations = relations(reviews, ({ one }) => ({
@@ -595,6 +734,9 @@ export type Notification = typeof notifications.$inferSelect;
 export type Announcement = typeof announcements.$inferSelect;
 export type JobRun = typeof jobRuns.$inferSelect;
 export type Message = typeof messages.$inferSelect;
+export type FarmMember = typeof farmMembers.$inferSelect;
+export type VariantPricePeriod = typeof variantPricePeriods.$inferSelect;
+export type FarmMemberAccess = (typeof farmMemberAccess.enumValues)[number];
 
 export type FarmStatus = (typeof farmStatus.enumValues)[number];
 export type ProductStatus = (typeof productStatus.enumValues)[number];
@@ -604,4 +746,5 @@ export type FarmOrderStatus = (typeof farmOrderStatus.enumValues)[number];
 export type Carrier = (typeof carrier.enumValues)[number];
 export type ShipmentEventType = (typeof shipmentEventType.enumValues)[number];
 export type PayoutStatus = (typeof payoutStatus.enumValues)[number];
+export type AdminAuditLog = typeof adminAuditLogs.$inferSelect;
 export type NotificationType = (typeof notificationType.enumValues)[number];

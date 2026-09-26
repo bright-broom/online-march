@@ -4,6 +4,8 @@ import { Gift } from "lucide-react";
 import Link from "next/link";
 import { StatusBadge } from "@/components/common/status-badge";
 import { DataTable } from "@/components/dashboard/data-table";
+import { Badge } from "@/components/ui/badge";
+import { orderCancelCopy } from "@/config/order-cancel";
 import { routes } from "@/config/nav";
 import type { YMD } from "@/lib/dates";
 import { formatDateTime, formatNumber } from "@/lib/format";
@@ -48,7 +50,17 @@ export function OrdersTable({ rows, today, showShipBy }: { rows: FarmOrderRow[];
     ...(showShipBy
       ? [{ id: "shipBy", accessorFn: (r: FarmOrderRow) => r.shipByDate ?? "", header: "出荷期限", cell: ({ row }: { row: { original: FarmOrderRow } }) => <ShipByBadge shipByDate={row.original.shipByDate} today={today} /> } satisfies ColumnDef<FarmOrderRow, unknown>]
       : []),
-    { id: "status", accessorFn: (r) => r.status, header: "状態", cell: ({ row }) => <StatusBadge kind="farmOrder" status={row.original.status} /> },
+    {
+      id: "status",
+      accessorFn: (r) => r.status,
+      header: "状態",
+      cell: ({ row: { original: r } }) => (
+        <span className="inline-flex flex-wrap items-center gap-1">
+          <StatusBadge kind="farmOrder" status={r.status} />
+          {r.cancelRequested && <Badge variant="destructive">{orderCancelCopy.farmer.listBadge}</Badge>}
+        </span>
+      ),
+    },
   ];
   return (
     <DataTable

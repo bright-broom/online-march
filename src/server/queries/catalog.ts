@@ -146,6 +146,8 @@ export type ReviewDTO = {
   rating: number;
   title: string;
   body: string;
+  /** お客さまの写真（#21） */
+  images: string[];
   reply: string | null;
   repliedAt: string | null;
   createdAt: string;
@@ -174,7 +176,8 @@ const variantAgg = () =>
     .select({
       productId: productVariants.productId,
       minPrice: sql<number>`min(${productVariants.price})::int`.as("min_price"),
-      compareAt: sql<number | null>`(array_agg(${productVariants.compareAtPrice} order by ${productVariants.price} asc))[1]`.as(
+      // 打ち消し表示は販売の記録で確かめた値だけ（#11, services/price-history.ts）
+      compareAt: sql<number | null>`(array_agg(${productVariants.displayCompareAtPrice} order by ${productVariants.price} asc))[1]`.as(
         "compare_at",
       ),
       stock: sql<number>`coalesce(sum(${productVariants.stock}), 0)::int`.as("stock"),
@@ -412,7 +415,7 @@ export async function getProductBySlug(slug: string): Promise<ProductDetailDTO |
       label: v.label,
       weightGrams: v.weightGrams,
       price: v.price,
-      compareAt: v.compareAtPrice && v.compareAtPrice > v.price ? v.compareAtPrice : null,
+      compareAt: v.displayCompareAtPrice && v.displayCompareAtPrice > v.price ? v.displayCompareAtPrice : null, // #11
       stock: p.status === "soldout" ? 0 : v.stock,
       isDefault: v.isDefault,
     })),
@@ -556,6 +559,7 @@ const reviewColumns = {
   rating: reviews.rating,
   title: reviews.title,
   body: reviews.body,
+  images: reviews.images,
   reply: reviews.reply,
   repliedAt: reviews.repliedAt,
   createdAt: reviews.createdAt,
@@ -571,6 +575,7 @@ type ReviewRow = {
   rating: number;
   title: string;
   body: string;
+  images: string[];
   reply: string | null;
   repliedAt: Date | null;
   createdAt: Date;
@@ -586,6 +591,7 @@ const toReview = (r: ReviewRow): ReviewDTO => ({
   rating: r.rating,
   title: r.title,
   body: r.body,
+  images: r.images,
   reply: r.reply,
   repliedAt: iso(r.repliedAt),
   createdAt: iso(r.createdAt)!,
@@ -631,10 +637,26 @@ export async function getProductReviews(
     summarize(eq(reviews.productId, productId)),
     reviewsBase()
       .where(and(eq(reviews.productId, productId), eq(reviews.isPublished, true)))
-      .orderBy(desc(reviews.createdAt))
+      .orderBy(desc(reviews.createdAt), desc(reviews.id))
       .limit(limit),
   ]);
   return { summary, items: rows.map(toReview) };
+}
+
+/**
+ * 商品レビューの続き（#21）。商品ページはキャッシュされた静的な枠なので、最初の20件のあとは「もっと見る」でここから読む。
+ * 公開中のものだけ、新しい順。offset は件数（ページ番号ではない）。
+ */
+export async function getMoreProductReviews(productId: string, offset: number, limit = 20): Promise<{ items: ReviewDTO[]; hasMore: boolean }> {
+  "use cache";
+  cacheLife("catalog");
+  cacheTag(tags.reviews, tags.productReviews(productId));
+  const rows = await reviewsBase()
+    .where(and(eq(reviews.productId, productId), eq(reviews.isPublished, true)))
+    .orderBy(desc(reviews.createdAt), desc(reviews.id))
+    .limit(limit + 1)
+    .offset(offset);
+  return { items: rows.slice(0, limit).map(toReview), hasMore: rows.length > limit };
 }
 
 export async function getFarmReviews(
@@ -700,9 +722,27 @@ export async function getShopAnnouncements(limit = 3): Promise<AnnouncementDTO[]
 /** The signed-in user's farm application, if any. User-specific → call inside <Suspense>. */
 export async function getFarmApplication(userId: string) {
   const [row] = await db
-    .select({ id: farms.id, name: farms.name, slug: farms.slug, status: farms.status, createdAt: farms.createdAt })
+    .select({
+      id: farms.id,
+      name: farms.name,
+      slug: farms.slug,
+      status: farms.status,
+      approvedAt: farms.approvedAt,
+      createdAt: farms.createdAt,
+      // a rejected application is re-submitted from these (#15)
+      representative: farms.representative,
+      tagline: farms.tagline,
+      story: farms.story,
+      cultivationMethods: farms.cultivationMethods,
+      postalCode: farms.postalCode,
+      prefecture: farms.prefecture,
+      city: farms.city,
+      addressLine: farms.addressLine,
+      phone: farms.phone,
+    })
     .from(farms)
     .where(eq(farms.ownerId, userId))
     .limit(1);
-  return row ? { ...row, createdAt: row.createdAt.toISOString() } : null;
+  return row ? { ...row, approvedAt: row.approvedAt?.toISOString() ?? null, createdAt: row.createdAt.toISOString() } : null;
 }
+export type FarmApplication = NonNullable<Awaited<ReturnType<typeof getFarmApplication>>>;

@@ -136,6 +136,8 @@ export type DeliveryTimeSlot = keyof typeof deliveryTimeSlots;
 
 /** Timings used by checkout & the automation cron (src/server/jobs). */
 export const shippingPolicy = {
+  /** 受付の一時停止（お休み）で選べる最長日数。年の打ち間違いでショップが黙って消えたままにならないように（#21） */
+  maxPauseDays: 180,
   /** 送料無料ライン（農家ごとの設定が無い場合の既定値。null=なし） */
   defaultFreeShippingThreshold: null as number | null,
   /** 指定可能な最短お届け日 = 出荷可能日 + transitDays */
@@ -146,13 +148,34 @@ export const shippingPolicy = {
   asyncPaymentTtlDays: 7,
   /** 出荷期限の前日にリマインド */
   shipByReminderHoursBefore: 24,
-  /** 追跡API非対応時: 出荷後 N 日で自動「配達完了」 */
+  /** お届け予定日が無い荷物（古い注文）だけ: 出荷後 N 日で自動「配達完了」 */
   autoDeliveredAfterDays: 3,
+  /**
+   * 配送業者の API で追えない荷物は、お届け予定日の N 日後に自動「配達完了」（#25。オーナーの決定は「翌日」）。
+   * お届け予定日は発送した日から引き直す（services/orders.ts#transitionFarmOrder）ので、遅れて発送しても早く完了にならない
+   */
+  autoDeliveredAfterEtaDays: 1,
+  /**
+   * 業者の API はあるのに配達完了にならないとき（API の障害・輸送中のまま）の猶予。お届け予定日からこの日数を過ぎたら:
+   * API の障害 → 予定日ルールで完了（精算を止めない）／輸送中のまま → 配達の問題として知らせ、自動完了を止める
+   */
+  trackingGraceDays: 7,
   /** 配達完了 N 日後にレビュー依頼メール */
   reviewRequestAfterDays: 3,
   /** 発送元（送り状の依頼主欄既定値は各農家の住所） */
   originPrefecture: "兵庫県" as Prefecture,
   itemName: "玉ねぎ（野菜）",
+  /** 配達完了の判定（#25）で履歴・お知らせに出す文言 */
+  delivery: {
+    byCarrier: "配達完了（配送業者の記録）",
+    byEta: "お届け予定日を過ぎたため配達完了としました",
+    byEtaAfterTrackingError: "配送状況を確認できないまま、お届け予定日から日数が経ったため配達完了としました",
+    byCustomer: "お客さまが受け取りを確認しました",
+    issueFromCarrier: "配送業者から、お届けできなかったとの記録がありました",
+    issueOverdue: "お届け予定日を過ぎても配達完了になっていません",
+    issueNotice: "配達に問題がある荷物があります",
+    confirmNotShipped: "発送済みの荷物だけ、受け取りを確認できます",
+  },
   handling: ["ナマモノ", "天地無用"] as const,
 } as const;
 
