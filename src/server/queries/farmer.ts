@@ -2,11 +2,12 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { and, asc, count, desc, eq, gte, inArray, isNull, lt, lte, ne, sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
-import { catalogLimits } from "@/config/catalog";
+import { catalogLimits, comparePricePolicy } from "@/config/catalog";
 import { farmStaffCopy } from "@/config/farm-staff";
 import { shippingZones, type ShippingZoneKey } from "@/config/shipping";
 import { db } from "@/db";
 import { getMaskedBankAccount } from "@/server/services/bank-account";
+import { compareAtVerdicts } from "@/server/services/price-history";
 import {
   announcements,
   farmMembers,
@@ -743,3 +744,9 @@ export async function getPayoutStatement(farmId: string, payoutId: string) {
   return { payout, orders, clawbacks };
 }
 export type PayoutStatement = NonNullable<Awaited<ReturnType<typeof getPayoutStatement>>>;
+
+/** 規格ごとの「通常価格」の表示の判定と理由（#11）。生産者の商品編集画面に出す */
+export async function getCompareAtNotes(variantIds: string[], now: Date) {
+  const verdicts = await compareAtVerdicts(db, variantIds, now);
+  return Object.fromEntries([...verdicts].map(([id, v]) => [id, { shown: v.ok, message: comparePricePolicy.reasons[v.reason] }]));
+}

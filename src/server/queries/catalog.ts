@@ -176,7 +176,8 @@ const variantAgg = () =>
     .select({
       productId: productVariants.productId,
       minPrice: sql<number>`min(${productVariants.price})::int`.as("min_price"),
-      compareAt: sql<number | null>`(array_agg(${productVariants.compareAtPrice} order by ${productVariants.price} asc))[1]`.as(
+      // 打ち消し表示は販売の記録で確かめた値だけ（#11, services/price-history.ts）
+      compareAt: sql<number | null>`(array_agg(${productVariants.displayCompareAtPrice} order by ${productVariants.price} asc))[1]`.as(
         "compare_at",
       ),
       stock: sql<number>`coalesce(sum(${productVariants.stock}), 0)::int`.as("stock"),
@@ -414,7 +415,7 @@ export async function getProductBySlug(slug: string): Promise<ProductDetailDTO |
       label: v.label,
       weightGrams: v.weightGrams,
       price: v.price,
-      compareAt: v.compareAtPrice && v.compareAtPrice > v.price ? v.compareAtPrice : null,
+      compareAt: v.displayCompareAtPrice && v.displayCompareAtPrice > v.price ? v.displayCompareAtPrice : null, // #11
       stock: p.status === "soldout" ? 0 : v.stock,
       isDefault: v.isDefault,
     })),

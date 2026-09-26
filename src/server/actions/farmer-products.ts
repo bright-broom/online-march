@@ -9,6 +9,7 @@ import { productFormSchema, productStatusChangeSchema } from "@/lib/validators/f
 import { assertFarm } from "@/server/auth/guards";
 import { REMOVED_VARIANT_SORT } from "@/server/queries/farmer";
 import { claimFirstPublish, notifyFollowersOfNewProduct } from "@/server/services/product-launch";
+import { syncPriceHistory } from "@/server/services/price-history";
 import { ActionError, formToObject, parseInput, runAction, type ActionResult } from "./_utils";
 
 function bustProductCaches(farmId: string, productId: string) {
@@ -122,6 +123,8 @@ export async function saveProduct(_prev: unknown, formData: FormData): Promise<A
         }
       }
       const firstPublished = await claimFirstPublish(tx, productId, now);
+      // 販売の記録と「通常価格」の表示（#11）。価格・公開状態・規格の削除が変わりうるので毎回
+      await syncPriceHistory(tx, productId, now);
       return { id: productId, created, firstPublished };
     });
 
@@ -146,7 +149,9 @@ export async function setProductStatus(input: { id: string; status: "draft" | "a
       if (!product.variants.length) throw new ActionError("公開するには規格を1つ以上登録してください");
     }
     await db.update(products).set({ status: data.status }).where(and(eq(products.id, product.id), eq(products.farmId, farm.id)));
-    const firstPublished = await claimFirstPublish(db, product.id, new Date());
+    const now = new Date();
+    const firstPublished = await claimFirstPublish(db, product.id, now);
+    await syncPriceHistory(db, product.id, now); // 公開をやめたら販売の記録を閉じる（#11）
     bustProductCaches(farm.id, product.id);
     if (firstPublished) await notifyFollowersOfNewProduct(product.id);
   }, input.status === "active" ? "商品を公開しました" : input.status === "archived" ? "商品をアーカイブしました" : "商品を非公開にしました");

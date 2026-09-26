@@ -65,6 +65,7 @@ export const jobSummaryLabels: Record<string, string> = {
   checked: "確認",
   delivered: "配達完了",
   issues: "配達の問題",
+  updated: "更新",
   trackingErrors: "追跡の失敗",
   sent: "送信",
   created: "精算作成",

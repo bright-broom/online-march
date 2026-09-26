@@ -182,7 +182,13 @@ export const productVariants = pgTable(
     label: text("label").notNull(),
     weightGrams: integer("weight_grams").notNull(),
     price: integer("price").notNull(),
+    /** 生産者が入れた「通常価格」。そのままお客さまには出さない（#11）。表示するのは下の displayCompareAtPrice */
     compareAtPrice: integer("compare_at_price"),
+    /**
+     * お客さまに打ち消し表示してよい「通常価格」（#11）。販売の記録（variant_price_periods）が条件を満たすときだけ入り、
+     * それ以外は null。services/price-history.ts が商品の保存・公開状態の変更と毎日の自動処理で決める
+     */
+    displayCompareAtPrice: integer("display_compare_at_price"),
     stock: integer("stock").notNull().default(0),
     sku: text("sku"),
     isDefault: boolean("is_default").notNull().default(false),
@@ -571,6 +577,25 @@ export const farmBankAccounts = pgTable("farm_bank_accounts", {
 });
 
 /**
+ * 規格ごとの販売の記録（#11, 二重価格表示の根拠）。「この価格で公開していた期間」を1行ずつ持つ。
+ * 公開中（商品が active・規格が削除されていない）に価格が変わるか、公開をやめたら endedAt を入れて閉じ、新しい行を開く。
+ * 消さない・書き換えない（閉じるだけ）。services/price-history.ts
+ */
+export const variantPricePeriods = pgTable(
+  "variant_price_periods",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    variantId: uuid("variant_id")
+      .notNull()
+      .references(() => productVariants.id, { onDelete: "cascade" }),
+    price: integer("price").notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+  },
+  (t) => [index("variant_price_periods_variant_idx").on(t.variantId, t.startedAt)],
+);
+
+/**
  * 農園のスタッフ（#24）。オーナー（farms.ownerId）が招待し、招待されたアドレスのアカウントで参加すると userId が入る。
  * 招待中は userId が null。トークンは sha256 だけを持つ（平文はメールのリンクにだけ出る）。
  * 1人1農園まで（userId の一意制約）。1農園の人数上限は config/farm-staff.ts#farmStaffPolicy。
@@ -699,6 +724,7 @@ export type Announcement = typeof announcements.$inferSelect;
 export type JobRun = typeof jobRuns.$inferSelect;
 export type Message = typeof messages.$inferSelect;
 export type FarmMember = typeof farmMembers.$inferSelect;
+export type VariantPricePeriod = typeof variantPricePeriods.$inferSelect;
 export type FarmMemberAccess = (typeof farmMemberAccess.enumValues)[number];
 
 export type FarmStatus = (typeof farmStatus.enumValues)[number];

@@ -90,3 +90,27 @@ export const catalogLimits = {
   acceptedImageTypes: ["image/jpeg", "image/png", "image/webp", "image/avif"],
   lowStockThreshold: 5,
 } as const;
+
+/**
+ * 「通常価格」の打ち消し表示（二重価格, #11）。オーナーの決定（Issue #11 のコメント, 2026-09-26）:
+ * 販売の記録（variant_price_periods）があるときだけ出す。値下げを始めた時点からさかのぼる lookbackDays のうち
+ * 過半（minReferenceShare を超えて）その通常価格で販売していて、かつ最後にその価格で販売していた日から maxGapDays 以内に
+ * 値下げしたこと。値下げが maxSaleDays を超えて続いたら出さない。記録は 2026-09 の変更から始めた（それより前の分は無い）。
+ * 価格表示ガイドラインの考え方に合わせた想定。最終的には専門家に確認する。
+ */
+export const comparePricePolicy = {
+  lookbackDays: 56,
+  minReferenceShare: 0.5,
+  maxGapDays: 14,
+  maxSaleDays: 56,
+  /** 生産者の商品フォームの説明 */
+  hint: "通常価格は、その価格で販売した記録（値下げ前の8週間のうち4週間を超えて）があるときだけ、お客さまに打ち消し線で表示します",
+  reasons: {
+    shown: "通常価格を打ち消し線で表示しています",
+    notListed: "公開していないため、通常価格は表示していません",
+    noRecord: "この通常価格で販売した記録がないため、表示していません",
+    tooShort: "値下げ前の8週間に、この通常価格で販売していた期間が半分に満たないため、表示していません",
+    gapTooLong: "この通常価格で最後に販売してから2週間より後に値下げしたため、表示していません",
+    saleTooLong: "値下げが8週間を超えて続いているため、表示していません",
+  },
+} as const;

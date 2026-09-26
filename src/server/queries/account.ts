@@ -317,8 +317,9 @@ export async function listFavoriteProducts(userId: string) {
       ...r,
       imageUrl: img?.url ?? null,
       imageAlt: img?.alt || r.name,
+      // 通常価格は販売の記録で確かめた値だけ（#11）
       variant: v
-        ? { id: v.id, label: v.label, price: v.price, compareAtPrice: v.compareAtPrice, stock: v.stock, weightGrams: v.weightGrams }
+        ? { id: v.id, label: v.label, price: v.price, compareAtPrice: v.displayCompareAtPrice, stock: v.stock, weightGrams: v.weightGrams }
         : null,
       purchasable: r.status === "active" && !!v && v.stock > 0,
     };

@@ -1,11 +1,11 @@
 "use client";
 import { ArrowDown, ArrowUp, Box, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "@/components/ui/input-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { catalogLimits } from "@/config/catalog";
+import { catalogLimits, comparePricePolicy } from "@/config/catalog";
 import { formatWeight } from "@/lib/format";
 import { packBoxes } from "@/lib/shipping";
 import { cn } from "@/lib/utils";
@@ -22,9 +22,20 @@ export type VariantRow = {
   /** 編集画面を開いた時点の在庫（既存の規格のみ）。保存では差分だけを反映する（開いている間に売れた分を消さない） */
   stockBase?: number;
   sku: string;
+  /** 保存済みの通常価格を、お客さまに打ち消し表示しているか（#11）。編集中の値ではなく、保存した時点の判定 */
+  compareAtNote?: { shown: boolean; message: string } | null;
 };
 
-export type VariantInitial = { id?: string; label: string; weightGrams: number; price: number; compareAtPrice: number | null; stock: number; sku: string };
+export type VariantInitial = {
+  id?: string;
+  label: string;
+  weightGrams: number;
+  price: number;
+  compareAtPrice: number | null;
+  stock: number;
+  sku: string;
+  compareAtNote?: { shown: boolean; message: string } | null;
+};
 
 /** Row keys: deterministic for SSR'd initial rows (ids feed input `id`s), counter for rows added on the client. */
 let seq = 0;
@@ -44,6 +55,7 @@ export function toVariantRows(list: VariantInitial[]): VariantRow[] {
       stock: String(v.stock),
       stockBase: v.id ? v.stock : undefined,
       sku: v.sku,
+      compareAtNote: v.compareAtNote ?? null,
     };
   });
 }
@@ -152,6 +164,11 @@ export function VariantsEditor({
                   <InputGroupAddon align="inline-end"><InputGroupText>円</InputGroupText></InputGroupAddon>
                 </InputGroup>
                 <FieldError>{err("compareAtPrice")}</FieldError>
+                {r.compareAtNote ? (
+                  <FieldDescription className={r.compareAtNote.shown ? "text-xs" : "text-xs text-amber-800 dark:text-amber-300"}>{r.compareAtNote.message}</FieldDescription>
+                ) : (
+                  <FieldDescription className="text-xs">{comparePricePolicy.hint}</FieldDescription>
+                )}
               </Field>
               <Field data-invalid={!!err("stock") || undefined}>
                 <FieldLabel htmlFor={`${r.key}-stock`}>在庫</FieldLabel>

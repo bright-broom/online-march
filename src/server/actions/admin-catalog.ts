@@ -8,6 +8,7 @@ import { tags } from "@/lib/cache-tags";
 import { assertRole } from "@/server/auth/guards";
 import { expireTags } from "@/server/cache";
 import { recordAudit } from "@/server/services/audit";
+import { syncPriceHistory } from "@/server/services/price-history";
 import { ActionError, parseInput, runAction, type ActionResult } from "./_utils";
 
 function expireProduct(p: { id: string; farmId: string }) {
@@ -55,6 +56,7 @@ export async function setProductArchived(input: z.input<typeof archiveInput>): P
       .update(products)
       .set({ status, isFeatured: data.archived ? false : product.isFeatured, publishedAt: product.publishedAt ?? (data.archived ? null : new Date()) })
       .where(eq(products.id, product.id));
+    await syncPriceHistory(db, product.id, new Date()); // 非公開の間は販売の記録を閉じる（#11）
     await recordAudit(me, {
       action: "product.archived", target: { type: "product", id: product.id },
       summary: `${product.name} を${data.archived ? "アーカイブ（ストアから非表示）" : "復元"}`, detail: { from: product.status, to: status },

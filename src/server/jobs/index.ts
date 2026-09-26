@@ -1,5 +1,6 @@
 import "server-only";
 import { and, desc, eq, inArray, isNotNull, isNull, lt, lte, or } from "drizzle-orm";
+import { comparePricePolicy } from "@/config/catalog";
 import { feeConfig } from "@/config/fees";
 import { opsConfig } from "@/config/ops";
 import { routes } from "@/config/nav";
@@ -16,6 +17,7 @@ import { notify } from "@/server/services/notify";
 import { expireUnpaidOrder, markOrderPaid } from "@/server/services/orders";
 import { alertAdmins } from "@/server/services/ops-alerts";
 import { executeDuePayouts } from "@/server/services/payouts";
+import { refreshAllDisplayCompareAt } from "@/server/services/price-history";
 import { syncDeliveries } from "@/server/services/shipping/delivery";
 
 /**
@@ -149,6 +151,18 @@ export const jobs = {
       }
       if (due.length) await db.update(farmOrders).set({ reviewRequestedAt: now }).where(inArray(farmOrders.id, due.map((d) => d.id)));
       return { sent: due.length };
+    },
+  },
+
+  "compare-prices": {
+    label: "通常価格の表示の見直し",
+    description: `「通常価格」の打ち消し表示を販売の記録から見直します（値下げが${comparePricePolicy.maxSaleDays / 7}週間を超えたら表示をやめる。#11）`,
+    schedule: "毎日 早朝",
+    maxAgeHours: 30,
+    async run(now) {
+      const changed = await refreshAllDisplayCompareAt(now);
+      if (changed.length) expireTags(tags.products, ...changed.map((id) => tags.product(id)));
+      return { updated: changed.length };
     },
   },
 

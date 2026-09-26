@@ -59,7 +59,8 @@ farm_bank_accounts (farm 1─1)  ← 振込先口座。口座番号は暗号化�
 | --- | --- |
 | `farms` | 出品者ショップ。`status` pending/active/suspended（**却下＝`approvedAt` が空のまま suspended**。`lib/farms.ts#isRejectedApplication`。却下された申請だけ /join から同じ行を書き換えて出し直せる, #15）。`commissionRateBps` null=既定。出荷設定: `defaultCarrier` `leadTimeDays` `shipWeekdays` `freeShippingThreshold`。評価は `ratingSum/Count` 非正規化 |
 | `products` | `category` enum, `variety`, `cultivation`(config key), `harvestFrom/To`(月), `status`, `soldCount`/`rating*` 非正規化 |
-| `product_variants` | 規格（5kg 等）。`price` `compareAtPrice` `stock` `weightGrams`（送料計算に使用） |
+| `product_variants` | 規格（5kg 等）。`price` `compareAtPrice` `stock` `weightGrams`（送料計算に使用）。`compareAtPrice` は生産者が入れた「通常価格」で、**お客さまには出さない**。出すのは販売の記録で確かめた `displayCompareAtPrice`（#11, 下の「通常価格の打ち消し表示」） |
+| `variant_price_periods` | 規格ごとの「その価格で公開していた期間」（#11）。商品が `active` かつ規格が削除されていない間、今の価格で1行が開いている（`endedAt` null）。価格を変える・非公開／アーカイブ／売り切れにすると閉じる。`services/price-history.ts#syncPriceHistory` だけが書く |
 | `orders` | 顧客の1決済。`shippingAddress` はスナップショット JSON。`paymentProvider` stripe/demo |
 | `farm_orders` | 農家別の出荷単位。金額内訳（subtotal, shippingFee, discount, commission*, payoutAmount）と出荷情報（carrier, boxSize/Count, tracking, shipByDate, ETA）をインライン保持 |
 | `order_items` | 購入時点の名称・価格スナップショット |
@@ -96,6 +97,22 @@ pending_payment ─paid→ paid ─→ preparing ─→ shipped ─→ delivered
 
 注文から参照されている規格は物理削除せず `stock=0` かつ `sortOrder >= REMOVED_VARIANT_SORT`（config/catalog.ts, 10000）にする。
 ストア・カート見積り・生産者画面はすべてこの値未満のみ表示/受付。
+
+## 通常価格の打ち消し表示（#11）
+
+二重価格表示（景品表示法）の運用ルール。オーナーの決定（Issue #11 のコメント, 2026-09-26）: **販売の記録がある価格だけ表示／
+値下げ前の直近8週間の過半をその価格で販売し、最後に販売してから2週間以内に値下げした場合／記録がたまるまで隠す**。
+
+- 値下げの始まり S＝通常価格で最後に公開していた期間が終わったあと、最初に公開した時点。非公開をはさんでも、値下げ中に価格を変えても S は動かない
+  （公開し直して8週間の上限を逃れられない）
+- 表示する条件: [S − 8週間, S] のうち通常価格で公開していた時間が4週間を超える／通常価格の最後の販売から S まで2週間以内／今が S から8週間以内。
+  数値は `config/catalog.ts#comparePricePolicy`、判定は純関数 `lib/compare-price.ts#compareAtVerdict`
+- 記録（`variant_price_periods`）は商品の保存・公開状態の変更（生産者・運営のアーカイブ）で付ける。**商品が `active` の間だけ**数える
+  （農家の停止・お休みは見ていない。停止中はストアに出ないので表示の問題は起きない）
+- 判定の結果を `product_variants.displayCompareAtPrice` に持ち、ストア（商品ページ・一覧のカード・お気に入り）はこの列だけを読む。
+  8週間の上限は時間で切れるので、毎日の自動処理 `compare-prices` が見直す（ついでに、記録の無い公開中の商品の記録を始める＝この機能を入れる前からの商品）
+- 生産者の商品編集画面の規格ごとに「表示中／表示していない理由」を出す（`queries/farmer.ts#getCompareAtNotes`）
+- この機能を入れた時点では記録が無いので、既存の通常価格はいったん**すべて表示されなくなる**（決定どおり）。4週間以上通常価格で売ってから値下げすると出る
 
 ## 非正規化カウンタ
 
