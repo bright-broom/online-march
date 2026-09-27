@@ -17,7 +17,7 @@ import { ReviewsBlock, ReviewsSkeleton } from "@/components/shop/reviews";
 import { absUrl } from "@/components/shop/seo";
 import { categories, cultivationMethods, type CultivationKey } from "@/config/catalog";
 import { routes, shopNav } from "@/config/nav";
-import { siteConfig } from "@/config/site";
+import { productStructuredData } from "@/lib/structured-data";
 import {
   getProductBySlug,
   getProductReviews,
@@ -60,46 +60,7 @@ export async function generateMetadata({ params }: PageProps<"/products/[slug]">
 const productsNavTitle = shopNav.find((n) => n.href === routes.products)?.title ?? "商品一覧";
 
 function ProductJsonLd({ p }: { p: ProductDetailDTO }) {
-  const prices = p.variants.map((v) => v.price);
-  const inStock = p.status === "active" && p.variants.some((v) => v.stock > 0);
-  return (
-    <JsonLd
-      data={{
-        "@context": "https://schema.org",
-        "@type": "Product",
-        name: p.name,
-        description: p.summary || p.description,
-        image: p.images.map((i) => i.url),
-        category: categories[p.category]?.label,
-        brand: { "@type": "Brand", name: p.farm.name },
-        url: absUrl(routes.product(p.slug)),
-        ...(prices.length
-          ? {
-              offers: {
-                "@type": "AggregateOffer",
-                priceCurrency: "JPY",
-                lowPrice: Math.min(...prices),
-                highPrice: Math.max(...prices),
-                offerCount: p.variants.length,
-                availability: inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
-                seller: { "@type": "Organization", name: siteConfig.name },
-              },
-            }
-          : {}),
-        ...(p.ratingCount > 0
-          ? {
-              aggregateRating: {
-                "@type": "AggregateRating",
-                ratingValue: Number((p.ratingSum / p.ratingCount).toFixed(1)),
-                reviewCount: p.ratingCount,
-                bestRating: 5,
-                worstRating: 1,
-              },
-            }
-          : {}),
-      }}
-    />
-  );
+  return <JsonLd data={productStructuredData(p, absUrl)} />;
 }
 
 /** 最初に出すレビューの数。続きは「もっと見る」（#21） */

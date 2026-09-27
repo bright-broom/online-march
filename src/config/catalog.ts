@@ -114,3 +114,16 @@ export const comparePricePolicy = {
     saleTooLong: "値下げが8週間を超えて続いているため、表示していません",
   },
 } as const;
+
+/**
+ * 検索エンジン向けの商品一覧（2026-09-27）。カテゴリだけで絞った一覧は「新玉ねぎ 通販」などの検索の入口になるので、
+ * それぞれを正規のページ（canonical）として検索に出す。ほかの絞り込み・並び替えはカテゴリ（無ければ全商品）に寄せ、
+ * サイト内検索（?q=）の結果は検索に出さない（リンクはたどってよい）。判定は lib/catalog-seo.ts
+ */
+export const catalogSeoCopy = {
+  allTitle: "商品一覧",
+  allDescription: "南あわじの農家さんから直送される淡路島たまねぎ・新玉ねぎ・紫玉ねぎ・加工品の一覧。品種・栽培方法・価格帯で絞り込めます。",
+  categoryTitle: (label: string) => `淡路島の${label}を産地直送でお取り寄せ`,
+  categoryDescription: (label: string, description: string) => `${description}南あわじの農家さんから直送する${label}の一覧です。`,
+  pageSuffix: (page: number) => `（${page}ページ目）`,
+} as const;

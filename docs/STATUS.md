@@ -328,6 +328,7 @@ PR #23 の確認で作るものの消し方（どれも運営画面で消せな�
 | 一部返金後の領収書（#4） | `lib/receipt.ts#receiptAmounts` | `services/__tests__/receipt.test.ts` |
 | フォロー中の農家の新商品のお知らせ（#5） | `services/product-launch.ts` | `actions/__tests__/product-launch.test.ts` |
 | お客さまのキャンセル: 準備前は生産者ごとに取り消し、準備中は依頼→生産者が承認／お断り（#18） | `lib/order-cancel.ts`, `services/cancel-requests.ts`, `refunds.ts#refundOrder`（`onlyStatus`）, `orders.ts#transitionFarmOrder`, `config/order-cancel.ts` | `services/__tests__/cancel-request.test.ts`, `authorization.test.ts` |
+| 検索エンジン向け: カテゴリ別の一覧を正規のページに・サイト内検索を noindex・商品の構造化データを規格ごとの Offer と返品ポリシーに・Organization | `lib/catalog-seo.ts`, `lib/structured-data.ts`, `app/sitemap.ts`, `app/(shop)/products/page.tsx` | `lib/__tests__/seo.test.ts` |
 | 生産者画面のスマホ表示: 受注・商品の一覧をカードに、注文詳細は「次にやること」を先頭に | `components/dashboard/data-table.tsx`（`mobileCard`・`mobileHref`）, `farmer/orders/orders-table.tsx`, `farmer/products/product-table.tsx`, `app/farmer/orders/[id]/page.tsx` | `components/dashboard/__tests__/data-table.test.tsx` |
 | 通常価格の打ち消し表示を販売の記録で確かめる（#11） | `lib/compare-price.ts`, `services/price-history.ts`, `variant_price_periods`, job `compare-prices`, `queries/farmer.ts#getCompareAtNotes` | `lib/__tests__/compare-price.test.ts`, `services/__tests__/price-history.test.ts` |
 | 自動送金の農家に手動の「振込済み」を出さない・送金前に Stripe の既存送金を確認（二重払い防止, #13） | `services/payouts.ts#markPayoutPaidManually/executeDuePayouts`, `payments/stripe.ts#findPayoutTransfer`, `admin/payouts/payouts-table.tsx` | `services/__tests__/manual-payout.test.ts`, `payout-transfer-lookup.test.ts` |

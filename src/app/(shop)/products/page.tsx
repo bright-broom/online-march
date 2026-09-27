@@ -5,15 +5,23 @@ import { CatalogPendingProvider } from "@/components/shop/catalog/catalog-pendin
 import { CatalogResults, CatalogResultsSkeleton } from "@/components/shop/catalog/catalog-results";
 import { PageIntro } from "@/components/shop/page-intro";
 import { routes, shopNav } from "@/config/nav";
+import { catalogSeo } from "@/lib/catalog-seo";
 import { getCatalogFacets } from "@/server/queries/catalog";
+import { loadCatalogParams } from "@/components/shop/catalog/catalog-params";
 
 const navTitle = shopNav.find((n) => n.href === routes.products)?.title ?? "商品一覧";
 
-export const metadata: Metadata = {
-  title: "商品一覧",
-  description: "南あわじの農家さんから直送される淡路島たまねぎ・新玉ねぎ・紫玉ねぎ・加工品の一覧。品種・栽培方法・価格帯で絞り込めます。",
-  alternates: { canonical: routes.products },
-};
+/** カテゴリだけの一覧は検索の入口として正規のページに、ほかの絞り込みはそこへ寄せ、サイト内検索は検索に出さない（lib/catalog-seo.ts） */
+export async function generateMetadata({ searchParams }: PageProps<"/products">): Promise<Metadata> {
+  const seo = catalogSeo(await loadCatalogParams(searchParams));
+  return {
+    title: seo.title,
+    description: seo.description,
+    alternates: { canonical: seo.canonical },
+    openGraph: { title: seo.title, description: seo.description, url: seo.canonical },
+    ...(seo.index ? {} : { robots: { index: false, follow: true } }),
+  };
+}
 
 export default async function ProductsPage({ searchParams }: PageProps<"/products">) {
   const facets = await getCatalogFacets();

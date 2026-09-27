@@ -17,6 +17,7 @@ import { JsonLd } from "@/components/shop/json-ld";
 import { ProductGridSkeleton } from "@/components/shop/product-card";
 import { absUrl } from "@/components/shop/seo";
 import { siteConfig } from "@/config/site";
+import { organizationStructuredData } from "@/lib/structured-data";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/" },
@@ -40,6 +41,7 @@ export default function HomePage() {
           },
         }}
       />
+      <JsonLd data={organizationStructuredData(absUrl)} />
       <HomeHero />
       <HomeValues />
       <HomeCategoryTiles />
