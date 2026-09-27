@@ -97,6 +97,18 @@ async function Shell({ children }: { children: React.ReactNode }) {
 
 パスは必ず `routes`（config/nav.ts）から生成する。
 
+## 5.1 検索エンジン向け（SEO）
+
+| 何を | どこで | 決まり |
+| --- | --- | --- |
+| 公開前の検索よけ | `app/robots.ts` | デモモードか本番キーが無い間は全ページ `disallow`（公開準備が終わると自動で解除） |
+| 非公開ページ | 各 layout / page の `robots: { index: false }` | マイページ・生産者・運営・カート・購入手続き・ログイン系・招待 |
+| 商品一覧の canonical | `lib/catalog-seo.ts`（`/products` の `generateMetadata`） | カテゴリだけの一覧は**それぞれが正規のページ**（「新玉ねぎ 通販」などの入口。見出しと説明もカテゴリ別。文言は `config/catalog.ts#catalogSeoCopy`）。ページ送りは自分自身が正規。ほかの絞り込み・並び替えはカテゴリ（無ければ全商品）の1ページ目へ寄せる。サイト内検索（`?q=`）は `noindex, follow` |
+| サイトマップ | `app/sitemap.ts` | 固定ページ・カテゴリ別の一覧・公開中の商品と農家 |
+| 構造化データ | `lib/structured-data.ts`、`components/shop/json-ld.tsx` | トップ: WebSite（サイト内検索）＋ Organization。商品: Product（規格ごとの Offer・在庫・返品ポリシー＝お客さま都合の返品は受けない・評価）。パンくず: BreadcrumbList（`ShopBreadcrumbs`）。URL と画像は絶対 URL |
+
+回帰テスト `lib/__tests__/seo.test.ts`。送料の構造化データ（`shippingDetails`）はまだ無い（送料が重さ・箱・地域で変わるため。入れるなら `services/shipping` の計算から出す）。
+
 ## 6. 主要フロー
 
 **購入**: カート(localStorage) → `/checkout`（サーバーで `quoteCart` 再計算: 価格・在庫・送料・日程・クーポン）

@@ -1,5 +1,7 @@
 import type { MetadataRoute } from "next";
+import { categoryKeys } from "@/config/catalog";
 import { routes } from "@/config/nav";
+import { catalogDefaults, catalogSeo } from "@/lib/catalog-seo";
 import { siteUrl } from "@/lib/env";
 import { getPublicFarmSlugs, getPublicProductSlugs } from "@/server/queries/catalog";
 
@@ -16,6 +18,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: abs(routes.guide), changeFrequency: "monthly", priority: 0.5 },
     { url: abs(routes.faq), changeFrequency: "monthly", priority: 0.5 },
     { url: abs(routes.join), changeFrequency: "monthly", priority: 0.5 },
+    // カテゴリだけで絞った一覧は検索の入口（lib/catalog-seo.ts でそれぞれを正規のページにしている）
+    ...categoryKeys.map((category) => ({ url: abs(catalogSeo({ ...catalogDefaults, category }).canonical), changeFrequency: "daily" as const, priority: 0.85 })),
     ...Object.values(routes.legal).map((href) => ({ url: abs(href), changeFrequency: "yearly" as const, priority: 0.2 })),
   ];
 
