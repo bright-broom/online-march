@@ -1,8 +1,27 @@
-# STATUS — 現況と引き継ぎ（2026-09-26 時点）
+# STATUS — 現況と引き継ぎ（2026-09-27 時点）
 
 **このファイルは「いま何がどこまで出来ていて、次に何をすべきか」だけを書く。**
 仕組みの説明は各 doc（Doc map は `AGENTS.md`）にあり、ここでは重複させない。
 **作業したら、この doc の「未完」と「検証済み」を更新すること。**
+
+## 0. いまの状態（最初にここだけ読む）
+
+- **機能は公開できるところまで出来ている。** コードで直せる P0・P1 と、`owner-decision` だった #10・#11・#18・#24・#25 はオーナーの決定どおり実装し、
+  main にマージ済み（PR #23・#26・#27・#28、2026-09-26〜27）。決定と理由は **`docs/DECISIONS.md`**
+- **公開を止めているのはオーナー側の作業だけ**: 開いている Issue は #6（特商法の表記）・#7（**売主は誰か**）・#8（規約・プライバシーポリシー）・
+  #9（Resend・Stripe 本番キー・デモ停止）の P0 と、閉じてよい #21（2026-09-27 時点）。中身は 2節と `docs/DECISIONS.md` §2
+- **本番でまだ誰も確かめていない**: PR #23 以降の本番デプロイと画面（2.1 の「本番で確かめること」）。この作業環境からは Vercel・本番DBに届かない（6節）
+
+**次にやること（優先順）**
+
+1. （オーナー）本番デプロイの Ready と、ビルドログの `[db:migrate] done`（0010〜0019）を確かめ、2.1 の「本番で確かめること」を画面で確かめる → 3節へ移す。#21 を閉じる
+2. （オーナー）#7 売主を決める。#6・#8・#10 の番号・#18 の文言がこれに続く（`docs/DECISIONS.md` §2）
+3. （オーナー）#9 本番の外部サービス。/admin/settings「本番公開チェック」が全部「OK」になれば公開できる。公開後に Google Search Console へ `/sitemap.xml` を登録
+4. （コード・オーナーの判断なしで進めてよい）
+   - 生産者の残りの一覧（`farmer/payouts/payouts-table.tsx` など）にも `mobileCard` を渡す（`docs/DESIGN.md`。受注・商品は済み）
+   - 商品の構造化データに送料（`shippingDetails`）を足す。送料は重さ・箱・地域で変わるので `services/shipping` の計算から出す（`docs/ARCHITECTURE.md` §5.1）
+   - 公開ページ（トップ・商品ページ）の見た目の点検。この環境では Unsplash の写真が読めないので、写真の出るプレビューか本番で見る（6節）
+5. （オーナーの判断が要る既定）#18 回答しないまま出荷期限を過ぎた依頼の扱い、#24 スタッフへのお知らせ、など（`docs/DECISIONS.md` §2 の後半）。勝手に決めない
 
 ## 1. 本番環境の事実
 
@@ -55,7 +74,16 @@
 チェック自体は「鍵があるか」ではなく「実際に動いているか」を見る（自動処理の最終成功・バックアップが48時間以内・
 デモ以外の運営アカウント・公開URL）。`server/queries/go-live.ts`、回帰テスト `queries/__tests__/go-live.test.ts`。
 
-### 2.1 コードで直せる P1・P2 の状況（2026-09-26）
+### 2.1 コードで直せる P1・P2 の状況（2026-09-27）
+
+PR #23 のあとにマージしたもの（どれもスキーマの変更なし）:
+
+| PR | 内容 | 本番で確かめること |
+| --- | --- | --- |
+| #26（2026-09-26） | 生産者の受注・商品の一覧をスマホではカードに、注文詳細は「次にやること」を先頭に | スマホで /farmer/orders・/farmer/products がカードで出る。注文詳細の一番上に操作パネル |
+| #27（2026-09-27） | SEO: カテゴリ別の一覧を正規のページに・サイト内検索を noindex・商品の構造化データ（規格ごとの Offer・返品ポリシー）・Organization | `/products?category=new_onion` の title が「淡路島の新玉ねぎを…」。`/sitemap.xml` にカテゴリ。公開後に Google の「リッチリザルト テスト」で商品ページ |
+| #28（2026-09-27） | トップのヒーロー画像を描き起こした南あわじの玉ねぎ畑に | トップの画像が畑の絵になっている（`/images/hero-awaji-fields.jpg`） |
+
 
 **PR #23 は 2026-09-26 06:27 UTC に main へマージ済み**（CI 成功・衝突なし）。#10・#11・#12・#14・#15・#16・#17・#18・#19・#20・#24・#25 はマージで閉じた。**#21 は手で閉じる**。
 本番デプロイの Ready とビルドログの `[db:migrate] done`、下の「本番で確かめること」はまだ（この環境からは Vercel・本番DBに届かない。→ 6節）。
@@ -287,6 +315,8 @@ PR #23 の確認で作るものの消し方（どれも運営画面で消せな�
 | Neon に接続できない（`fetch failed` / TLS エラー） | サンドボックスから本番DBへ出られない。オーナーのターミナル経由で実行する。Neon の MCP がつながっていれば読み取りはそちらでもできる |
 | `git push` が失敗する（proxy 認証・SSH 鍵なし） | push はサンドボックスの外から。これまではオーナーが `git push origin main` を実行してきた |
 | Claude Code のクラウド環境（claude.ai/code）で作業する場合 | 作業ブランチへの `git push` と GitHub の操作（Issue・PR の読み書き、CI の結果）は MCP ツールでできる。`gh` CLI は無い。本番DB・Vercel・Stripe の CLI には届かないので、そこはオーナーに頼む（PR #23 はこの形で進めた, 2026-09-26） |
+| 写真が読めない（Unsplash・Wikimedia Commons が `connect_rejected` / `EGRESS_BLOCKED`） | クラウド環境のネットワーク設定で止められている（2026-09-27）。開発サーバーの公開ページは写真が空になるので、見た目は写真の出る Vercel のプレビューか本番で見る。写真を選ぶ作業が要るなら、オーナーに環境の Network access へ `unsplash.com`・`images.unsplash.com` を足してもらう |
+| 画面を実際に見て確かめたい | `npm run dev`（PGlite にデモデータが入る）→ Chromium は `/opt/pw-browsers/chromium-1194/chrome-linux/chrome` にある。`playwright-core` を作業用フォルダに入れて撮る（プロジェクトの依存には足さない）。ログインは `POST /api/auth/sign-in/email`（`{email, password}`、`origin` ヘッダ付き。パスワードは `config/demo.ts#demoPassword`）で cookie を取ってから開く。左下の「N」は Next の開発用表示 |
 | GitHub の API・Issues が 404 | リポジトリが非公開のため。オーナーのターミナルの `gh`（ログイン済み）で `gh issue list` / `gh run list` |
 | Vercel の状態を見たい | オーナーのターミナルで `npx vercel list/inspect … --scope brightbroom-projects`。手元のフォルダが未リンクなら `npx vercel link --yes --project awaji-marche --scope brightbroom-projects`（**`vercel` を引数なしで実行しない**: 対話で新しいプロジェクトが作られうる） |
 | `npm` が `EPERM`（`~/.npm/_cacache`） | サンドボックスがホームの npm キャッシュを書けない。`export npm_config_cache="$TMPDIR/npmcache" npm_config_logs_dir="$TMPDIR/npmlogs"` |
@@ -328,6 +358,7 @@ PR #23 の確認で作るものの消し方（どれも運営画面で消せな�
 | 一部返金後の領収書（#4） | `lib/receipt.ts#receiptAmounts` | `services/__tests__/receipt.test.ts` |
 | フォロー中の農家の新商品のお知らせ（#5） | `services/product-launch.ts` | `actions/__tests__/product-launch.test.ts` |
 | お客さまのキャンセル: 準備前は生産者ごとに取り消し、準備中は依頼→生産者が承認／お断り（#18） | `lib/order-cancel.ts`, `services/cancel-requests.ts`, `refunds.ts#refundOrder`（`onlyStatus`）, `orders.ts#transitionFarmOrder`, `config/order-cancel.ts` | `services/__tests__/cancel-request.test.ts`, `authorization.test.ts` |
+| トップのヒーロー画像（描き起こした南あわじの玉ねぎ畑。本物の写真が手に入ったら差し替え） | `public/images/hero-awaji-fields.jpg`, `scripts/hero-awaji-fields.py`, `config/images.ts#heroFields` | — （画面で確認） |
 | 検索エンジン向け: カテゴリ別の一覧を正規のページに・サイト内検索を noindex・商品の構造化データを規格ごとの Offer と返品ポリシーに・Organization | `lib/catalog-seo.ts`, `lib/structured-data.ts`, `app/sitemap.ts`, `app/(shop)/products/page.tsx` | `lib/__tests__/seo.test.ts` |
 | 生産者画面のスマホ表示: 受注・商品の一覧をカードに、注文詳細は「次にやること」を先頭に | `components/dashboard/data-table.tsx`（`mobileCard`・`mobileHref`）, `farmer/orders/orders-table.tsx`, `farmer/products/product-table.tsx`, `app/farmer/orders/[id]/page.tsx` | `components/dashboard/__tests__/data-table.test.tsx` |
 | 通常価格の打ち消し表示を販売の記録で確かめる（#11） | `lib/compare-price.ts`, `services/price-history.ts`, `variant_price_periods`, job `compare-prices`, `queries/farmer.ts#getCompareAtNotes` | `lib/__tests__/compare-price.test.ts`, `services/__tests__/price-history.test.ts` |

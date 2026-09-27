@@ -18,7 +18,8 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ## 引き継いだら最初にやること
 
-1. `docs/STATUS.md` の 1節（本番環境の事実）と 2節（未完）を読む
+1. `docs/STATUS.md` の 0節（いまの状態と次にやること）を読む。必要なら 1節（本番環境の事実）と 2節（未完）
+   - オーナーが何を・なぜ決めたかは `docs/DECISIONS.md`（GitHub に入れなくても読める写し）
 2. 残作業を見る: `gh issue list --label P0` → `P1`（非公開リポジトリなのでログイン済みの `gh` が必要。→ STATUS 6節）
    - `owner-decision` の Issue は**オーナーの決定待ち**。勝手に決めて実装しない
 3. `npm ci` → `npm run typecheck` / `npm run lint` / `npx vitest run` が通ることを確かめてから変更を始める
@@ -29,7 +30,8 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 | 目的 | 読む doc |
 | --- | --- |
 | **いまどこまで出来ていて、次に何をするか**（引き継ぎはまずここ） | `docs/STATUS.md`（残作業の一覧は GitHub Issues。`gh issue list --label P0`） |
-| 全体構成・ディレクトリ・レイヤ責務 | `docs/ARCHITECTURE.md` |
+| **オーナーの決定と理由・まだ決まっていない論点** | `docs/DECISIONS.md`（決定の原本は Issue のコメント） |
+| 全体構成・ディレクトリ・レイヤ責務・設計判断（ADR）・SEO | `docs/ARCHITECTURE.md` |
 | UI / デザイントークン / コピーのトーン | `docs/DESIGN.md` |
 | テーブル / 型 / 状態遷移 | `docs/DATA_MODEL.md` |
 | 配送料・出荷自動化・Cron | `docs/SHIPPING.md` |
@@ -106,7 +108,8 @@ lockfile 表現が異なり、CI の `npm ci` が落ちる。変更後は必ず 
 - 見つけたが今やらない問題は Issue にする。ラベル: `P0` 公開前に必須 / `P1` 公開後すぐ / `P2` バックログ /
   `owner-decision` 判断待ち / `legal` `security` `payments` `ops` `admin` `feature` `bug`
 - 本文には根拠のファイルと行、完了条件（どのテストで確かめるか）を書く
-- 作業が終わったら `docs/STATUS.md` の 3節（本番で確かめたこと）と 7節（入れた機能と回帰テスト）を更新する
+- 作業が終わったら `docs/STATUS.md` の 0節（いまの状態・次にやること）・3節（本番で確かめたこと）・7節（入れた機能と回帰テスト）を更新する
+- オーナーに決めてもらったことは、Issue のコメントに残したうえで `docs/DECISIONS.md` に写す（決めた理由・実装の場所・テストも）
 
 ## 作業の進め方
 
