@@ -6,6 +6,8 @@ const u = (id: string) => `https://images.unsplash.com/${id}`;
 
 export const images = {
   // landscape / Awaji
+  /** トップのヒーロー。南あわじの玉ねぎ畑（うね・吊り小屋・諭鶴羽の山並み・瀬戸内）を描き起こしたもの。public/images、元は scripts/hero-awaji-fields.py */
+  heroFields: "/images/hero-awaji-fields.jpg",
   heroSunset: u("photo-1701839241469-7a7406d79661"),
   akashiBridge: u("photo-1741044320008-5bc22e166d0b"),
   setoSea: u("photo-1699031840949-a81e2c58ac85"),

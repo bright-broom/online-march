@@ -15,7 +15,7 @@ export function HomeHero() {
         fill
         priority
         sizes="100vw"
-        className="-z-20 object-cover object-center motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-105 motion-safe:duration-[1600ms]"
+        className="-z-20 object-cover object-[68%_50%] motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-105 motion-safe:duration-[1600ms]"
       />
       <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-t from-black/80 via-black/35 to-black/10" />
       <div aria-hidden className="absolute inset-y-0 left-0 -z-10 w-full bg-gradient-to-r from-black/45 to-transparent lg:w-2/3" />

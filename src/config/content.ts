@@ -12,7 +12,7 @@ export const homeContent = {
     lead: "畑を知る農家が、いちばんおいしい時期に収穫して、そのまま箱に詰めてお届けします。市場を通さないから、新鮮で、農家さんにもちゃんと届く。",
     primaryCta: { label: "玉ねぎをえらぶ", href: "/products" },
     secondaryCta: { label: "生産者に会いに行く", href: "/farms" },
-    image: "heroSunset" as ImageKey,
+    image: "heroFields" as ImageKey,
     stats: [
       { value: "1日", label: "収穫から発送まで最短" },
       { value: "90%", label: "売上が農家さんへ" },
