@@ -3,7 +3,7 @@
  * OpenNext がビルドした Next.js の Worker（.open-next/worker.js）に、定期実行（Cron Triggers）を足す。
  * 定期実行は Vercel Cron のときと同じく /api/cron/<job> を CRON_SECRET 付きで呼ぶ（認可とジョブの記録をそこに一本化）。
  */
-// @ts-expect-error -- ビルド時に OpenNext が生成する
+// @ts-expect-error -- ビルド時に OpenNext が生成する（型チェックはビルド前に走る）
 import { default as handler } from "./.open-next/worker.js";
 import type { ExecutionContext, ExportedHandler, ScheduledController } from "@cloudflare/workers-types";
 import { cronJobs } from "./src/config/cron";
@@ -30,5 +30,5 @@ export default {
 } satisfies ExportedHandler<Env>;
 
 // OpenNext の Durable Object（キャッシュの再生成キュー）
-// @ts-expect-error -- ビルド時に OpenNext が生成する
+// @ts-expect-error -- ビルド時に OpenNext が生成する（型チェックはビルド前に走る）
 export { DOQueueHandler } from "./.open-next/worker.js";
