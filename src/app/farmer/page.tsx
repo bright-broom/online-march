@@ -7,12 +7,13 @@ import { StatCard } from "@/components/dashboard/stat-card";
 import { FarmerAnnouncements } from "@/components/farmer/overview/announcements";
 import { LatestReviews, UpcomingShipments } from "@/components/farmer/overview/overview-panels";
 import { SalesTrendCard } from "@/components/farmer/overview/sales-trend-card";
+import { SetupChecklist } from "@/components/farmer/overview/setup-checklist";
 import { TodoCards } from "@/components/farmer/overview/todo-cards";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toYmd } from "@/lib/dates";
 import { formatDate } from "@/lib/format";
 import { requireFarm } from "@/server/auth/guards";
-import { getFarmAnalytics, getFarmerAnnouncements, getFarmTodos, getLatestReviews, getUpcomingShipments } from "@/server/queries/farmer";
+import { getFarmAnalytics, getFarmerAnnouncements, getFarmSetup, getFarmTodos, getLatestReviews, getUpcomingShipments } from "@/server/queries/farmer";
 
 export const metadata: Metadata = { title: "生産者ダッシュボード" };
 
@@ -28,12 +29,13 @@ export default async function FarmerOverviewPage() {
   await connection();
   const now = new Date();
   const today = toYmd(now);
-  const [analytics, todos, upcoming, latestReviews, notices] = await Promise.all([
+  const [analytics, todos, upcoming, latestReviews, notices, setup] = await Promise.all([
     getFarmAnalytics(farm.id),
     getFarmTodos(farm.id, today),
     getUpcomingShipments(farm.id),
     getLatestReviews(farm.id),
     getFarmerAnnouncements(),
+    getFarmSetup(farm),
   ]);
   const { kpi } = analytics;
 
@@ -51,11 +53,13 @@ export default async function FarmerOverviewPage() {
         description={`${formatDate(now)}｜${farm.name}の今日のようすです。`}
       />
 
+      <SetupChecklist setup={setup} />
+
       <FarmerAnnouncements items={notices} />
 
       <section aria-label="今日のやること" className="space-y-3">
         <h2 className="text-muted-foreground text-xs font-semibold tracking-wider">今日のやること</h2>
-        <TodoCards todos={todos} />
+        <TodoCards todos={todos} setupPending={!(setup.product && setup.payout && setup.shop)} />
       </section>
 
       <section aria-label="直近30日の実績" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

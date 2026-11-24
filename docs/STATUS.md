@@ -344,6 +344,7 @@ PR #23 の確認で作るものの消し方（どれも運営画面で消せな�
 | 受付の一時停止（お休み） | `farms.pausedUntil`, `services/orders.ts#quoteCart` | `farm-pause.test.ts` |
 | 生産者アカウント画面 | `app/farmer/account/` | — |
 | 作り物っぽさを避ける決まり（英字の小見出し・数字の帯・飾りの矢印・光の玉・Fraunces を除去） | `docs/DESIGN.md` §8, `components/shop/home/*` | `test/design-lint.test.ts` |
+| 生産者ダッシュボードの「販売を始めるまで」（商品・受け取り先・ショップ写真の3つ。そろうと消える） | `config/farm-setup.ts`, `queries/farmer.ts#getFarmSetup`, `components/farmer/overview/setup-checklist.tsx` | `queries/__tests__/farm-setup.test.ts` |
 | 本番公開チェック | `queries/go-live.ts` | `go-live.test.ts` |
 | 運用アラート / バックアップ | `services/ops-alerts.ts`, `services/backup.ts` | `jobs.test.ts`, `backup.test.ts`, `restore.test.ts` |
 | ドキュメントのリンク・画像・目次の切れ検知（アイコンは `docs/icons/` に同梱） | `test/docs.test.ts` | 同左 |

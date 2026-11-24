@@ -253,6 +253,27 @@ export async function getFarmTodos(farmId: string, today: YMD) {
 }
 export type FarmTodos = Awaited<ReturnType<typeof getFarmTodos>>;
 
+/**
+ * 承認直後の農園が、売れる状態・売上を受け取れる状態になっているか（ダッシュボードの「販売を始めるまで」）。
+ * product: 販売中で在庫のある規格が1つ以上 / payout: Stripe の登録が済んだか振込先口座がある / shop: アイコンと表紙の写真がある
+ */
+export async function getFarmSetup(farm: { id: string; avatarImage: string | null; heroImage: string | null; stripeOnboarded: boolean }) {
+  const [[sellable], bank] = await Promise.all([
+    db
+      .select({ n: count() })
+      .from(productVariants)
+      .innerJoin(products, eq(products.id, productVariants.productId))
+      .where(and(eq(products.farmId, farm.id), eq(products.status, "active"), lt(productVariants.sortOrder, REMOVED_VARIANT_SORT), sql`${productVariants.stock} > 0`)),
+    getMaskedBankAccount(farm.id),
+  ]);
+  return {
+    product: sellable.n > 0,
+    payout: farm.stripeOnboarded || Boolean(bank),
+    shop: Boolean(farm.avatarImage && farm.heroImage),
+  };
+}
+export type FarmSetup = Awaited<ReturnType<typeof getFarmSetup>>;
+
 export async function getUpcomingShipments(farmId: string, limit = 6) {
   const rows = await db
     .select({
