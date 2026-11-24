@@ -12,6 +12,12 @@ import { env, features, siteUrl } from "@/lib/env";
 import { formatDateTime } from "@/lib/format";
 import { jobs, type JobName } from "@/server/jobs";
 
+/** 送信元が例のドメイン（example.com とそのサブドメイン）のままか。文字列を含むかではなく、ドメインで判定する */
+function isExampleAddress(from: string): boolean {
+  const domain = (from.match(/<([^>]+)>/)?.[1] ?? from).split("@").pop()?.trim().toLowerCase() ?? "";
+  return domain === "example.com" || domain.endsWith(".example.com");
+}
+
 export type GoLiveCheck = {
   key: string;
   label: string;
@@ -185,10 +191,10 @@ export async function getGoLiveChecks(): Promise<GoLiveCheck[]> {
       label: "メール送信",
       // 注文確認・返金のお知らせに加え、パスワード再設定もメールでしか届かない。送れないまま公開すると、
       // パスワードを忘れたお客さまは自力で戻れなくなるので blocker
-      state: env.RESEND_API_KEY && !env.EMAIL_FROM.includes("example.com") ? "ready" : "blocker",
+      state: env.RESEND_API_KEY && !isExampleAddress(env.EMAIL_FROM) ? "ready" : "blocker",
       detail: !env.RESEND_API_KEY
         ? "未設定です。注文確認・返金のお知らせ・パスワード再設定のメールが届きません"
-        : env.EMAIL_FROM.includes("example.com")
+        : isExampleAddress(env.EMAIL_FROM)
           ? "EMAIL_FROM が例のままです。認証済みドメインのアドレスに変更してください"
           : `送信元 ${env.EMAIL_FROM}`,
     },
