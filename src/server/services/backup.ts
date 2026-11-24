@@ -2,7 +2,7 @@ import "server-only";
 import { gunzipSync, gzipSync } from "node:zlib";
 import { sql } from "drizzle-orm";
 import { opsConfig } from "@/config/ops";
-import { restoreDatabase, type DatabaseDump } from "./backup-restore";
+import { ident, restoreDatabase, type DatabaseDump } from "./backup-restore";
 import { db } from "@/db";
 
 import { env } from "@/lib/env";
@@ -22,7 +22,7 @@ export async function exportDatabase(): Promise<DatabaseDump> {
   const tables = (await db.execute<{ tablename: string }>(sql`select tablename from pg_tables where schemaname = 'public' order by tablename`)).rows;
   const dump: DatabaseDump["tables"] = {};
   for (const { tablename } of tables) {
-    const rows = await db.execute(sql.raw(`select * from "${tablename}"`));
+    const rows = await db.execute(sql.raw(`select * from ${ident(tablename)}`));
     dump[tablename] = rows.rows as Record<string, unknown>[];
   }
   return { takenAt: new Date().toISOString(), tables: dump };
