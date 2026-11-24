@@ -21,7 +21,7 @@ export function OnionCalendar() {
   return (
     <section className="bg-paper">
       <div className="container-page py-16 sm:py-24">
-        <SectionHeading eyebrow={calendar.eyebrow} title={calendar.title} lead={calendar.lead} />
+        <SectionHeading title={calendar.title} lead={calendar.lead} />
         <div className="bg-background mt-10 rounded-3xl border p-5 sm:p-8">
           <div className={cn("relative grid gap-y-5", LABEL_COL)}>
             {/* month header */}

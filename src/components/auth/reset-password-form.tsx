@@ -1,5 +1,5 @@
 "use client";
-import { AlertCircle, ArrowRight } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -104,7 +104,6 @@ export function ResetPasswordForm() {
         <Button type="submit" size="lg" className="h-11 rounded-full text-base" disabled={pending}>
           {pending ? <Spinner /> : null}
           パスワードを変更する
-          {!pending && <ArrowRight />}
         </Button>
       </FieldGroup>
     </form>

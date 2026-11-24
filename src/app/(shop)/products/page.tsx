@@ -29,7 +29,6 @@ export default async function ProductsPage({ searchParams }: PageProps<"/product
     <>
       <PageIntro
         crumbs={[{ label: navTitle }]}
-        eyebrow="PRODUCTS"
         title={navTitle}
         lead="品種・栽培方法・農家さんから、あなたの食卓にぴったりの玉ねぎを。すべて産地から直送です。"
       />

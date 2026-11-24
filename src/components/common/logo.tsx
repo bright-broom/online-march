@@ -17,10 +17,7 @@ export function Logo({ className, href = "/" }: { className?: string; href?: str
   return (
     <Link href={href} className={cn("group inline-flex items-center gap-2.5", className)} aria-label={siteConfig.name}>
       <LogoMark className="transition-transform duration-500 group-hover:-rotate-6" />
-      <span className="flex flex-col leading-none">
-        <span className="font-serif text-[15px] font-semibold tracking-[0.06em]">{siteConfig.name}</span>
-        <span className="font-display text-muted-foreground mt-1 text-[9px] tracking-[0.32em]">{siteConfig.shortName}</span>
-      </span>
+      <span className="font-serif text-[15px] leading-none font-semibold tracking-[0.06em]">{siteConfig.name}</span>
     </Link>
   );
 }

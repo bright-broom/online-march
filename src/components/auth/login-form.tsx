@@ -1,5 +1,5 @@
 "use client";
-import { AlertCircle, ArrowRight, Mail, Sparkles } from "lucide-react";
+import { AlertCircle, Mail, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -111,7 +111,6 @@ export function LoginForm({ demo }: { demo: boolean }) {
           <Button type="submit" size="lg" className="h-11 rounded-full text-base" disabled={pending}>
             {pending && !activeDemo ? <Spinner /> : null}
             ログイン
-            {!pending && <ArrowRight />}
           </Button>
         </FieldGroup>
       </form>

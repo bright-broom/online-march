@@ -103,7 +103,7 @@
 @theme inline {
   --font-sans: var(--font-noto-sans), "Hiragino Sans", "Hiragino Kaku Gothic ProN", system-ui, sans-serif;
   --font-serif: var(--font-shippori), "Hiragino Mincho ProN", "Yu Mincho", serif;
-  --font-display: var(--font-fraunces), var(--font-shippori), serif;
+  --font-display: var(--font-sans);
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 
   --color-background: var(--background);
@@ -190,20 +190,9 @@
   .heading-display {
     @apply font-serif font-semibold tracking-[0.02em];
   }
-  /* Small caps eyebrow above section titles */
-  .eyebrow {
-    @apply font-display text-xs font-medium uppercase tracking-[0.28em] text-primary;
-  }
   /* Tabular numbers for money/KPIs */
   .num {
     font-variant-numeric: tabular-nums;
-    @apply font-display;
-  }
-  /* Subtle paper grain background for editorial sections */
-  .bg-grain {
-    background-image:
-      radial-gradient(circle at 20% 10%, color-mix(in oklch, var(--gold-soft) 45%, transparent) 0, transparent 45%),
-      radial-gradient(circle at 90% 80%, color-mix(in oklch, var(--gold-soft) 30%, transparent) 0, transparent 40%);
   }
   .container-page {
     @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;

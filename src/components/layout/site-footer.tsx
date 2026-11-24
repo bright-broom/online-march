@@ -9,18 +9,13 @@ const socialLabels: Record<keyof typeof siteConfig.social, string> = { instagram
 
 export function SiteFooter() {
   return (
-    <footer className="bg-sea text-sea-foreground relative overflow-hidden">
-      {/* soft onion-skin glow */}
-      <div aria-hidden className="bg-primary/25 pointer-events-none absolute -top-40 -right-32 size-[28rem] rounded-full blur-3xl" />
+    <footer className="bg-sea text-sea-foreground">
       <div className="container-page relative py-16 sm:py-20">
         <div className="grid gap-12 lg:grid-cols-[1.2fr_2fr]">
           <div className="space-y-6">
             <Link href={routes.home} className="inline-flex items-center gap-3" aria-label={siteConfig.name}>
               <LogoMark className="size-10" />
-              <span className="flex flex-col leading-none">
-                <span className="font-serif text-lg font-semibold tracking-[0.06em]">{siteConfig.name}</span>
-                <span className="font-display mt-1.5 text-[10px] tracking-[0.32em] opacity-70">{siteConfig.shortName}</span>
-              </span>
+              <span className="font-serif text-lg leading-none font-semibold tracking-[0.06em]">{siteConfig.name}</span>
             </Link>
             <p className="max-w-sm font-serif text-lg leading-relaxed">{siteConfig.tagline}</p>
             <ul className="space-y-2 text-sm opacity-85">
@@ -78,7 +73,7 @@ export function SiteFooter() {
 
         <div className="border-sea-foreground/15 mt-16 flex flex-col gap-3 border-t pt-6 text-xs opacity-75 sm:flex-row sm:items-center sm:justify-between">
           <p>{siteConfig.region}の玉ねぎ農家と、全国の食卓をつなぐ産直マルシェ</p>
-          <p className="font-display tracking-wider">
+          <p>
             © <ShopCopyrightYear /> {siteConfig.nameEn}
           </p>
         </div>

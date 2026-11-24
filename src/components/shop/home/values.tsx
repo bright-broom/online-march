@@ -1,26 +1,20 @@
-import { Icon } from "@/components/common/icon";
 import { homeContent } from "@/config/content";
 
+/** 番号やアイコンの箱は付けず、見出しと説明の2段だけで並べる（docs/DESIGN.md §8） */
 export function HomeValues() {
   const { values } = homeContent;
   return (
-    <section className="bg-grain border-b">
-      <div className="container-page py-16 sm:py-24">
-        <h2 className="heading-display text-center text-2xl sm:text-3xl">{values.title}</h2>
-        <ul className="mt-12 grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
-          {values.items.map((v, i) => (
-            <li key={v.title} className="group flex flex-col items-start gap-4 motion-safe:animate-fade-up" style={{ animationDelay: `${i * 90}ms` }}>
-              <span className="bg-background text-primary ring-border group-hover:bg-primary group-hover:text-primary-foreground flex size-12 items-center justify-center rounded-2xl ring-1 transition-colors duration-500">
-                <Icon name={v.icon} className="size-5" />
-              </span>
-              <div className="space-y-2">
-                <p className="font-display text-muted-foreground text-xs tracking-[0.2em]">0{i + 1}</p>
-                <h3 className="font-serif text-lg font-semibold">{v.title}</h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">{v.body}</p>
-              </div>
-            </li>
+    <section className="border-b">
+      <div className="container-page py-14 sm:py-20">
+        <h2 className="heading-display text-2xl sm:text-3xl">{values.title}</h2>
+        <dl className="mt-8 grid gap-x-10 gap-y-6 sm:grid-cols-2">
+          {values.items.map((v) => (
+            <div key={v.title} className="border-t pt-4">
+              <dt className="font-semibold">{v.title}</dt>
+              <dd className="text-muted-foreground mt-1.5 text-sm leading-relaxed">{v.body}</dd>
+            </div>
           ))}
-        </ul>
+        </dl>
       </div>
     </section>
   );

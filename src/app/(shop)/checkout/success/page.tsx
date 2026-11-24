@@ -65,7 +65,6 @@ async function SuccessContent({ searchParams }: { searchParams: PageProps<"/chec
         <span className="bg-leaf/15 text-leaf mx-auto flex size-16 items-center justify-center rounded-full">
           {pending ? <Clock className="size-8" /> : <CheckCircle2 className="size-8" />}
         </span>
-        <p className="eyebrow">Thank you</p>
         <h1 className="heading-display text-3xl sm:text-4xl">
           {awaitingPayment ? "お支払い番号を発行しました" : pending ? "お支払いを確認しています" : "ご注文ありがとうございます"}
         </h1>

@@ -1,7 +1,7 @@
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata, Viewport } from "next";
-import { Fraunces, Noto_Sans_JP, Shippori_Mincho } from "next/font/google";
+import { Noto_Sans_JP, Shippori_Mincho } from "next/font/google";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { ThemeProvider } from "@/components/layout/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
@@ -17,7 +17,6 @@ const shippori = Shippori_Mincho({
   display: "swap",
   preload: false,
 });
-const fraunces = Fraunces({ variable: "--font-fraunces", subsets: ["latin"], display: "swap" });
 
 export const metadata: Metadata = {
   metadataBase: new URL(
@@ -49,7 +48,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="ja" suppressHydrationWarning data-scroll-behavior="smooth">
-      <body className={`${notoSans.variable} ${shippori.variable} ${fraunces.variable} font-sans`}>
+      <body className={`${notoSans.variable} ${shippori.variable} font-sans`}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
           <NuqsAdapter>
             <TooltipProvider delayDuration={200}>{children}</TooltipProvider>

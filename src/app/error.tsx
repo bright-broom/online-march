@@ -13,7 +13,7 @@ export default function ErrorPage({ error, retry }: { error: Error & { digest?: 
   }, [error]);
 
   return (
-    <section className="bg-grain flex min-h-[70svh] flex-1 items-center">
+    <section className="flex min-h-[70svh] flex-1 items-center">
       <div className="container-page flex flex-col items-center py-24 text-center">
         <LogoMark className="size-14 rotate-12 opacity-80 grayscale-[40%]" />
         <h1 className="heading-display mt-6 text-2xl sm:text-3xl">ページを表示できませんでした</h1>

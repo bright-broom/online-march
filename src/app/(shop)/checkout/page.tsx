@@ -15,7 +15,6 @@ export default function CheckoutPage() {
     <div className="container-page py-8 sm:py-12">
       <div className="mb-8 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div className="space-y-2">
-          <p className="eyebrow">Checkout</p>
           <h1 className="heading-display text-3xl sm:text-4xl">ご購入手続き</h1>
         </div>
         <p className="text-muted-foreground flex items-center gap-1.5 text-xs">

@@ -134,7 +134,7 @@ export default async function FarmPage({ params }: PageProps<"/farms/[slug]">) {
             <div key={s.label} className="bg-card px-5 py-4">
               <dt className="text-muted-foreground text-xs">{s.label}</dt>
               <dd className="mt-1 flex items-baseline gap-1.5">
-                <span className="font-display text-xl font-medium sm:text-2xl">{s.value}</span>
+                <span className="text-xl font-semibold tabular-nums sm:text-2xl">{s.value}</span>
                 {s.note && <span className="text-muted-foreground text-xs">{s.note}</span>}
               </dd>
             </div>
@@ -143,7 +143,6 @@ export default async function FarmPage({ params }: PageProps<"/farms/[slug]">) {
 
         <section className="grid gap-10 py-16 sm:py-20 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:gap-16">
           <div>
-            <p className="eyebrow">STORY</p>
             <h2 className="heading-display mt-3 text-2xl sm:text-3xl">畑のこと、つくり手のこと</h2>
             <p className="text-foreground/85 mt-6 max-w-prose text-[15px] leading-loose whitespace-pre-line">{farm.story}</p>
             {farm.cultivationMethods.length > 0 && (
@@ -169,7 +168,7 @@ export default async function FarmPage({ params }: PageProps<"/farms/[slug]">) {
         </section>
 
         <section className="border-t py-16 sm:py-20">
-          <SectionHeading eyebrow="PRODUCTS" title={`${farm.name}の商品`} />
+          <SectionHeading title={`${farm.name}の商品`} />
           <div className="mt-10">
             <Suspense fallback={<ProductGridSkeleton count={4} />}>
               <FarmProducts farmId={farm.id} farmName={farm.name} />
@@ -178,7 +177,7 @@ export default async function FarmPage({ params }: PageProps<"/farms/[slug]">) {
         </section>
 
         <section id="reviews" className="scroll-mt-24 border-t py-16 sm:py-20">
-          <SectionHeading eyebrow="REVIEWS" title="お客さまのレビュー" />
+          <SectionHeading title="お客さまのレビュー" />
           <div className="mt-10">
             <Suspense fallback={<ReviewsSkeleton />}>
               <FarmReviews farmId={farm.id} />

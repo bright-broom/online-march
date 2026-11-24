@@ -1,7 +1,6 @@
 import { ArrowDown } from "lucide-react";
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { Icon } from "@/components/common/icon";
 import { SectionHeading } from "@/components/common/section-heading";
 import { JoinGate, JoinGateSkeleton } from "@/components/shop/join/join-gate";
 import { ImageHero } from "@/components/shop/page-intro";
@@ -25,7 +24,7 @@ export default function JoinPage() {
   const { hero, benefits, steps } = joinContent;
   return (
     <>
-      <ImageHero image={images[hero.image]} crumbs={[{ label: joinTitle }]} eyebrow={hero.eyebrow} title={hero.title} lead={hero.lead}>
+      <ImageHero image={images[hero.image]} crumbs={[{ label: joinTitle }]} title={hero.title} lead={hero.lead}>
         <Button asChild className="mt-4 h-12 rounded-full px-7">
           <a href="#apply">
             出店を申し込む
@@ -35,26 +34,20 @@ export default function JoinPage() {
       </ImageHero>
 
       <section className="container-page py-16 sm:py-24">
-        <SectionHeading eyebrow="BENEFITS" title="はじめやすく、続けやすく" align="center" />
-        <ul className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <SectionHeading title="はじめやすく、続けやすく" />
+        <dl className="mt-8 grid gap-x-10 gap-y-6 sm:grid-cols-2 lg:grid-cols-3">
           {benefits.map((b) => (
-            <li key={b.title} className="bg-card flex gap-4 rounded-2xl border p-6">
-              <span className="bg-primary/10 text-primary flex size-11 shrink-0 items-center justify-center rounded-xl">
-                <Icon name={b.icon} className="size-5" />
-              </span>
-              <div>
-                <h3 className="font-serif text-base font-semibold">{b.title}</h3>
-                <p className="text-muted-foreground mt-1.5 text-sm leading-relaxed">{b.body}</p>
-              </div>
-            </li>
+            <div key={b.title} className="border-t pt-4">
+              <dt className="font-semibold">{b.title}</dt>
+              <dd className="text-muted-foreground mt-1.5 text-sm leading-relaxed">{b.body}</dd>
+            </div>
           ))}
-        </ul>
+        </dl>
       </section>
 
       <section className="bg-paper">
         <div className="container-page grid items-center gap-10 py-16 sm:py-24 lg:grid-cols-2 lg:gap-16">
           <div className="space-y-4">
-            <p className="eyebrow">FEES</p>
             <h2 className="heading-display text-2xl sm:text-3xl">手数料は、売れたときの{bpsToPercent(feeConfig.defaultCommissionRateBps)}%だけ</h2>
             <p className="text-muted-foreground max-w-prose text-sm leading-relaxed sm:text-base">
               初期費用・月額費用・掲載料はかかりません。送料には手数料をかけず、売上は月末締め・翌月{feeConfig.payout.payoutDay}日にお振り込みします。
@@ -70,7 +63,7 @@ export default function JoinPage() {
                 )}
               >
                 <span className={cn("text-sm", c.highlight ? "font-serif text-base font-semibold" : "text-muted-foreground")}>{c.name}</span>
-                <span className={cn("font-display", c.highlight ? "text-primary text-3xl font-medium" : "text-muted-foreground text-lg")}>{c.rate}</span>
+                <span className={cn("tabular-nums", c.highlight ? "text-primary text-2xl font-semibold" : "text-muted-foreground text-lg")}>{c.rate}</span>
               </li>
             ))}
           </ul>
@@ -78,12 +71,12 @@ export default function JoinPage() {
       </section>
 
       <section className="container-page py-16 sm:py-24">
-        <SectionHeading eyebrow="STEPS" title="出店までの流れ" align="center" />
+        <SectionHeading title="出店までの流れ" />
         <ol className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {steps.map((s, i) => (
             <li key={s} className="relative rounded-2xl border p-6">
-              <span className="font-display text-primary text-4xl font-light">{String(i + 1).padStart(2, "0")}</span>
-              <p className="mt-3 font-medium">{s}</p>
+              <span className="text-muted-foreground text-sm tabular-nums">{i + 1}.</span>
+              <p className="mt-1 font-medium">{s}</p>
             </li>
           ))}
         </ol>
@@ -92,7 +85,6 @@ export default function JoinPage() {
       <section id="apply" className="scroll-mt-20 border-t">
         <div className="container-page grid gap-10 py-16 sm:py-24 lg:grid-cols-[18rem_1fr] lg:gap-16">
           <div className="space-y-3">
-            <p className="eyebrow">APPLY</p>
             <h2 className="heading-display text-2xl sm:text-3xl">出店申請フォーム</h2>
             <p className="text-muted-foreground text-sm leading-relaxed">
               入力は5分ほどで完了します。商品の登録は、審査完了後にダッシュボードから行えます。

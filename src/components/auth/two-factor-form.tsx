@@ -1,6 +1,6 @@
 "use client";
 import { REGEXP_ONLY_DIGITS } from "input-otp";
-import { AlertCircle, ArrowRight, KeyRound } from "lucide-react";
+import { AlertCircle, KeyRound } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -104,7 +104,6 @@ export function TwoFactorForm() {
         <Button type="submit" size="lg" className="h-11 rounded-full text-base" disabled={pending}>
           {pending ? <Spinner /> : null}
           確認してログイン
-          {!pending && <ArrowRight />}
         </Button>
         <button
           type="button"

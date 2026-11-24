@@ -7,55 +7,33 @@ import { listedPaymentMethodLabels } from "./payments";
 
 export const homeContent = {
   hero: {
-    eyebrow: "兵庫県 南あわじ市から産地直送",
+    origin: "兵庫県南あわじ市から産地直送",
     title: ["潮風と太陽が育てた、", "淡路島のあまい玉ねぎ。"],
     lead: "畑を知る農家が、いちばんおいしい時期に収穫して、そのまま箱に詰めてお届けします。市場を通さないから、新鮮で、農家さんにもちゃんと届く。",
     primaryCta: { label: "玉ねぎをえらぶ", href: "/products" },
     secondaryCta: { label: "生産者に会いに行く", href: "/farms" },
     image: "heroFields" as ImageKey,
-    stats: [
-      { value: "1日", label: "収穫から発送まで最短" },
-      { value: "90%", label: "売上が農家さんへ" },
-      { value: "47都道府県", label: "全国へお届け" },
-    ],
+    /** 数字を大きく並べた帯にせず、ふつうの1文で伝える（docs/DESIGN.md §8） */
+    note: "売上の90%が農家さんの手元に残ります。全国どこへでも、収穫から最短1日で発送。",
   },
   values: {
-    title: "あわじ玉ねぎマルシェの約束",
+    title: "このマルシェで買うと",
     items: [
-      {
-        icon: "Sprout",
-        title: "農家さんから直接",
-        body: "中間流通を通さず、畑から食卓へ。手数料は業界最安水準の10%。",
-      },
-      {
-        icon: "Sun",
-        title: "吊り小屋でじっくり熟成",
-        body: "淡路島伝統の「玉ねぎ小屋」で自然乾燥。甘みがぐっと深まります。",
-      },
-      {
-        icon: "Truck",
-        title: "出荷まで自動でスムーズ",
-        body: "注文が入ると出荷期限・送り状・追跡番号まで自動連携。届くまで見守れます。",
-      },
-      {
-        icon: "MessageCircleHeart",
-        title: "つくり手と話せる",
-        body: "レシピの相談や保存方法、メッセージで農家さんに直接聞けます。",
-      },
+      { title: "農家さんから直接届きます", body: "市場や問屋を通さず、畑から食卓へ。販売手数料は10%で、残りは農家さんの売上になります。" },
+      { title: "吊り小屋で乾かした玉ねぎです", body: "淡路島に昔からある「玉ねぎ小屋」で風に当てて乾かします。日を置くほど甘みが増します。" },
+      { title: "届くまでを追えます", body: "発送されると追跡番号をメールでお知らせします。注文の状況はマイページでも見られます。" },
+      { title: "つくった人に聞けます", body: "保存のしかたや料理のことを、メッセージで農家さんに直接たずねられます。" },
     ],
   },
   seasonal: {
-    eyebrow: "SEASON",
     title: "いま、畑から届くもの",
     lead: "季節ごとに表情が変わる玉ねぎ。旬のおすすめを農家さんが選びました。",
   },
   farms: {
-    eyebrow: "FARMERS",
     title: "南あわじの生産者",
     lead: "三代続く農家も、Uターンした若手も。それぞれの畑の物語があります。",
   },
   story: {
-    eyebrow: "STORY",
     title: "なぜ淡路島の玉ねぎは甘いのか",
     body: [
       "瀬戸内の温暖な気候と、ミネラルを含んだ潮風。そして水はけのよい粘土質の土。",
@@ -66,21 +44,19 @@ export const homeContent = {
     cta: { label: "淡路島たまねぎについて", href: "/about" },
   },
   calendar: {
-    eyebrow: "CALENDAR",
     title: "玉ねぎカレンダー",
     lead: "品種と時期で味わいが変わります。",
   },
   howItWorks: {
-    eyebrow: "HOW IT WORKS",
     title: "ご注文からお届けまで",
     steps: [
-      { icon: "ShoppingBasket", title: "えらぶ", body: "品種・サイズ・農家さんから選んでカートへ。" },
-      { icon: "CalendarCheck", title: "日時を指定", body: "お届け希望日と時間帯を選べます。" },
-      { icon: "Package", title: "収穫・箱詰め", body: "注文を受けてから農家さんが丁寧に詰めます。" },
-      { icon: "Truck", title: "届く", body: "発送されたら追跡番号をメールでお知らせ。" },
+      { title: "えらぶ", body: "品種・サイズ・農家さんから選んでカートへ。" },
+      { title: "日時を指定", body: "お届け希望日と時間帯を選べます。" },
+      { title: "収穫・箱詰め", body: "注文を受けてから農家さんが丁寧に詰めます。" },
+      { title: "届く", body: "発送されたら追跡番号をメールでお知らせ。" },
     ],
   },
-  reviews: { eyebrow: "VOICES", title: "お客さまの声" },
+  reviews: { title: "お客さまの声" },
   joinCta: {
     title: "南あわじで玉ねぎを育てている方へ",
     body: "写真を撮って、価格を決めるだけ。受注・送り状・入金管理まで、スマホひとつで完結します。販売手数料は10%のみ、初期費用・月額費用は0円です。",
@@ -99,7 +75,6 @@ export const onionCalendar = [
 
 export const aboutContent = {
   hero: {
-    eyebrow: "ABOUT AWAJI ONION",
     title: "淡路島たまねぎのこと",
     lead: "日本の玉ねぎ生産量の約1割。明治から続く、島の誇りです。",
     image: "akashiBridge" as ImageKey,
@@ -184,18 +159,17 @@ export const joinContent = {
   /** 農園のスタッフ（#24）は出店申請できない（1人1農園） */
   staffMember: "農園のスタッフとして参加中のアカウントでは出店申請できません。スタッフを抜けてから申請してください",
   hero: {
-    eyebrow: "FOR FARMERS",
     title: "畑のこだわりを、そのまま全国へ。",
     lead: "南あわじ市とその周辺で玉ねぎを育てる生産者さんのための、手数料10%のオンライン直売所です。",
     image: "farmersField" as ImageKey,
   },
   benefits: [
-    { icon: "Percent", title: "手数料は10%だけ", body: "初期費用・月額費用・掲載費は0円。売れたときだけ。" },
-    { icon: "Smartphone", title: "スマホで出品", body: "写真を撮って、品種と価格を入れるだけ。" },
-    { icon: "Truck", title: "出荷を自動化", body: "送り状CSV・追跡番号・発送メールを自動連携。" },
-    { icon: "Wallet", title: "月末締め翌月15日払い", body: "売上と入金予定はダッシュボードで常に確認。" },
-    { icon: "LineChart", title: "売上分析", body: "商品別・地域別の売れ行きをグラフで。" },
-    { icon: "MessagesSquare", title: "ファンとつながる", body: "レビューへの返信やメッセージで常連さんに。" },
+    { title: "手数料は10%だけ", body: "初期費用・月額費用・掲載費は0円。売れたときだけ。" },
+    { title: "スマホで出品", body: "写真を撮って、品種と価格を入れるだけ。" },
+    { title: "出荷を自動化", body: "送り状CSV・追跡番号・発送メールを自動連携。" },
+    { title: "月末締め翌月15日払い", body: "売上と入金予定はダッシュボードで常に確認。" },
+    { title: "売上分析", body: "商品別・地域別の売れ行きをグラフで。" },
+    { title: "ファンとつながる", body: "レビューへの返信やメッセージで常連さんに。" },
   ],
   steps: ["アカウント登録", "出店申請（農園情報）", "運営による確認（1〜3営業日）", "商品を登録して販売開始"],
   /** 審査中の人への案内（#15）。審査中は購入者のままなので /farmer にはまだ入れない */

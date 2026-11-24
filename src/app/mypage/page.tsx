@@ -1,4 +1,4 @@
-import { ArrowRight, Heart, Megaphone, MessageCircle, Package, Sprout, Wallet } from "lucide-react";
+import { Heart, Megaphone, MessageCircle, Package, Sprout, Wallet } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { EmptyState } from "@/components/common/empty-state";
@@ -37,7 +37,7 @@ export default async function MypageHomePage() {
         description="ご注文の状況や、フォロー中の生産者さんの新着をまとめています。"
         actions={
           <Button asChild className="rounded-full">
-            <Link href={routes.products}>玉ねぎをさがす<ArrowRight /></Link>
+            <Link href={routes.products}>玉ねぎをさがす</Link>
           </Button>
         }
       />
@@ -56,7 +56,7 @@ export default async function MypageHomePage() {
             <CardDescription>生産者ごとに発送されます</CardDescription>
             <CardAction>
               <Button asChild variant="ghost" size="sm">
-                <Link href={routes.mypage.orders}>注文履歴<ArrowRight /></Link>
+                <Link href={routes.mypage.orders}>注文履歴</Link>
               </Button>
             </CardAction>
           </CardHeader>
@@ -97,7 +97,7 @@ export default async function MypageHomePage() {
             <CardTitle>最近のご注文</CardTitle>
             <CardAction>
               <Button asChild variant="ghost" size="sm">
-                <Link href={routes.mypage.orders}>すべて見る<ArrowRight /></Link>
+                <Link href={routes.mypage.orders}>すべて見る</Link>
               </Button>
             </CardAction>
           </CardHeader>
@@ -119,7 +119,7 @@ export default async function MypageHomePage() {
             <CardTitle>フォロー中の生産者の新着</CardTitle>
             <CardAction>
               <Button asChild variant="ghost" size="sm">
-                <Link href={routes.mypage.favorites}>フォロー一覧<ArrowRight /></Link>
+                <Link href={routes.mypage.favorites}>フォロー一覧</Link>
               </Button>
             </CardAction>
           </CardHeader>

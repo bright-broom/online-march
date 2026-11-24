@@ -14,7 +14,6 @@ export default function CartPage() {
     <>
       <PageIntro
         crumbs={[{ label: "カート" }]}
-        eyebrow="CART"
         title="カート"
         lead="農家さんごとに箱詰めして直送します。送料・お届け日はお届け先の都道府県で試算できます。"
       />

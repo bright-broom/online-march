@@ -1,7 +1,5 @@
-import { ArrowRight } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Icon } from "@/components/common/icon";
 import { PageIntro } from "@/components/shop/page-intro";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -23,7 +21,7 @@ export default function GuidePage() {
   const { howItWorks } = homeContent;
   return (
     <>
-      <PageIntro crumbs={[{ label: guideContent.title }]} eyebrow="GUIDE" title={guideContent.title} lead="はじめての方へ。ご注文からお届けまでの流れと、送料・お支払いについてご案内します。" />
+      <PageIntro crumbs={[{ label: guideContent.title }]} title={guideContent.title} lead="はじめての方へ。ご注文からお届けまでの流れと、送料・お支払いについてご案内します。" />
 
       <div className="container-page grid gap-12 pb-20 sm:pb-28 lg:grid-cols-[14rem_1fr] lg:gap-16">
         <nav aria-label="目次" className="hidden lg:block">
@@ -43,10 +41,7 @@ export default function GuidePage() {
             <h2 className="heading-display text-2xl">{howItWorks.title}</h2>
             <ol className="mt-6 grid gap-3 sm:grid-cols-2">
               {howItWorks.steps.map((s, i) => (
-                <li key={s.title} className="bg-paper flex gap-4 rounded-2xl p-5">
-                  <span className="bg-background text-primary flex size-11 shrink-0 items-center justify-center rounded-full">
-                    <Icon name={s.icon} className="size-5" />
-                  </span>
+                <li key={s.title} className="bg-paper rounded-2xl p-5">
                   <div>
                     <p className="font-semibold">
                       <span className="num text-primary mr-2">{i + 1}.</span>
@@ -108,7 +103,6 @@ export default function GuidePage() {
             <Button asChild variant="outline" className="h-11 rounded-full px-6">
               <Link href={routes.faq}>
                 よくある質問を見る
-                <ArrowRight />
               </Link>
             </Button>
           </div>

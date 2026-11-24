@@ -1,5 +1,5 @@
 "use client";
-import { ArrowRight, CalendarCheck, ShoppingBasket, Tractor, Trash2, Truck } from "lucide-react";
+import { CalendarCheck, ShoppingBasket, Tractor, Trash2, Truck } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { EmptyState } from "@/components/common/empty-state";
@@ -204,7 +204,6 @@ export function CartContents({ variant, onNavigate }: { variant: Variant; onNavi
         <Button asChild className="h-11 rounded-full px-6" onClick={onNavigate}>
           <Link href={routes.products}>
             商品をさがす
-            <ArrowRight />
           </Link>
         </Button>
       </EmptyState>
@@ -241,7 +240,6 @@ export function CartContents({ variant, onNavigate }: { variant: Variant; onNavi
       <Button asChild className="h-12 w-full rounded-full text-base" onClick={onNavigate}>
         <Link href={routes.checkout}>
           ご注文手続きへ
-          <ArrowRight />
         </Link>
       </Button>
       {variant === "sheet" ? (

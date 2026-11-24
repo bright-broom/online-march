@@ -14,7 +14,6 @@ export default function LoginPage({ searchParams }: PageProps<"/login">) {
         <RedirectIfSignedIn searchParams={searchParams} />
       </Suspense>
       <div className="space-y-2">
-        <p className="eyebrow">Sign in</p>
         <h1 className="heading-display text-3xl">おかえりなさい</h1>
         <p className="text-muted-foreground text-sm leading-relaxed">
           ご注文の確認や、生産者さんとのメッセージはログインしてご利用ください。
