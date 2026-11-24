@@ -75,3 +75,20 @@ describe("restoring a backup", () => {
     expect(Number((await db.execute<{ n: number }>(sql`select count(*)::int as n from farms`)).rows[0].n)).toBeGreaterThan(0);
   });
 });
+
+describe("restoring a tampered backup", () => {
+  it("refuses a column name the live table does not have, and leaves the target untouched", async () => {
+    const dump = await exportDatabase();
+    const target = await freshDatabase();
+    await restoreDatabase(target, dump);
+    const farms = dump.tables.farms as Record<string, unknown>[];
+    const evil = { ...dump, tables: { ...dump.tables, farms: farms.map((f) => ({ ...f, 'name") values (1); drop table orders; --': 1 })) } };
+    await expect(restoreDatabase(target, evil)).rejects.toThrow(/does not have/);
+    expect(await count(target, "orders")).toBe(dump.tables.orders.length);
+  });
+
+  it("quotes identifiers so a name cannot end them early", async () => {
+    const { ident } = await import("../backup-restore");
+    expect(ident('a"b')).toBe('"a""b"');
+  });
+});
