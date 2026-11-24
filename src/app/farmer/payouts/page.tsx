@@ -1,4 +1,4 @@
-import { CalendarClock, Landmark, Percent, TrendingUp } from "lucide-react";
+import { Landmark } from "lucide-react";
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import { BarBreakdownChart } from "@/components/charts";
@@ -33,7 +33,6 @@ export default async function FarmerPayoutsPage({ searchParams }: PageProps<"/fa
     getFarmBankAccount(farm.id),
   ]);
   const rateBps = farm.commissionRateBps ?? settings.commissionRateBps;
-  const trend = monthly.map((m) => m.gross);
   const prevMonth = monthly.at(-2)?.gross ?? 0;
   const thisMonthDelta = prevMonth > 0 ? (summary.thisMonth.gross - prevMonth) / prevMonth : null;
 
@@ -57,17 +56,15 @@ export default async function FarmerPayoutsPage({ searchParams }: PageProps<"/fa
       )}
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="今月の売上見込み" value={summary.thisMonth.gross} format="yen" icon={TrendingUp} trend={trend} delta={thisMonthDelta} hint={`受取見込み ${formatNumber(summary.thisMonth.payout)}円`} />
+        <StatCard label="今月の売上見込み" value={summary.thisMonth.gross} format="yen" delta={thisMonthDelta} hint={`受取見込み ${formatNumber(summary.thisMonth.payout)}円`} />
         <StatCard
           label="次回お振込予定"
           value={summary.next?.amount ?? 0}
           format="yen"
-          icon={CalendarClock}
-          color="chart-2"
           hint={summary.next?.scheduledFor ? `${formatDate(fromYmd(summary.next.scheduledFor))} 予定` : "予定はありません"}
         />
-        <StatCard label="累計お受取額" value={summary.paidTotal} format="yen" icon={Landmark} color="chart-3" hint="振込済みの合計" />
-        <StatCard label="販売手数料率" value={rateBps / 10000} format="percent" icon={Percent} color="chart-5" hint="商品代金に対して" />
+        <StatCard label="累計お受取額" value={summary.paidTotal} format="yen" hint="振込済みの合計" />
+        <StatCard label="販売手数料率" value={rateBps / 10000} format="percent" hint="商品代金に対して" />
       </section>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">

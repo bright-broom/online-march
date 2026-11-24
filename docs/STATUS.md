@@ -336,6 +336,7 @@ PR #23 の確認で作るものの消し方（どれも運営画面で消せな�
 
 | 機能 | 実装 | 回帰テスト |
 | --- | --- | --- |
+| 作り物っぽい飾りの撤去（すりガラス・ホバー拡大・フェードイン・アイコンの箱・2分割のログイン画面・決まり文句） | `docs/DESIGN.md` §8 D-05〜D-11, `components/dashboard/stat-card.tsx`, `components/common/empty-state.tsx`, `app/(auth)/layout.tsx` | `design-lint.test.ts` |
 | 決済手段（PayPay / コンビニ払い / ウォレット） | `config/payments.ts`, `services/payments/stripe.ts` | `deferred-payment.test.ts` |
 | 決済の通し（ゴールデンルート） | — | `golden-route.test.ts` |
 | 退会（匿名化） | `services/account-closure.ts` | `account-closure.test.ts` |

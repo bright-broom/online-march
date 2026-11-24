@@ -10,7 +10,7 @@ export function StickySaveBar({
   return (
     <div
       className={cn(
-        "bg-background/90 sticky bottom-0 z-20 -mx-4 mt-6 flex items-center justify-between gap-3 border-t px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md md:-mx-6 md:px-6 lg:-mx-8 lg:px-8",
+        "bg-background sticky bottom-0 z-20 -mx-4 mt-6 flex items-center justify-between gap-3 border-t px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:-mx-6 md:px-6 lg:-mx-8 lg:px-8",
         className,
       )}
     >

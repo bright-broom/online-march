@@ -1,5 +1,5 @@
 "use client";
-import { ArrowLeft, ShoppingBasket, TriangleAlert } from "lucide-react";
+import { ArrowLeft, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
@@ -102,7 +102,7 @@ export function CheckoutView({
 
   if (items.length === 0) {
     return (
-      <EmptyState icon={ShoppingBasket} title="カートに商品がありません" description="気になる玉ねぎをカートに入れてから、ご購入手続きへお進みください。" className="bg-card rounded-2xl border py-16">
+      <EmptyState title="カートに商品がありません" description="気になる玉ねぎをカートに入れてから、ご購入手続きへお進みください。" className="bg-card rounded-2xl border py-16">
         <Button asChild className="rounded-full">
           <Link href={routes.products}>商品をさがす</Link>
         </Button>

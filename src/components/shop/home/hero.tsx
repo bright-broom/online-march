@@ -13,7 +13,7 @@ export function HomeHero() {
       <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-t from-black/75 via-black/30 to-black/5" />
 
       <div className="container-page pt-28 pb-12 sm:pb-16">
-        <div className="max-w-3xl motion-safe:animate-fade-up">
+        <div className="max-w-3xl">
           <p className="text-sm text-white/85">{hero.origin}</p>
           <h1 className="heading-display mt-3 text-[1.9rem] leading-[1.35] sm:text-5xl lg:text-6xl lg:leading-[1.25]">
             {hero.title.map((line) => (

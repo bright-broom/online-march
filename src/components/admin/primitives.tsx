@@ -1,4 +1,4 @@
-import type { LucideIcon } from "lucide-react";
+import type {} from "lucide-react";
 import Link from "next/link";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -33,14 +33,11 @@ export function PanelCard({
 }
 
 /** KPI-sized tile for non-numeric values (text status, relative time). Mirrors StatCard's rhythm. */
-export function InfoStat({ label, value, hint, icon: IconC, className }: { label: string; value: React.ReactNode; hint?: React.ReactNode; icon?: LucideIcon; className?: string }) {
+export function InfoStat({ label, value, hint, className }: { label: string; value: React.ReactNode; hint?: React.ReactNode; className?: string }) {
   return (
     <Card className={cn("gap-0 overflow-hidden py-0", className)}>
       <CardContent className="space-y-3 p-5">
-        <div className="text-muted-foreground flex items-center justify-between text-xs font-medium">
-          <span>{label}</span>
-          {IconC && <span className="bg-primary/10 text-primary rounded-lg p-1.5"><IconC className="size-4" /></span>}
-        </div>
+        <p className="text-muted-foreground text-xs font-medium">{label}</p>
         <p className="text-xl font-semibold tracking-tight sm:text-2xl">{value}</p>
         {hint && <p className="text-muted-foreground truncate text-xs">{hint}</p>}
       </CardContent>

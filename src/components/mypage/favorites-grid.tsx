@@ -1,5 +1,5 @@
 "use client";
-import { Heart, HeartOff, ShoppingBasket } from "lucide-react";
+import { HeartOff, ShoppingBasket } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -22,7 +22,7 @@ export function FavoritesGrid({ products }: { products: FavoriteProduct[] }) {
 
   if (!visible.length) {
     return (
-      <EmptyState icon={Heart} title="お気に入りはまだありません" description="商品ページのハートを押すと、ここに保存されます。" className="bg-card rounded-xl border">
+      <EmptyState title="お気に入りはまだありません" description="商品ページのハートを押すと、ここに保存されます。" className="bg-card rounded-xl border">
         <Button asChild variant="outline" className="rounded-full">
           <Link href={routes.products}>商品をさがす</Link>
         </Button>
@@ -42,7 +42,7 @@ export function FavoritesGrid({ products }: { products: FavoriteProduct[] }) {
                   alt={p.imageAlt}
                   fill
                   sizes="(min-width: 1280px) 20vw, (min-width: 768px) 30vw, 45vw"
-                  className="object-cover transition-transform duration-700 motion-safe:group-hover:scale-[1.03]"
+                  className="object-cover"
                 />
               )}
             </Link>
@@ -51,7 +51,7 @@ export function FavoritesGrid({ products }: { products: FavoriteProduct[] }) {
               size="icon"
               variant="secondary"
               aria-label="お気に入りから外す"
-              className="bg-background/85 absolute top-2 right-2 size-9 rounded-full backdrop-blur"
+              className="bg-background absolute top-2 right-2 size-9 rounded-full"
               onClick={() =>
                 start(async () => {
                   hide(p.id);
@@ -65,7 +65,7 @@ export function FavoritesGrid({ products }: { products: FavoriteProduct[] }) {
               <HeartOff className="size-4" />
             </Button>
             {!p.purchasable && (
-              <span className="bg-background/85 absolute bottom-2 left-2 rounded-full px-2.5 py-1 text-[11px] font-medium backdrop-blur">
+              <span className="bg-background absolute bottom-2 left-2 rounded-full px-2.5 py-1 text-[11px] font-medium">
                 {p.status === "active" ? "在庫切れ" : "販売休止中"}
               </span>
             )}

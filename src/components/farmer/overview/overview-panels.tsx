@@ -1,4 +1,4 @@
-import { MessageSquareReply, PackageCheck, Star } from "lucide-react";
+import { MessageSquareReply } from "lucide-react";
 import Link from "next/link";
 import { EmptyState } from "@/components/common/empty-state";
 import { RatingStars } from "@/components/common/rating";
@@ -42,7 +42,7 @@ export function UpcomingShipments({ rows, today }: { rows: Awaited<ReturnType<ty
             ))}
           </ul>
         ) : (
-          <EmptyState icon={PackageCheck} title="出荷待ちの注文はありません" description="新しい注文が入ると、ここに表示されます。" className="py-6" />
+          <EmptyState title="出荷待ちの注文はありません" description="新しい注文が入ると、ここに表示されます。" className="py-6" />
         )}
       </CardContent>
     </Card>
@@ -54,7 +54,7 @@ export function LatestReviews({ rows, now }: { rows: Awaited<ReturnType<typeof g
     <Card>
       <CardHeader>
         <CardTitle>最新のレビュー</CardTitle>
-        <CardDescription>お客さまの声にひとこと返信しましょう</CardDescription>
+        <CardDescription>まだ返信していないレビュー</CardDescription>
         <CardAction>
           <Button asChild variant="ghost" size="sm">
             <Link href={routes.farmer.reviews}>すべて見る</Link>
@@ -83,7 +83,7 @@ export function LatestReviews({ rows, now }: { rows: Awaited<ReturnType<typeof g
             ))}
           </ul>
         ) : (
-          <EmptyState icon={Star} title="まだレビューはありません" description="お届け後にお客さまへレビュー依頼が自動で送られます。" className="py-6" />
+          <EmptyState title="まだレビューはありません" description="お届け後にお客さまへレビュー依頼が自動で送られます。" className="py-6" />
         )}
       </CardContent>
     </Card>

@@ -43,7 +43,7 @@ export function FarmCard({ farm, className }: { farm: FarmCardDTO; className?: s
           alt=""
           fill
           sizes="(min-width: 1024px) 30vw, (min-width: 640px) 45vw, 92vw"
-          className="object-cover transition-transform duration-700 ease-out group-hover/farm:scale-[1.03]"
+          className="object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
       </div>

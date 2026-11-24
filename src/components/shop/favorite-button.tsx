@@ -81,7 +81,7 @@ export function FavoriteButton({
       aria-pressed={active}
       aria-label={label}
       className={cn(
-        "bg-background/85 text-foreground hover:bg-background focus-visible:ring-ring/50 inline-flex size-10 items-center justify-center rounded-full shadow-sm backdrop-blur-md transition-all outline-none focus-visible:ring-3 active:scale-90 disabled:opacity-70",
+        "bg-background text-foreground hover:bg-background focus-visible:ring-ring/50 inline-flex size-10 items-center justify-center rounded-full shadow-sm transition-all outline-none focus-visible:ring-3 active:scale-90 disabled:opacity-70",
         className,
       )}
     >

@@ -224,7 +224,7 @@ export default function ImageUploader({
         {pending.map((p) => (
           <div key={p.key} className={cn("bg-muted relative overflow-hidden rounded-xl border", tileAspect)}>
             <Image src={p.preview} alt="アップロード中の画像" fill unoptimized sizes="160px" className={cn("object-cover", !p.error && "opacity-60")} />
-            <div className="bg-background/70 absolute inset-x-0 bottom-0 space-y-1 p-2 backdrop-blur-sm">
+            <div className="bg-background absolute inset-x-0 bottom-0 space-y-1 p-2">
               {p.error ? (
                 <div className="flex items-start gap-1.5">
                   <TriangleAlert className="text-destructive mt-0.5 size-3.5 shrink-0" />

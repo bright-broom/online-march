@@ -1,4 +1,3 @@
-import { CheckCircle2, Clock, Mail, MessageCircle, Package, ReceiptText, Star, Truck } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -21,9 +20,9 @@ import { getOrderSummary } from "@/server/queries/account";
 export const metadata: Metadata = { title: "ご注文ありがとうございます", robots: { index: false } };
 
 const nextSteps = [
-  { icon: Package, title: "収穫・箱詰め", body: "生産者が出荷日に合わせて収穫し、ていねいに箱詰めします。" },
-  { icon: Truck, title: "発送のお知らせ", body: "発送されたら追跡番号をメールとマイページでお知らせします。" },
-  { icon: Star, title: "届いたら感想を", body: "レビューは生産者さんの励みになります。" },
+  { title: "箱詰め・発送", body: "生産者が出荷予定日に箱詰めして発送します。" },
+  { title: "発送のお知らせ", body: "発送されたら追跡番号をメールとマイページでお知らせします。" },
+  { title: "受け取り・レビュー", body: "届いたらマイページで「受け取りました」を押してください。レビューも書けます。" },
 ];
 
 export default function CheckoutSuccessPage({ searchParams }: PageProps<"/checkout/success">) {
@@ -45,7 +44,7 @@ async function SuccessContent({ searchParams }: { searchParams: PageProps<"/chec
 
   if (!order) {
     return (
-      <EmptyState icon={ReceiptText} title="ご注文が見つかりません" description="ご注文の状況はマイページの注文履歴からご確認いただけます。" className="bg-card rounded-2xl border py-16">
+      <EmptyState title="ご注文が見つかりません" description="ご注文の状況はマイページの注文履歴からご確認いただけます。" className="bg-card rounded-2xl border py-16">
         <Button asChild className="rounded-full">
           <Link href={routes.mypage.orders}>注文履歴を見る</Link>
         </Button>
@@ -61,10 +60,7 @@ async function SuccessContent({ searchParams }: { searchParams: PageProps<"/chec
   return (
     <div className="mx-auto max-w-3xl space-y-10">
       <SuccessEffects orderId={order.id} sessionId={sessionId} pending={pending} />
-      <header className="animate-fade-up space-y-4 text-center">
-        <span className="bg-leaf/15 text-leaf mx-auto flex size-16 items-center justify-center rounded-full">
-          {pending ? <Clock className="size-8" /> : <CheckCircle2 className="size-8" />}
-        </span>
+      <header className="space-y-4 text-center">
         <h1 className="heading-display text-3xl sm:text-4xl">
           {awaitingPayment ? "お支払い番号を発行しました" : pending ? "お支払いを確認しています" : "ご注文ありがとうございます"}
         </h1>
@@ -79,8 +75,6 @@ async function SuccessContent({ searchParams }: { searchParams: PageProps<"/chec
             <span className="inline-flex items-center gap-2"><Spinner />決済の完了を確認中です。このままお待ちください。</span>
           ) : (
             <>
-              南あわじの畑から、生産者が心をこめてお届けします。
-              <br className="hidden sm:inline" />
               確認メールを <span className="text-foreground font-medium">{order.email}</span> にお送りしました。
             </>
           )}
@@ -144,15 +138,14 @@ async function SuccessContent({ searchParams }: { searchParams: PageProps<"/chec
 
       <section className="space-y-4">
         <h2 className="heading-display text-lg">このあとの流れ</h2>
-        <ol className="grid gap-3 sm:grid-cols-3">
+        <ol className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-3">
           {nextSteps.map((s, i) => (
-            <li key={s.title} className="bg-card space-y-2 rounded-2xl border p-4">
-              <span className="text-primary flex items-center gap-2 text-xs font-medium">
-                <span className="num">0{i + 1}</span>
-                <s.icon className="size-4" />
-              </span>
-              <p className="text-sm font-medium">{s.title}</p>
-              <p className="text-muted-foreground text-xs leading-relaxed">{s.body}</p>
+            <li key={s.title} className="border-t pt-3">
+              <p className="text-sm font-medium">
+                <span className="text-muted-foreground mr-1.5 tabular-nums">{i + 1}.</span>
+                {s.title}
+              </p>
+              <p className="text-muted-foreground mt-1 text-xs leading-relaxed">{s.body}</p>
             </li>
           ))}
         </ol>
@@ -160,16 +153,16 @@ async function SuccessContent({ searchParams }: { searchParams: PageProps<"/chec
 
       <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
         <Button asChild size="lg" className="h-11 w-full rounded-full sm:w-auto">
-          <Link href={routes.mypage.order(order.id)}><ReceiptText />注文詳細を見る</Link>
+          <Link href={routes.mypage.order(order.id)}>注文詳細を見る</Link>
         </Button>
         <Button asChild size="lg" variant="outline" className="h-11 w-full rounded-full sm:w-auto">
           <Link href={routes.products}>買い物を続ける</Link>
         </Button>
       </div>
-      <p className="text-muted-foreground flex items-center justify-center gap-4 text-xs">
-        <span className="inline-flex items-center gap-1"><Mail className="size-3.5" />確認メールが届かない場合は迷惑メールフォルダもご確認ください</span>
-        <Link href={routes.mypage.messages} className="hover:text-foreground inline-flex items-center gap-1 underline-offset-4 hover:underline">
-          <MessageCircle className="size-3.5" />生産者に連絡
+      <p className="text-muted-foreground flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-center text-xs">
+        <span>確認メールが届かない場合は、迷惑メールフォルダもご確認ください</span>
+        <Link href={routes.mypage.messages} className="hover:text-foreground underline underline-offset-4">
+          生産者に連絡する
         </Link>
       </p>
     </div>
@@ -180,7 +173,6 @@ function SuccessSkeleton() {
   return (
     <div className="mx-auto max-w-3xl space-y-8" aria-busy>
       <div className="flex flex-col items-center gap-4">
-        <Skeleton className="size-16 rounded-full" />
         <Skeleton className="h-9 w-72" />
         <Skeleton className="h-4 w-96 max-w-full" />
         <Skeleton className="h-12 w-80 rounded-2xl" />

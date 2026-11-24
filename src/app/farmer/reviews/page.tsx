@@ -88,7 +88,6 @@ export default async function FarmerReviewsPage({ searchParams }: PageProps<"/fa
             </ul>
           ) : (
             <EmptyState
-              icon={Star}
               title={unrepliedOnly ? "未返信のレビューはありません" : "まだレビューはありません"}
               description={unrepliedOnly ? "すべてのレビューに返信済みです。" : "お届けの3日後に、お客さまへレビュー依頼が自動で送られます。"}
             />

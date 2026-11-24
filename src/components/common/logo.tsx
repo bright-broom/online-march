@@ -16,7 +16,7 @@ export function LogoMark({ className }: { className?: string }) {
 export function Logo({ className, href = "/" }: { className?: string; href?: string }) {
   return (
     <Link href={href} className={cn("group inline-flex items-center gap-2.5", className)} aria-label={siteConfig.name}>
-      <LogoMark className="transition-transform duration-500 group-hover:-rotate-6" />
+      <LogoMark />
       <span className="font-serif text-[15px] leading-none font-semibold tracking-[0.06em]">{siteConfig.name}</span>
     </Link>
   );

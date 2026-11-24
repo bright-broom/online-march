@@ -1,4 +1,3 @@
-import { MessageSquareText } from "lucide-react";
 import { EmptyState } from "@/components/common/empty-state";
 import { RatingStars } from "@/components/common/rating";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -55,7 +54,7 @@ export function ReviewsBlock({
   more?: { productId: string; pageSize: number };
 }) {
   if (!items.length) {
-    return <EmptyState icon={MessageSquareText} title="まだレビューはありません" description={emptyText} className="bg-paper/60 border py-12" />;
+    return <EmptyState title="まだレビューはありません" description={emptyText} className="bg-paper/60 border py-12" />;
   }
   return (
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-[18rem_1fr] lg:gap-12">

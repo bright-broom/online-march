@@ -1,4 +1,3 @@
-import { CalendarClock, Coins, Landmark } from "lucide-react";
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import { AccountingExportCard } from "@/components/admin/payouts/accounting-export-card";
@@ -65,9 +64,9 @@ export default async function AdminPayoutsPage({ searchParams }: PageProps<"/adm
       />
       <div className="space-y-6">
         <section className="grid gap-4 sm:grid-cols-3" aria-label="精算サマリー">
-          <StatCard label="振込予定総額" value={summary.scheduledTotal} format="yen" icon={CalendarClock} hint={`${summary.scheduledCount}件`} />
-          <StatCard label="今月振込済み" value={summary.paidThisMonth} format="yen" icon={Landmark} color="leaf" />
-          <StatCard label="手数料収益" value={summary.commissionThisYear} format="yen" icon={Coins} hint={`今年の精算分・累計 ${formatYen(summary.commissionTotal)}`} />
+          <StatCard label="振込予定総額" value={summary.scheduledTotal} format="yen" hint={`${summary.scheduledCount}件`} />
+          <StatCard label="今月振込済み" value={summary.paidThisMonth} format="yen" />
+          <StatCard label="手数料収益" value={summary.commissionThisYear} format="yen" hint={`今年の精算分・累計 ${formatYen(summary.commissionTotal)}`} />
         </section>
         {chart.length > 0 && (
           <PanelCard title="月次精算の推移" description="対象月別の振込額（振込済み / 振込予定）">
