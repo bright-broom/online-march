@@ -7,7 +7,7 @@ import { siteConfig } from "@/config/site";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="grid min-h-svh lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
+    <div className="grid grid-cols-1 min-h-svh lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
       <div className="flex flex-col px-5 py-6 sm:px-10 lg:px-14">
         <header className="flex items-center justify-between">
           <Logo />

@@ -67,7 +67,7 @@ export default async function OrderDetailPage({ params }: PageProps<"/mypage/ord
         }
       />
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="space-y-6">
           {order.status === "pending_payment" && order.paymentMethod && (
             <PaymentPendingCard method={order.paymentMethod} voucherUrl={order.paymentVoucherUrl} dueAt={order.paymentDueAt} total={order.total} />

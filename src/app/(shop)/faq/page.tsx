@@ -26,7 +26,7 @@ export default function FaqPage() {
         }}
       />
       <PageIntro crumbs={[{ label: "よくある質問" }]} title="よくある質問" lead="お問い合わせの前に、こちらもご覧ください。" />
-      <div className="container-page grid gap-12 pb-20 sm:pb-28 lg:grid-cols-[1fr_20rem] lg:gap-16">
+      <div className="container-page grid grid-cols-1 gap-12 pb-20 sm:pb-28 lg:grid-cols-[1fr_20rem] lg:gap-16">
         <Accordion type="single" collapsible defaultValue="faq-0" className="border-t">
           {faqContent.map((f, i) => (
             <AccordionItem key={f.q} value={`faq-${i}`} className="border-b">

@@ -68,7 +68,7 @@ export function ShippingSettingsForm({ initial, nowIso }: { initial: Settings; n
       <input type="hidden" name="freeShippingEnabled" value={String(s.freeShippingEnabled)} />
       <input type="hidden" name="freeShippingThreshold" value={s.freeShippingEnabled ? s.freeShippingThreshold.replace(/[,，]/g, "") : ""} />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="min-w-0 space-y-6">
           <Card>
             <CardHeader>

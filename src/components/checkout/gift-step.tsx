@@ -30,7 +30,7 @@ export function GiftStep({
       </Field>
 
       {gift.wrapping && (
-        <div className="animate-fade-up grid gap-5 sm:grid-cols-[12rem_minmax(0,1fr)]">
+        <div className="animate-fade-up grid grid-cols-1 gap-5 sm:grid-cols-[12rem_minmax(0,1fr)]">
           <Field>
             <FieldLabel htmlFor="gift-noshi">のし</FieldLabel>
             <Select value={gift.noshi || NO_NOSHI} onValueChange={(v) => onGift({ noshi: v === NO_NOSHI ? "" : v })}>

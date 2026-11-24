@@ -46,7 +46,7 @@ export function ReceiptView({ data }: { data: ReceiptData }) {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <style>{printCss}</style>
-      <div className="no-print bg-card grid gap-4 rounded-xl border p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+      <div className="no-print bg-card grid grid-cols-1 gap-4 rounded-xl border p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
         <Field>
           <FieldLabel htmlFor="receipt-name">宛名</FieldLabel>
           <Input id="receipt-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={60} />

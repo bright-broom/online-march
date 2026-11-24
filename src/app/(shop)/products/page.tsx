@@ -33,7 +33,7 @@ export default async function ProductsPage({ searchParams }: PageProps<"/product
         lead="品種・栽培方法・農家さんから、あなたの食卓にぴったりの玉ねぎを。すべて産地から直送です。"
       />
       <CatalogPendingProvider>
-        <div className="container-page grid gap-10 pb-20 lg:grid-cols-[15rem_1fr] lg:gap-12">
+        <div className="container-page grid grid-cols-1 gap-10 pb-20 lg:grid-cols-[15rem_1fr] lg:gap-12">
           <aside aria-label="絞り込み" className="hidden lg:block">
             <div className="sticky top-24 max-h-[calc(100svh-7rem)] overflow-y-auto overscroll-contain pr-2 pb-6">
               <Suspense fallback={<CatalogFilterSkeleton />}>

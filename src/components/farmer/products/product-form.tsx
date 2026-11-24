@@ -149,7 +149,7 @@ export function ProductForm({ product, farm }: { product?: ProductFormInitial; f
       <input type="hidden" name="images" value={JSON.stringify(s.images.map((url) => ({ url, alt: s.name })))} />
       <input type="hidden" name="variants" value={JSON.stringify(serializeVariants(s.variants))} />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0 space-y-6">
           <Card>
             <CardHeader>

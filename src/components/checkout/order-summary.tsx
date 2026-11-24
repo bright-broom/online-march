@@ -25,7 +25,7 @@ function Row({ label, children, className }: { label: string; children: React.Re
 }
 
 export function OrderSummary({
-  quote, fallbackSubtotal, itemCount, loading, placing, canPlace, paymentMode, onPlace, coupon,
+  quote, fallbackSubtotal, itemCount, loading, placing, canPlace, blockedReason, paymentMode, onPlace, coupon,
 }: {
   quote: CheckoutQuote | null;
   fallbackSubtotal: number;
@@ -33,6 +33,8 @@ export function OrderSummary({
   loading: boolean;
   placing: boolean;
   canPlace: boolean;
+  /** 押せないときの理由（ボタンの下に出す） */
+  blockedReason?: string | null;
   paymentMode: PaymentMode;
   onPlace: () => void;
   coupon: React.ReactNode;
@@ -101,6 +103,11 @@ export function OrderSummary({
         {placing ? <Spinner /> : <Lock />}
         {paymentMode === "stripe" ? "お支払いへ進む" : "注文を確定する"}
       </Button>
+      {!canPlace && !placing && blockedReason && (
+        <p className="text-muted-foreground text-center text-xs leading-relaxed" role="status" aria-live="polite">
+          {blockedReason}
+        </p>
+      )}
       <p className="text-muted-foreground flex items-start gap-1.5 text-xs leading-relaxed">
         <ShieldCheck className="mt-0.5 size-3.5 shrink-0" />
         {paymentMode === "stripe"

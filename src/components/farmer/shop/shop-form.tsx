@@ -78,7 +78,7 @@ export function ShopForm({ initial }: { initial: ShopFormInitial }) {
       <input type="hidden" name="gallery" value={JSON.stringify(s.gallery)} />
       <input type="hidden" name="cultivationMethods" value={JSON.stringify(s.cultivationMethods)} />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="min-w-0 space-y-6">
           <Card>
             <CardHeader>
@@ -86,7 +86,7 @@ export function ShopForm({ initial }: { initial: ShopFormInitial }) {
               <CardDescription>トップ写真は畑や玉ねぎ小屋の風景がおすすめ。アイコンは顔写真やロゴを。</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid gap-6 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
                 <div className="space-y-2">
                   <p className="text-sm font-medium">トップ写真</p>
                   <LazyImageUploader value={s.heroImage ? [s.heroImage] : []} onChange={(v) => set("heroImage", v[0] ?? null)} max={1} folder="farms" aspect="wide" altText="トップ写真" />

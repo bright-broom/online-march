@@ -72,6 +72,10 @@ const nextConfig: NextConfig = {
     ...(embeddedDb ? { cpus: 1, staticGenerationMaxConcurrency: 4 } : {}),
   },
   poweredByHeader: false,
+  // ブラウザが既定で取りに来る /favicon.ico を、app/icon.tsx の画像へ（404 のままにしない）
+  async rewrites() {
+    return [{ source: "/favicon.ico", destination: "/icon" }];
+  },
   async headers() {
     return [{ source: "/(.*)", headers: securityHeaders }];
   },

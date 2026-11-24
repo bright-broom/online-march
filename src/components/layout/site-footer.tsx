@@ -11,7 +11,7 @@ export function SiteFooter() {
   return (
     <footer className="bg-sea text-sea-foreground">
       <div className="container-page relative py-16 sm:py-20">
-        <div className="grid gap-12 lg:grid-cols-[1.2fr_2fr]">
+        <div className="grid grid-cols-1 gap-12 lg:grid-cols-[1.2fr_2fr]">
           <div className="space-y-6">
             <Link href={routes.home} className="inline-flex items-center gap-3" aria-label={siteConfig.name}>
               <LogoMark className="size-10" />

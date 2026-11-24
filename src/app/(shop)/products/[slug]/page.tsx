@@ -101,7 +101,7 @@ export default async function ProductPage({ params }: PageProps<"/products/[slug
         ]}
       />
 
-      <div className="mt-6 grid gap-10 lg:mt-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-16">
+      <div className="mt-6 grid grid-cols-1 gap-10 lg:mt-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-16">
         <ProductGallery images={p.images} name={p.name} />
 
         <div className="space-y-7">
@@ -141,7 +141,7 @@ export default async function ProductPage({ params }: PageProps<"/products/[slug
         </div>
       </div>
 
-      <section className="mt-16 grid gap-12 border-t pt-14 sm:mt-24 sm:pt-20 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] lg:gap-16">
+      <section className="mt-16 grid grid-cols-1 gap-12 border-t pt-14 sm:mt-24 sm:pt-20 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] lg:gap-16">
         <div className="space-y-10">
           {p.highlights.length > 0 && (
             <div>

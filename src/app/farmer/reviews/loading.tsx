@@ -5,7 +5,7 @@ export default function Loading() {
   return (
     <div>
       <PageHeaderSkeleton actions={false} />
-      <div className="grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
         <Skeleton className="h-72 rounded-xl" />
         <div className="space-y-4">
           <Skeleton className="h-11 w-56 rounded-xl" />

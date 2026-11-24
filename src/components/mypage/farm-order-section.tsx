@@ -33,6 +33,8 @@ function Info({ icon: I, label, children }: { icon: typeof Truck; label: string;
 export function FarmOrderSection({ fo, multiFarm = false }: { fo: OrderDetailFarmOrder; multiFarm?: boolean }) {
   const carrier = carriers[fo.carrier];
   const delivered = fo.status === "delivered";
+  // 取り消した注文には「発送後に…」「お届け予定」を出さない（もう届かないので）
+  const closed = fo.status === "cancelled" || fo.status === "refunded";
   return (
     <Card className="gap-0 overflow-hidden py-0">
       <CardHeader className="bg-muted/30 flex flex-row flex-wrap items-center justify-between gap-3 border-b py-4">
@@ -60,7 +62,7 @@ export function FarmOrderSection({ fo, multiFarm = false }: { fo: OrderDetailFar
         <FulfillmentTracker status={fo.status} />
         <FarmOrderCancel farmOrderId={fo.id} mode={fo.cancelMode} multiFarm={multiFarm} reply={fo.cancelRequestReply} />
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_16rem]">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_16rem]">
           <ul className="divide-y rounded-xl border">
             {fo.items.map((it) => (
               <li key={it.id} className="flex flex-wrap items-center gap-3 p-3">
@@ -103,20 +105,22 @@ export function FarmOrderSection({ fo, multiFarm = false }: { fo: OrderDetailFar
                   <ExternalLink className="size-3" />
                 </a>
               ) : (
-                <p className="text-muted-foreground text-xs">発送後に追跡番号が表示されます</p>
+                !closed && <p className="text-muted-foreground text-xs">発送後に追跡番号が表示されます</p>
               )}
             </Info>
-            <Info icon={CalendarClock} label={delivered ? "お届け日" : "お届け予定"}>
-              {delivered && fo.deliveredAt ? formatDateTime(fo.deliveredAt) : fo.estimatedDeliveryDate ? formatShortDate(fromYmd(fo.estimatedDeliveryDate)) : "—"}
-              {!delivered && fo.shipByDate && (
-                <p className="text-muted-foreground text-xs">出荷予定 {formatShortDate(fromYmd(fo.shipByDate))}</p>
-              )}
-              {fo.status === "shipped" && (
-                <div className="pt-2">
-                  <ConfirmReceivedButton farmOrderId={fo.id} />
-                </div>
-              )}
-            </Info>
+            {!closed && (
+              <Info icon={CalendarClock} label={delivered ? "お届け日" : "お届け予定"}>
+                {delivered && fo.deliveredAt ? formatDateTime(fo.deliveredAt) : fo.estimatedDeliveryDate ? formatShortDate(fromYmd(fo.estimatedDeliveryDate)) : "—"}
+                {!delivered && fo.shipByDate && (
+                  <p className="text-muted-foreground text-xs">出荷予定 {formatShortDate(fromYmd(fo.shipByDate))}</p>
+                )}
+                {fo.status === "shipped" && (
+                  <div className="pt-2">
+                    <ConfirmReceivedButton farmOrderId={fo.id} />
+                  </div>
+                )}
+              </Info>
+            )}
             <Info icon={Package} label="荷姿">
               {fo.boxSize}サイズ × {fo.boxCount}箱
             </Info>

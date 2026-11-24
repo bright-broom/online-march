@@ -22,39 +22,43 @@ export function AddressStep({
   save: boolean;
   onSave: (v: boolean) => void;
 }) {
+  // 保存したお届け先がまだ無い（はじめての注文）ときは、選ぶものが1つしかないので選択肢を出さずに入力欄だけにする
+  const firstTime = addresses.length === 0;
   return (
     <div className="space-y-5">
-      <RadioGroup value={choice} onValueChange={onChoice} className="grid gap-3 sm:grid-cols-2" aria-label="お届け先">
-        {addresses.map((a) => (
-          <FieldLabel key={a.id} htmlFor={`addr-opt-${a.id}`} className="cursor-pointer">
+      {!firstTime && (
+        <RadioGroup value={choice} onValueChange={onChoice} className="grid gap-3 sm:grid-cols-2" aria-label="お届け先">
+          {addresses.map((a) => (
+            <FieldLabel key={a.id} htmlFor={`addr-opt-${a.id}`} className="cursor-pointer">
+              <Field orientation="horizontal" className="items-start">
+                <FieldContent className="gap-1.5">
+                  <FieldTitle className="flex flex-wrap items-center gap-2">
+                    {a.label}
+                    {a.isDefault && <Badge variant="secondary" className="rounded-full text-[10px]">いつもの</Badge>}
+                  </FieldTitle>
+                  <AddressBlock address={a} compact />
+                </FieldContent>
+                <RadioGroupItem value={a.id} id={`addr-opt-${a.id}`} className="mt-0.5" />
+              </Field>
+            </FieldLabel>
+          ))}
+          <FieldLabel htmlFor="addr-opt-new" className="cursor-pointer">
             <Field orientation="horizontal" className="items-start">
               <FieldContent className="gap-1.5">
-                <FieldTitle className="flex flex-wrap items-center gap-2">
-                  {a.label}
-                  {a.isDefault && <Badge variant="secondary" className="rounded-full text-[10px]">いつもの</Badge>}
+                <FieldTitle className="flex items-center gap-2">
+                  <MapPinPlus className="text-primary size-4" />
+                  新しいお届け先
                 </FieldTitle>
-                <AddressBlock address={a} compact />
+                <p className="text-muted-foreground text-xs">ご自宅以外やギフトの送り先はこちら</p>
               </FieldContent>
-              <RadioGroupItem value={a.id} id={`addr-opt-${a.id}`} className="mt-0.5" />
+              <RadioGroupItem value={NEW_ADDRESS} id="addr-opt-new" className="mt-0.5" />
             </Field>
           </FieldLabel>
-        ))}
-        <FieldLabel htmlFor="addr-opt-new" className="cursor-pointer">
-          <Field orientation="horizontal" className="items-start">
-            <FieldContent className="gap-1.5">
-              <FieldTitle className="flex items-center gap-2">
-                <MapPinPlus className="text-primary size-4" />
-                新しいお届け先
-              </FieldTitle>
-              <p className="text-muted-foreground text-xs">ご自宅以外やギフトの送り先はこちら</p>
-            </FieldContent>
-            <RadioGroupItem value={NEW_ADDRESS} id="addr-opt-new" className="mt-0.5" />
-          </Field>
-        </FieldLabel>
-      </RadioGroup>
+        </RadioGroup>
+      )}
 
       {choice === NEW_ADDRESS && (
-        <div className="bg-muted/30 animate-fade-up space-y-5 rounded-xl border p-4 sm:p-5">
+        <div className={firstTime ? "space-y-5" : "bg-muted/30 animate-fade-up space-y-5 rounded-xl border p-4 sm:p-5"}>
           <AddressFields value={draft} onChange={onDraft} errors={errors} idPrefix="checkout-addr" />
           <Field orientation="horizontal">
             <Checkbox id="save-address" checked={save} onCheckedChange={(v) => onSave(v === true)} />

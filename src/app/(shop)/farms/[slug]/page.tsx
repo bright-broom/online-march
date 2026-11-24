@@ -141,7 +141,7 @@ export default async function FarmPage({ params }: PageProps<"/farms/[slug]">) {
           ))}
         </dl>
 
-        <section className="grid gap-10 py-16 sm:py-20 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:gap-16">
+        <section className="grid grid-cols-1 gap-10 py-16 sm:py-20 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:gap-16">
           <div>
             <h2 className="heading-display mt-3 text-2xl sm:text-3xl">畑のこと、つくり手のこと</h2>
             <p className="text-foreground/85 mt-6 max-w-prose text-[15px] leading-loose whitespace-pre-line">{farm.story}</p>

@@ -15,7 +15,7 @@ export default function Loading() {
           </div>
         </div>
         <Skeleton className="mt-10 h-20 w-full rounded-2xl" />
-        <div className="grid gap-10 py-16 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+        <div className="grid grid-cols-1 gap-10 py-16 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
           <div className="space-y-3">
             <Skeleton className="h-8 w-2/3" />
             <Skeleton className="h-4 w-full" />

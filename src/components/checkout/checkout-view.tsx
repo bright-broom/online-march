@@ -9,6 +9,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { routes } from "@/config/nav";
+import { checkoutBlockedCopy } from "@/config/payments";
 import { formatDate } from "@/lib/format";
 import { prefectures, type DeliveryTimeSlot, type Prefecture } from "@/config/shipping";
 import { useHydrated } from "@/hooks/use-hydrated";
@@ -114,6 +115,20 @@ export function CheckoutView({
   const stockIssues = activeQuote ? activeQuote.farms.flatMap((f) => f.lines).filter((l) => l.quantity > l.stock) : [];
   const couponBlocking = !!couponCode && !!activeQuote?.couponError;
   const canPlace = !!activeQuote && fresh && !quoting && unavailableItems.length === 0 && stockIssues.length === 0 && !couponBlocking;
+  // 押せない理由を1つだけ示す（何が足りないのか分からないまま、ボタンが薄いだけにしない）
+  const blockedReason = canPlace
+    ? null
+    : !isPrefecture(prefecture)
+      ? checkoutBlockedCopy.prefecture
+      : unavailableItems.length
+        ? checkoutBlockedCopy.unavailable
+        : stockIssues.length
+          ? checkoutBlockedCopy.stock
+          : couponBlocking
+            ? checkoutBlockedCopy.coupon
+            : quoteError && !quoting
+              ? checkoutBlockedCopy.quoteError
+              : checkoutBlockedCopy.quoting;
   const itemCount = items.reduce((a, i) => a + i.quantity, 0);
   const fallbackSubtotal = items.reduce((a, i) => a + i.unitPrice * i.quantity, 0);
 
@@ -173,7 +188,7 @@ export function CheckoutView({
   const addressDone = choice !== NEW_ADDRESS || isPrefecture(draft.prefecture);
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_24rem]">
+    <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_24rem]">
       <div className="space-y-5">
         {(unavailableItems.length > 0 || stockIssues.length > 0) && (
           <Alert variant="destructive">
@@ -245,6 +260,7 @@ export function CheckoutView({
           loading={quoting || (canQuote && !fresh)}
           placing={placing}
           canPlace={canPlace}
+          blockedReason={blockedReason}
           paymentMode={paymentMode}
           onPlace={handlePlace}
           coupon={

@@ -27,7 +27,7 @@ export default async function FarmerReviewsPage({ searchParams }: PageProps<"/fa
     <div>
       <PageHeader title="レビュー" description="お客さまの声に返信すると、次のお客さまの安心につながります。" />
 
-      <div className="grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
         <Card className="lg:sticky lg:top-20 lg:self-start">
           <CardContent className="space-y-5">
             <div className="text-center">

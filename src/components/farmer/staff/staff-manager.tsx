@@ -58,7 +58,7 @@ export function StaffManager({ rows, nowIso }: { rows: FarmStaffRow[]; nowIso: s
     });
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
       <Card>
         <CardHeader>
           <CardTitle>スタッフ（{rows.length}/{farmStaffPolicy.maxMembers}人）</CardTitle>

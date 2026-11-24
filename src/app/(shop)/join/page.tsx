@@ -83,7 +83,7 @@ export default function JoinPage() {
       </section>
 
       <section id="apply" className="scroll-mt-20 border-t">
-        <div className="container-page grid gap-10 py-16 sm:py-24 lg:grid-cols-[18rem_1fr] lg:gap-16">
+        <div className="container-page grid grid-cols-1 gap-10 py-16 sm:py-24 lg:grid-cols-[18rem_1fr] lg:gap-16">
           <div className="space-y-3">
             <h2 className="heading-display text-2xl sm:text-3xl">出店申請フォーム</h2>
             <p className="text-muted-foreground text-sm leading-relaxed">

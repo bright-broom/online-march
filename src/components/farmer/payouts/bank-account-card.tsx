@@ -72,7 +72,7 @@ export function BankAccountCard({ account, stripeOnboarded }: { account: BankAcc
           </div>
         ) : (
           <form action={action} className="space-y-4">
-            <FieldGroup className="grid gap-3 sm:grid-cols-[1fr_7rem]">
+            <FieldGroup className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_7rem]">
               <Field data-invalid={!!fe?.bankName}>
                 <FieldLabel htmlFor="ba-bank">銀行名</FieldLabel>
                 <Input id="ba-bank" name="bankName" defaultValue={account?.bankName} placeholder="淡路信用金庫" />

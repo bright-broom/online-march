@@ -62,7 +62,7 @@ function Tokushoho() {
     <div className="overflow-hidden rounded-2xl border">
       <dl className="divide-y">
         {rows.map((r) => (
-          <div key={r.th} className="grid sm:grid-cols-[14rem_1fr]">
+          <div key={r.th} className="grid grid-cols-1 sm:grid-cols-[14rem_1fr]">
             <dt className="bg-paper px-5 py-4 text-sm font-semibold">{r.th}</dt>
             <dd className="px-5 py-4 text-sm leading-relaxed">{r.td}</dd>
           </div>
@@ -80,7 +80,7 @@ export default async function LegalPage({ params }: PageProps<"/legal/[doc]">) {
   return (
     <>
       <PageIntro crumbs={[{ label: title }]} title={title} />
-      <div className="container-page grid gap-10 pb-20 sm:pb-28 lg:grid-cols-[14rem_1fr] lg:gap-16">
+      <div className="container-page grid grid-cols-1 gap-10 pb-20 sm:pb-28 lg:grid-cols-[14rem_1fr] lg:gap-16">
         <nav aria-label="規約・表記" className="order-last lg:order-first">
           <ul className="space-y-1 lg:sticky lg:top-24">
             {docs.map((d) => (
