@@ -23,7 +23,7 @@ export default function GuidePage() {
     <>
       <PageIntro crumbs={[{ label: guideContent.title }]} title={guideContent.title} lead="はじめての方へ。ご注文からお届けまでの流れと、送料・お支払いについてご案内します。" />
 
-      <div className="container-page grid gap-12 pb-20 sm:pb-28 lg:grid-cols-[14rem_1fr] lg:gap-16">
+      <div className="container-page grid grid-cols-1 gap-12 pb-20 sm:pb-28 lg:grid-cols-[14rem_1fr] lg:gap-16">
         <nav aria-label="目次" className="hidden lg:block">
           <ul className="sticky top-24 space-y-1 border-l">
             {[{ id: "flow", title: howItWorks.title }, ...guideContent.sections, { id: "rates", title: "送料表" }].map((s) => (

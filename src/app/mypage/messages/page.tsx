@@ -37,7 +37,7 @@ export default async function MessagesPage({ searchParams }: PageProps<"/mypage/
   return (
     <>
       <PageHeader title="メッセージ" description="生産者さんに直接、質問や感想を送れます。" className={cn(farm && "hidden md:flex")} />
-      <div className="bg-card grid h-[calc(100svh-13rem)] min-h-[28rem] overflow-hidden rounded-xl border md:grid-cols-[18rem_minmax(0,1fr)] lg:grid-cols-[20rem_minmax(0,1fr)]">
+      <div className="bg-card grid grid-cols-1 h-[calc(100svh-13rem)] min-h-[28rem] overflow-hidden rounded-xl border md:grid-cols-[18rem_minmax(0,1fr)] lg:grid-cols-[20rem_minmax(0,1fr)]">
         <div className={cn("min-h-0 overflow-y-auto border-r", farm && "hidden md:block")}>
           <ThreadList items={items} activeKey={farm?.id} emptyText="まだメッセージはありません。生産者ページや注文詳細から話しかけてみましょう。" />
         </div>

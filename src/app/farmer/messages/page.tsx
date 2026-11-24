@@ -37,7 +37,7 @@ export default async function FarmerMessagesPage({ searchParams }: PageProps<"/f
     <div>
       <PageHeader title="メッセージ" description="お客さまとのやりとり。ご注文の相談や、お礼のひとことに。" className={cn(customer && "hidden lg:flex")} />
 
-      <div className="bg-card grid h-[calc(100svh-11rem)] min-h-[480px] overflow-hidden rounded-xl border lg:grid-cols-[280px_minmax(0,1fr)_260px]">
+      <div className="bg-card grid grid-cols-1 h-[calc(100svh-11rem)] min-h-[480px] overflow-hidden rounded-xl border lg:grid-cols-[280px_minmax(0,1fr)_260px]">
         {/* thread list */}
         <aside className={cn("min-h-0 overflow-y-auto border-r", customer && "hidden lg:block")}>
           {threads.length ? (

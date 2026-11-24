@@ -5,7 +5,7 @@ export default function Loading() {
   return (
     <>
       <PageIntroSkeleton />
-      <div className="container-page grid gap-12 pb-20 lg:grid-cols-[1fr_20rem] lg:gap-16">
+      <div className="container-page grid grid-cols-1 gap-12 pb-20 lg:grid-cols-[1fr_20rem] lg:gap-16">
         <div className="divide-y border-t">
           {Array.from({ length: 6 }, (_, i) => (
             <div key={i} className="py-5">

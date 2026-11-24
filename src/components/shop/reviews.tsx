@@ -58,7 +58,7 @@ export function ReviewsBlock({
     return <EmptyState icon={MessageSquareText} title="まだレビューはありません" description={emptyText} className="bg-paper/60 border py-12" />;
   }
   return (
-    <div className="grid gap-8 lg:grid-cols-[18rem_1fr] lg:gap-12">
+    <div className="grid grid-cols-1 gap-8 lg:grid-cols-[18rem_1fr] lg:gap-12">
       <ReviewSummaryPanel summary={summary} className="lg:sticky lg:top-24 lg:self-start" />
       <div className="divide-y">
         {items.map((r) => (
@@ -72,7 +72,7 @@ export function ReviewsBlock({
 
 export function ReviewsSkeleton() {
   return (
-    <div className="grid gap-8 lg:grid-cols-[18rem_1fr] lg:gap-12">
+    <div className="grid grid-cols-1 gap-8 lg:grid-cols-[18rem_1fr] lg:gap-12">
       <Skeleton className="h-56 rounded-2xl" />
       <div className="space-y-6">
         {Array.from({ length: 3 }, (_, i) => (

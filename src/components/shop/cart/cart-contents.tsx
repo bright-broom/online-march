@@ -276,7 +276,7 @@ export function CartContents({ variant, onNavigate }: { variant: Variant; onNavi
   }
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[1fr_22rem] lg:items-start">
+    <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_22rem] lg:items-start">
       <div className="space-y-5">
         <div className="bg-paper rounded-2xl px-4 py-3">{destination}</div>
         {groups.map(({ group, est }) => (

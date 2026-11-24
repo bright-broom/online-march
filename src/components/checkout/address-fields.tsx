@@ -1,8 +1,12 @@
 "use client";
-import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { useRef, useState } from "react";
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { prefectures } from "@/config/shipping";
+import { findAddressByPostalCode } from "@/server/actions/postal";
+
+const digitsOf = (v: string) => v.normalize("NFKC").replace(/[^0-9]/g, "");
 
 export type AddressDraft = {
   recipientName: string;
@@ -32,6 +36,25 @@ export function AddressFields({
   idPrefix?: string;
 }) {
   const id = (k: string) => `${idPrefix}-${k}`;
+  // 郵便番号が7桁そろったら住所を引いて、都道府県と市区町村を埋める（引けなくても手で入れられる）。
+  // 自分で書き換えた市区町村は上書きしない: 前回自動で入れた値か空のときだけ入れ替える
+  const autofilled = useRef<string | null>(null);
+  const looked = useRef<string | null>(null);
+  const [filledFrom, setFilledFrom] = useState<string | null>(null);
+  const onPostalChange = async (raw: string) => {
+    onChange({ postalCode: raw });
+    const zip = digitsOf(raw);
+    if (zip.length !== 7 || zip === looked.current) return;
+    looked.current = zip;
+    const res = await findAddressByPostalCode({ postalCode: zip });
+    if (!res.ok || !res.data || looked.current !== zip) return;
+    const city = `${res.data.city}${res.data.town}`;
+    const patch: Partial<AddressDraft> = { prefecture: res.data.prefecture };
+    if (!value.city || value.city === autofilled.current) patch.city = city;
+    autofilled.current = patch.city ?? autofilled.current;
+    onChange(patch);
+    setFilledFrom(zip);
+  };
   const text = (k: keyof AddressDraft) => ({
     id: id(k),
     name: k,
@@ -53,11 +76,24 @@ export function AddressFields({
           {errors.recipientKana && <FieldError>{errors.recipientKana}</FieldError>}
         </Field>
       </div>
-      <div className="grid gap-4 sm:grid-cols-[10rem_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-[10rem_minmax(0,1fr)]">
         <Field data-invalid={!!errors.postalCode}>
           <FieldLabel htmlFor={id("postalCode")}>郵便番号</FieldLabel>
-          <Input {...text("postalCode")} inputMode="numeric" autoComplete="postal-code" placeholder="656-0000" maxLength={8} />
-          {errors.postalCode && <FieldError>{errors.postalCode}</FieldError>}
+          <Input
+            {...text("postalCode")}
+            onChange={(e) => void onPostalChange(e.target.value)}
+            inputMode="numeric"
+            autoComplete="postal-code"
+            placeholder="656-0000"
+            maxLength={8}
+          />
+          {errors.postalCode ? (
+            <FieldError>{errors.postalCode}</FieldError>
+          ) : (
+            filledFrom === digitsOf(value.postalCode) && (
+              <FieldDescription className="text-xs" aria-live="polite">住所を入れました。番地から続けてください</FieldDescription>
+            )
+          )}
         </Field>
         <Field data-invalid={!!errors.prefecture}>
           <FieldLabel htmlFor={id("prefecture")}>都道府県</FieldLabel>

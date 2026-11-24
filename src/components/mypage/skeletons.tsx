@@ -57,7 +57,7 @@ export function OrderDetailSkeleton() {
   return (
     <div aria-busy>
       <PageHeaderSkeleton />
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="space-y-4">
           <Skeleton className="h-80 rounded-xl" />
           <Skeleton className="h-64 rounded-xl" />
@@ -72,7 +72,7 @@ export function MessagesSkeleton() {
   return (
     <div aria-busy>
       <PageHeaderSkeleton />
-      <div className="grid h-[calc(100svh-14rem)] min-h-[28rem] gap-0 overflow-hidden rounded-xl border md:grid-cols-[18rem_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 h-[calc(100svh-14rem)] min-h-[28rem] gap-0 overflow-hidden rounded-xl border md:grid-cols-[18rem_minmax(0,1fr)]">
         <div className="space-y-3 border-r p-3">
           {Array.from({ length: 5 }, (_, i) => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}
         </div>

@@ -70,7 +70,7 @@ export default async function FarmerPayoutsPage({ searchParams }: PageProps<"/fa
         <StatCard label="販売手数料率" value={rateBps / 10000} format="percent" icon={Percent} color="chart-5" hint="商品代金に対して" />
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <Card>
           <CardHeader>
             <CardTitle>月別の売上と受取額</CardTitle>

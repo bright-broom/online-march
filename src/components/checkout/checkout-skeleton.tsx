@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export function CheckoutSkeleton() {
   return (
-    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_24rem]" aria-busy>
+    <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_24rem]" aria-busy>
       <div className="space-y-5">
         {[220, 280, 160].map((h, i) => (
           <div key={i} className="bg-card space-y-4 rounded-2xl border p-5 sm:p-7">

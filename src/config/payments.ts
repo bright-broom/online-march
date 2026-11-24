@@ -82,3 +82,13 @@ export const couponOncePerUserCopy = {
   description: "同じお客さまは1回だけ使えます（キャンセルした注文は数えません）。",
   used: "このクーポンはお一人さま1回までです（すでにご利用済みです）",
 } as const;
+
+/** 「注文を確定する」を押せないときに、ボタンの下に出す理由（components/checkout/checkout-view.tsx#blockedReason） */
+export const checkoutBlockedCopy = {
+  prefecture: "お届け先の都道府県を選ぶと、送料とお届け日が決まり、注文できるようになります",
+  quoting: "送料とお届け日を計算しています",
+  unavailable: "販売が終わった商品がカートにあります。カートから外してください",
+  stock: "在庫が足りない商品があります。数量を減らしてください",
+  coupon: "このクーポンは使えません。クーポンを外すか、別のコードを入れてください",
+  quoteError: "送料を計算できませんでした。少し待ってから、もう一度お試しください",
+} as const;
