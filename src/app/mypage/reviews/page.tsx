@@ -1,4 +1,4 @@
-import { MessageSquareQuote, PenLine, Star } from "lucide-react";
+import { MessageSquareQuote } from "lucide-react";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -48,7 +48,7 @@ export default async function ReviewsPage() {
               ))}
             </ul>
           ) : (
-            <EmptyState icon={PenLine} title="レビュー待ちの商品はありません" description="お届けが完了した商品は、ここからレビューを書けます。" className="bg-card rounded-xl border" />
+            <EmptyState title="レビュー待ちの商品はありません" description="お届けが完了した商品は、ここからレビューを書けます。" className="bg-card rounded-xl border" />
           )}
         </TabsContent>
 
@@ -95,7 +95,7 @@ export default async function ReviewsPage() {
               ))}
             </ul>
           ) : (
-            <EmptyState icon={Star} title="投稿したレビューはありません" className="bg-card rounded-xl border" />
+            <EmptyState title="投稿したレビューはありません" className="bg-card rounded-xl border" />
           )}
         </TabsContent>
       </Tabs>

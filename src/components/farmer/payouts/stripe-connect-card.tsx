@@ -38,7 +38,7 @@ export function StripeConnectCard({ stripeEnabled, onboarded, hasAccount }: { st
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           {onboarded ? <BadgeCheck className="text-leaf size-4" /> : <CreditCard className="size-4" />}
-          {onboarded ? "振込先は登録済みです" : "振込先を登録しましょう"}
+          {onboarded ? "振込先は登録済みです" : "振込先が未登録です"}
         </CardTitle>
         <CardDescription>{cycle}</CardDescription>
       </CardHeader>

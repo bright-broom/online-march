@@ -1,4 +1,3 @@
-import { Tractor } from "lucide-react";
 import type { Metadata } from "next";
 import { EmptyState } from "@/components/common/empty-state";
 import { FarmCard } from "@/components/shop/farm-card";
@@ -28,7 +27,7 @@ export default async function FarmsPage() {
             ))}
           </div>
         ) : (
-          <EmptyState icon={Tractor} title="生産者の準備中です" description="まもなく南あわじの農家さんが登場します。" className="border py-16" />
+          <EmptyState title="生産者の準備中です" description="まもなく南あわじの農家さんが登場します。" className="border py-16" />
         )}
       </div>
     </>

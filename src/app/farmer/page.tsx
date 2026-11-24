@@ -1,4 +1,3 @@
-import { CalendarClock, Coins, ShoppingBag, Star } from "lucide-react";
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import { BarBreakdownChart, DonutChart, type ChartColor } from "@/components/charts";
@@ -63,10 +62,10 @@ export default async function FarmerOverviewPage() {
       </section>
 
       <section aria-label="直近30日の実績" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="売上（30日）" value={kpi.sales.value} format="yen" delta={kpi.sales.delta} trend={kpi.sales.trend} icon={Coins} hint="前30日比" />
-        <StatCard label="注文数（30日）" value={kpi.orders.value} delta={kpi.orders.delta} trend={kpi.orders.trend} icon={ShoppingBag} color="chart-3" hint="前30日比" />
-        <StatCard label="平均客単価" value={kpi.aov.value} format="yen" delta={kpi.aov.delta} trend={kpi.aov.trend} icon={CalendarClock} color="chart-2" hint="前30日比" />
-        <StatCard label="評価" value={kpi.rating.value} delta={kpi.rating.delta} icon={Star} hint={`${kpi.rating.count}件のレビュー`} />
+        <StatCard label="売上（30日）" value={kpi.sales.value} format="yen" delta={kpi.sales.delta} hint="前30日比" />
+        <StatCard label="注文数（30日）" value={kpi.orders.value} delta={kpi.orders.delta} hint="前30日比" />
+        <StatCard label="平均客単価" value={kpi.aov.value} format="yen" delta={kpi.aov.delta} hint="前30日比" />
+        <StatCard label="評価" value={kpi.rating.value} delta={kpi.rating.delta} hint={`${kpi.rating.count}件のレビュー`} />
       </section>
 
       <SalesTrendCard daily={analytics.daily} weekly={analytics.weekly} />

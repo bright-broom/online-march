@@ -1,4 +1,4 @@
-import { Check, Clock3, LayoutDashboard, LogIn, RotateCcw, UserPlus } from "lucide-react";
+import { Check, LogIn, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { StatusBadge } from "@/components/common/status-badge";
 import { Button } from "@/components/ui/button";
@@ -11,12 +11,9 @@ import { getSessionUser } from "@/server/auth/session";
 import { getFarmApplication } from "@/server/queries/catalog";
 import { JoinForm } from "./join-form";
 
-function Notice({ icon: IconC, title, children }: { icon: React.ComponentType<{ className?: string }>; title: string; children: React.ReactNode }) {
+function Notice({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="bg-paper flex flex-col items-center gap-4 rounded-3xl px-6 py-12 text-center">
-      <span className="bg-background text-primary flex size-12 items-center justify-center rounded-full">
-        <IconC className="size-5" />
-      </span>
       <h3 className="heading-display text-xl">{title}</h3>
       {children}
     </div>
@@ -30,7 +27,7 @@ export async function JoinGate() {
 
   if (!user) {
     return (
-      <Notice icon={UserPlus} title="まずはアカウントを作成してください">
+      <Notice title="まずはアカウントを作成してください">
         <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
           出店申請には無料の会員登録が必要です。登録後、このページに戻って農園情報を入力してください。
         </p>
@@ -54,7 +51,7 @@ export async function JoinGate() {
 
   if (user.role !== "customer") {
     return (
-      <Notice icon={LayoutDashboard} title={user.role === "farmer" ? "すでに出店されています" : "運営アカウントでログイン中です"}>
+      <Notice title={user.role === "farmer" ? "すでに出店されています" : "運営アカウントでログイン中です"}>
         <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
           出店申請は購入者アカウントから行えます。{user.role === "farmer" && "商品の登録や出荷はダッシュボードから行えます。"}
         </p>
@@ -69,7 +66,7 @@ export async function JoinGate() {
   if (application && isRejectedApplication(application)) {
     return (
       <div className="space-y-8">
-        <Notice icon={RotateCcw} title={joinContent.rejected.title}>
+        <Notice title={joinContent.rejected.title}>
           <p className="text-muted-foreground max-w-md text-sm leading-relaxed">{joinContent.rejected.lead}</p>
           <Button asChild variant="outline" className="h-11 rounded-full px-6">
             <Link href={routes.mypage.notifications}>お知らせを見る</Link>
@@ -81,7 +78,7 @@ export async function JoinGate() {
   }
   if (application) {
     return (
-      <Notice icon={Clock3} title={`「${application.name}」の申請を受け付けています`}>
+      <Notice title={`「${application.name}」の申請を受け付けています`}>
         <StatusBadge kind="farm" status={application.status} />
         <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
           {formatDate(application.createdAt)}に申請いただきました。{joinContent.pending.lead}

@@ -1,4 +1,4 @@
-import { Boxes, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { EmptyState } from "@/components/common/empty-state";
@@ -27,7 +27,7 @@ export default async function FarmerProductsPage({ searchParams }: PageProps<"/f
     <div>
       <PageHeader
         title="商品管理"
-        description={lowStock ? `在庫がわずかな商品が${lowStock}件あります。規格の在庫を補充しましょう。` : "商品の登録・編集、公開状態や在庫を管理します。"}
+        description={lowStock ? `在庫がわずかな商品が${lowStock}件あります。規格の在庫を確認してください。` : "商品の登録・編集、公開状態や在庫を管理します。"}
         actions={
           <Button asChild>
             <Link href={routes.farmer.newProduct}><Plus />商品を登録</Link>
@@ -47,7 +47,7 @@ export default async function FarmerProductsPage({ searchParams }: PageProps<"/f
       {all.length ? (
         <ProductTable rows={rows} />
       ) : (
-        <EmptyState icon={Boxes} title="まだ商品がありません" description="写真と規格（5kg・10kgなど）を登録すると、すぐに販売を始められます。">
+        <EmptyState title="まだ商品がありません" description="写真と規格（5kg・10kgなど）を登録すると、すぐに販売を始められます。">
           <Button asChild>
             <Link href={routes.farmer.newProduct}><Plus />最初の商品を登録</Link>
           </Button>

@@ -1,4 +1,4 @@
-import { Heart, Megaphone, MessageCircle, Package, Sprout, Wallet } from "lucide-react";
+import { Megaphone } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { EmptyState } from "@/components/common/empty-state";
@@ -43,10 +43,10 @@ export default async function MypageHomePage() {
       />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="ご注文数" value={stats.orderCount} icon={Package} hint="お支払い済み" />
-        <StatCard label="累計ご購入額" value={stats.totalSpent} format="yen" icon={Wallet} />
-        <StatCard label="お気に入り" value={stats.favoriteCount} icon={Heart} />
-        <StatCard label="未読メッセージ" value={stats.unreadMessages} icon={MessageCircle} />
+        <StatCard label="ご注文数" value={stats.orderCount} hint="お支払い済み" />
+        <StatCard label="累計ご購入額" value={stats.totalSpent} format="yen" />
+        <StatCard label="お気に入り" value={stats.favoriteCount} />
+        <StatCard label="未読メッセージ" value={stats.unreadMessages} />
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-3">
@@ -64,7 +64,7 @@ export default async function MypageHomePage() {
             {shipments.length ? (
               shipments.map((s) => <ActiveShipmentCard key={s.id} shipment={s} />)
             ) : (
-              <EmptyState icon={Package} title="配送中のご注文はありません" description="新しいご注文が発送されると、ここで状況を確認できます。" />
+              <EmptyState title="配送中のご注文はありません" description="新しいご注文が発送されると、ここで状況を確認できます。" />
             )}
           </CardContent>
         </Card>
@@ -105,7 +105,7 @@ export default async function MypageHomePage() {
             {recent.length ? (
               recent.map((o) => <OrderCard key={o.id} order={o} />)
             ) : (
-              <EmptyState icon={Package} title="まだご注文はありません" description="南あわじの農家さんから、旬の玉ねぎを取り寄せてみませんか。">
+              <EmptyState title="まだご注文はありません" description="南あわじの農家さんから、旬の玉ねぎを取り寄せてみませんか。">
                 <Button asChild variant="outline" className="rounded-full">
                   <Link href={routes.products}>商品をさがす</Link>
                 </Button>
@@ -136,7 +136,7 @@ export default async function MypageHomePage() {
                             alt={p.name}
                             fill
                             sizes="(min-width: 1280px) 12vw, (min-width: 640px) 30vw, 45vw"
-                            className="object-cover transition-transform duration-700 motion-safe:group-hover:scale-[1.03]"
+                            className="object-cover"
                           />
                         )}
                       </div>
@@ -148,7 +148,7 @@ export default async function MypageHomePage() {
                 ))}
               </ul>
             ) : (
-              <EmptyState icon={Sprout} title="フォロー中の生産者はいません" description="気になる農家さんをフォローすると、新商品がここに届きます。">
+              <EmptyState title="フォロー中の生産者はいません" description="気になる農家さんをフォローすると、新商品がここに届きます。">
                 <Button asChild variant="outline" className="rounded-full">
                   <Link href={routes.farms}>生産者を見る</Link>
                 </Button>

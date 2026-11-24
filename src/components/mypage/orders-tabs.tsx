@@ -1,5 +1,5 @@
 "use client";
-import { Package } from "lucide-react";
+
 import { EmptyState } from "@/components/common/empty-state";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { OrderListFilter, OrderListItem } from "@/server/queries/account";
@@ -31,7 +31,7 @@ export function OrdersTabs({ orders }: { orders: OrderListItem[] }) {
             {list.length ? (
               list.map((o) => <OrderCard key={o.id} order={o} />)
             ) : (
-              <EmptyState icon={Package} title={t.empty} className="bg-card rounded-xl border" />
+              <EmptyState title={t.empty} className="bg-card rounded-xl border" />
             )}
           </TabsContent>
         );

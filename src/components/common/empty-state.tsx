@@ -1,14 +1,12 @@
-import type { LucideIcon } from "lucide-react";
-import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 
+/** 空の状態。アイコンの箱は付けず、何が無いのかと次の一手だけを書く（docs/DESIGN.md §8 D-03） */
 export function EmptyState({
-  icon: IconC,
   title,
   description,
   children,
   className,
 }: {
-  icon: LucideIcon;
   title: string;
   description?: string;
   children?: React.ReactNode;
@@ -17,9 +15,6 @@ export function EmptyState({
   return (
     <Empty className={className}>
       <EmptyHeader>
-        <EmptyMedia variant="icon">
-          <IconC />
-        </EmptyMedia>
         <EmptyTitle>{title}</EmptyTitle>
         {description && <EmptyDescription>{description}</EmptyDescription>}
       </EmptyHeader>

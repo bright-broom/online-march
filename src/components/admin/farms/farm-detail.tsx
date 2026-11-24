@@ -1,4 +1,4 @@
-import { CheckCircle2, CircleDashed, Clock, JapaneseYen, Mail, PackageCheck, Phone, ShoppingBag } from "lucide-react";
+import { CheckCircle2, CircleDashed, Mail, Phone } from "lucide-react";
 import Link from "next/link";
 import { TrendChart } from "@/components/charts";
 import { StatCard } from "@/components/dashboard/stat-card";
@@ -21,18 +21,16 @@ type Series = { month: string; gmv: number; commission: number; orders: number }
 export function FarmDetailView({ data, series, platformBps }: { data: AdminFarmDetail; series: Series; platformBps: number }) {
   const { farm, owner, kpis } = data;
   const rate = farm.commissionRateBps ?? platformBps;
-  const trend12 = series.map((s) => s.gmv);
   return (
     <div className="space-y-6">
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="生産者KPI">
-        <StatCard label="累計流通額" value={kpis.lifetimeGmv} format="yen" icon={JapaneseYen} trend={trend12} hint={`${kpis.lifetimeOrders}件`} />
-        <StatCard label="直近30日の売上" value={kpis.gmv30d} format="yen" icon={ShoppingBag} hint={`${kpis.orders30d}件`} color="chart-2" />
-        <StatCard label="未発送の注文" value={kpis.openOrders} icon={PackageCheck} hint="新規受注・出荷準備中" color="chart-3" />
+        <StatCard label="累計流通額" value={kpis.lifetimeGmv} format="yen" hint={`${kpis.lifetimeOrders}件`} />
+        <StatCard label="直近30日の売上" value={kpis.gmv30d} format="yen" hint={`${kpis.orders30d}件`} />
+        <StatCard label="未発送の注文" value={kpis.openOrders} hint="新規受注・出荷準備中" />
         <StatCard
           label="期限内出荷率"
           value={kpis.onTimeRate}
           format="percent"
-          icon={Clock}
           hint={kpis.onTimeRate == null ? "出荷実績なし" : "出荷期限までに発送した割合"}
         />
       </section>

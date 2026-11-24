@@ -1,4 +1,3 @@
-import { Activity, AlarmClock, CircleCheck, OctagonAlert } from "lucide-react";
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import { computeJobStats, JobCard } from "@/components/admin/automation/job-cards";
@@ -63,18 +62,15 @@ export default async function AdminAutomationPage() {
       />
       <div className="space-y-6">
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="自動化サマリー">
-          <StatCard label={`実行回数（${DAYS}日）`} value={windowRuns} icon={Activity} trend={perDay.map((d) => d.success + d.error)} />
+          <StatCard label={`実行回数（${DAYS}日）`} value={windowRuns} />
           <StatCard
             label={`成功率（${DAYS}日）`}
             value={windowRuns ? (windowRuns - windowErrors) / windowRuns : 1}
             format="percent"
-            icon={CircleCheck}
-            color="leaf"
           />
-          <StatCard label={`失敗（${DAYS}日）`} value={windowErrors} icon={OctagonAlert} color="onion-red" trend={perDay.map((d) => d.error)} />
+          <StatCard label={`失敗（${DAYS}日）`} value={windowErrors} />
           <InfoStat
             label="最終実行"
-            icon={AlarmClock}
             value={lastRun ? formatRelative(lastRun.startedAt, now) : "—"}
             hint={lastRun ? `${labelOf.get(lastRun.job) ?? lastRun.job}（${jobStatusMeta[lastRun.status].label}）` : "まだ実行されていません"}
           />

@@ -1,5 +1,5 @@
 "use client";
-import { AlertCircle, Mail, Sparkles } from "lucide-react";
+import { AlertCircle, Mail } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -143,13 +143,10 @@ export function LoginForm({ demo }: { demo: boolean }) {
                     login({ email: a.email, password: demoPassword });
                   }}
                   className={cn(
-                    "group bg-card hover:border-primary/50 hover:bg-primary/5 focus-visible:ring-ring/50 flex items-center gap-3 rounded-2xl border p-3.5 text-left transition-colors outline-none focus-visible:ring-3 disabled:opacity-60",
+                    "bg-card hover:border-primary/50 hover:bg-primary/5 focus-visible:ring-ring/50 flex items-center gap-3 rounded-2xl border p-3.5 text-left transition-colors outline-none focus-visible:ring-3 disabled:opacity-60",
                     busy && "border-primary/50 bg-primary/5",
                   )}
                 >
-                  <span className="bg-primary/10 text-primary flex size-10 shrink-0 items-center justify-center rounded-full font-serif text-base">
-                    {a.name.slice(0, 1)}
-                  </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-2">
                       <span className="text-sm font-medium">{a.name}</span>
@@ -157,11 +154,7 @@ export function LoginForm({ demo }: { demo: boolean }) {
                     </span>
                     <span className="text-muted-foreground block truncate text-xs">{a.email}</span>
                   </span>
-                  {busy ? (
-                    <Spinner className="text-primary" />
-                  ) : (
-                    <Sparkles className="text-muted-foreground group-hover:text-primary size-4 transition-colors" />
-                  )}
+                  {busy && <Spinner className="text-primary" />}
                 </button>
               );
             })}

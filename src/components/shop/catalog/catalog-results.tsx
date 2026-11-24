@@ -1,4 +1,3 @@
-import { SearchX } from "lucide-react";
 import Link from "next/link";
 import { EmptyState } from "@/components/common/empty-state";
 import { Button } from "@/components/ui/button";
@@ -43,7 +42,6 @@ export async function CatalogResults({
           </>
         ) : (
           <EmptyState
-            icon={SearchX}
             title="条件に合う商品が見つかりませんでした"
             description="条件を減らすか、別のキーワードでお試しください。"
             className="bg-paper/60 border py-16"

@@ -45,7 +45,7 @@ export function ProductCard({ product: p, priority = false }: { product: Product
             sizes={cardSizes}
             priority={priority}
             className={cn(
-              "object-cover transition-all duration-700 ease-out group-hover/card:scale-[1.03]",
+              "object-cover transition-opacity duration-300",
               second && "group-hover/card:opacity-0",
               p.soldOut && "grayscale-[35%]",
             )}
@@ -57,7 +57,7 @@ export function ProductCard({ product: p, priority = false }: { product: Product
               aria-hidden
               fill
               sizes={cardSizes}
-              className="object-cover opacity-0 transition-all duration-700 ease-out group-hover/card:scale-[1.03] group-hover/card:opacity-100"
+              className="object-cover opacity-0 transition-opacity duration-300 group-hover/card:opacity-100"
             />
           )}
         </Link>

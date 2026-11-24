@@ -1,4 +1,4 @@
-import { ArrowLeft, MessagesSquare } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
@@ -70,7 +70,7 @@ export default async function FarmerMessagesPage({ searchParams }: PageProps<"/f
               })}
             </ul>
           ) : (
-            <EmptyState icon={MessagesSquare} title="メッセージはまだありません" description="お客さまからのお問い合わせはここに届きます。" className="py-10" />
+            <EmptyState title="メッセージはまだありません" description="お客さまからのお問い合わせはここに届きます。" className="py-10" />
           )}
         </aside>
 
@@ -90,7 +90,7 @@ export default async function FarmerMessagesPage({ searchParams }: PageProps<"/f
             </>
           ) : (
             <div className="flex flex-1 items-center justify-center">
-              <EmptyState icon={MessagesSquare} title="スレッドを選んでください" description={c ? "このお客さまとのやりとりは表示できません。" : "左の一覧からお客さまを選ぶと、ここに会話が表示されます。"} />
+              <EmptyState title="スレッドを選んでください" description={c ? "このお客さまとのやりとりは表示できません。" : "左の一覧からお客さまを選ぶと、ここに会話が表示されます。"} />
             </div>
           )}
         </section>

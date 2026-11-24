@@ -27,7 +27,7 @@ export function HomeCategoryTiles() {
                   alt=""
                   fill
                   sizes={i === 0 ? "(min-width: 1024px) 50vw, 100vw" : "(min-width: 1024px) 25vw, 50vw"}
-                  className="-z-10 object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
+                  className="-z-10 object-cover"
                 />
                 <span aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
                 <span className="flex items-end justify-between gap-3">

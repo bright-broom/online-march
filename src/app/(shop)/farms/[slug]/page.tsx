@@ -1,4 +1,4 @@
-import { MapPin, MessageCircle, PackageSearch } from "lucide-react";
+import { MapPin, MessageCircle } from "lucide-react";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -51,7 +51,7 @@ const farmsNavTitle = shopNav.find((n) => n.href === routes.farms)?.title ?? "�
 async function FarmProducts({ farmId, farmName }: { farmId: string; farmName: string }) {
   const products = await getFarmProducts(farmId);
   if (!products.length) {
-    return <EmptyState icon={PackageSearch} title="現在販売中の商品はありません" description={`${farmName}をフォローすると、新商品の入荷をお知らせします。`} className="border py-14" />;
+    return <EmptyState title="現在販売中の商品はありません" description={`${farmName}をフォローすると、新商品の入荷をお知らせします。`} className="border py-14" />;
   }
   return <ProductGrid products={products} />;
 }
@@ -106,7 +106,7 @@ export default async function FarmPage({ params }: PageProps<"/farms/[slug]">) {
         <header className="relative -mt-16 flex flex-col gap-6 sm:-mt-20 lg:flex-row lg:items-end lg:justify-between">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-6">
             <FarmAvatar src={farm.avatarImage} name={farm.name} className="size-28 ring-8 sm:size-36" />
-            <div className="space-y-2 pb-1 motion-safe:animate-fade-up">
+            <div className="space-y-2 pb-1">
               <p className="text-muted-foreground flex items-center gap-1 text-xs">
                 <MapPin className="size-3.5" />
                 {farm.prefecture}

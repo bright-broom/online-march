@@ -41,7 +41,7 @@ async function HeaderUser() {
 /** Sticky translucent storefront header. Static shell + streamed user area. */
 export function SiteHeader() {
   return (
-    <header className="border-border/70 bg-background/80 supports-[backdrop-filter]:bg-background/65 sticky top-0 z-40 border-b backdrop-blur-xl">
+    <header className="border-border/70 bg-background sticky top-0 z-40 border-b">
       <div className="container-page flex h-16 items-center gap-2 lg:gap-6">
         <MobileNav />
         <Logo className="shrink-0" />

@@ -1,4 +1,4 @@
-import { LogIn, UserPlus, Users } from "lucide-react";
+import { LogIn, UserPlus } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
@@ -20,9 +20,6 @@ export default function StaffInvitePage({ params }: PageProps<"/join/staff/[toke
   return (
     <section className="container-page flex justify-center py-16 sm:py-24">
       <div className="bg-paper w-full max-w-lg space-y-5 rounded-3xl px-6 py-10 text-center">
-        <span className="bg-background text-primary mx-auto flex size-12 items-center justify-center rounded-full">
-          <Users className="size-5" />
-        </span>
         <Suspense fallback={<Skeleton className="mx-auto h-24 w-full max-w-sm" />}>
           <InviteGate params={params} />
         </Suspense>

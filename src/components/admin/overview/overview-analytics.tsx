@@ -1,13 +1,3 @@
-import {
-  ClipboardList,
-  Coins,
-  FileClock,
-  JapaneseYen,
-  ReceiptText,
-  Tractor,
-  TruckIcon,
-  UserPlus,
-} from "lucide-react";
 import Link from "next/link";
 import { BarBreakdownChart, DonutChart, TrendChart, type ChartColor, type Slice } from "@/components/charts";
 import { roleMeta } from "@/components/admin/labels";
@@ -45,14 +35,14 @@ export async function OverviewAnalytics({ period, nowIso }: { period: PeriodDays
   return (
     <div className="space-y-6">
       <section aria-label="主要指標" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="流通総額（GMV）" value={k.gmv.value} format="yen" delta={k.gmv.delta} trend={k.gmv.trend} icon={JapaneseYen} hint={hint} color="chart-1" />
-        <StatCard label="手数料収益" value={k.commission.value} format="yen" delta={k.commission.delta} trend={k.commission.trend} icon={Coins} hint={hint} color="chart-3" />
-        <StatCard label="注文数" value={k.orders.value} delta={k.orders.delta} trend={k.orders.trend} icon={ClipboardList} hint={hint} color="chart-2" />
-        <StatCard label="平均注文額" value={k.aov.value} format="yen" delta={k.aov.delta} trend={k.aov.trend} icon={ReceiptText} hint={hint} color="chart-5" />
-        <StatCard label="新規会員" value={k.newUsers.value} delta={k.newUsers.delta} trend={k.newUsers.trend} icon={UserPlus} hint={hint} color="leaf" />
-        <StatCard label="稼働農家数" value={k.activeFarms.value} delta={k.activeFarms.delta} icon={Tractor} hint="期間内に売上のあった生産者" />
-        <StatCard label="配送遅延件数" value={k.overdueShipments} icon={TruckIcon} hint="出荷期限を過ぎた未発送（現在）" color="onion-red" />
-        <StatCard label="未処理申請" value={k.pendingFarms} icon={FileClock} hint="審査待ちの出店申請（現在）" />
+        <StatCard label="流通総額（GMV）" value={k.gmv.value} format="yen" delta={k.gmv.delta} hint={hint} />
+        <StatCard label="手数料収益" value={k.commission.value} format="yen" delta={k.commission.delta} hint={hint} />
+        <StatCard label="注文数" value={k.orders.value} delta={k.orders.delta} hint={hint} />
+        <StatCard label="平均注文額" value={k.aov.value} format="yen" delta={k.aov.delta} hint={hint} />
+        <StatCard label="新規会員" value={k.newUsers.value} delta={k.newUsers.delta} hint={hint} />
+        <StatCard label="稼働農家数" value={k.activeFarms.value} delta={k.activeFarms.delta} hint="期間内に売上のあった生産者" />
+        <StatCard label="配送遅延件数" value={k.overdueShipments} hint="出荷期限を過ぎた未発送（現在）" />
+        <StatCard label="未処理申請" value={k.pendingFarms} hint="審査待ちの出店申請（現在）" />
       </section>
 
       <div className="grid gap-4 xl:grid-cols-3">

@@ -30,7 +30,7 @@ export function NotificationsList({ items }: { items: RecentNotification[] }) {
   );
   const unread = list.filter((n) => !n.readAt).length;
 
-  if (!list.length) return <EmptyState icon={Bell} title="お知らせはありません" className="bg-card rounded-xl border" />;
+  if (!list.length) return <EmptyState title="お知らせはありません" className="bg-card rounded-xl border" />;
 
   return (
     <div className="space-y-3">

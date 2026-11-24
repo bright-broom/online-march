@@ -1,5 +1,5 @@
 "use client";
-import { CalendarCheck, ShoppingBasket, Tractor, Trash2, Truck } from "lucide-react";
+import { CalendarCheck, Tractor, Trash2, Truck } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { EmptyState } from "@/components/common/empty-state";
@@ -196,7 +196,6 @@ export function CartContents({ variant, onNavigate }: { variant: Variant; onNavi
   if (!items.length) {
     return (
       <EmptyState
-        icon={ShoppingBasket}
         title="カートは空です"
         description="畑から届く旬の玉ねぎを見つけてみませんか。"
         className={cn(variant === "page" && "bg-paper/60 border py-16")}

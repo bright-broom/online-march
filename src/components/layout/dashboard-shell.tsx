@@ -37,7 +37,7 @@ export async function DashboardShell({
       </a>
       <AppSidebar area={area} user={{ name: user.name, email: user.email, role: user.role, staffFarmName: staff?.farm.name }} context={context} badges={badges} farmAccess={farmAccess} />
       <SidebarInset className="min-w-0 print:m-0 print:shadow-none">
-        <header className="no-print bg-background/80 sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-b px-4 backdrop-blur-md md:rounded-t-xl">
+        <header className="no-print bg-background sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-b px-4 md:rounded-t-xl">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-1 data-[orientation=vertical]:h-4" />
           <DashboardBreadcrumbs area={area} />

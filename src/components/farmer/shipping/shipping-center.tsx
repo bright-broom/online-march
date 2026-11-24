@@ -1,5 +1,5 @@
 "use client";
-import { Download, FileCheck2, FileUp, Gift, PackageCheck, PackageOpen, Printer, Send, Truck, X } from "lucide-react";
+import { Download, FileCheck2, FileUp, Gift, PackageOpen, Printer, Send, Truck, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
@@ -137,7 +137,7 @@ export function ShippingCenter({ rows, today, defaultCarrier }: { rows: Shipping
     return (
       <div className="space-y-6">
         <StepGuide counts={counts} />
-        <EmptyState icon={PackageCheck} title="出荷待ちの注文はありません" description="すべて発送済みです。おつかれさまでした。新しい注文が入るとメールと通知でお知らせします。">
+        <EmptyState title="出荷待ちの注文はありません" description="すべて発送済みです。おつかれさまでした。新しい注文が入るとメールと通知でお知らせします。">
           <Button asChild variant="outline">
             <Link href={`${routes.farmer.orders}?tab=shipped`}>発送済みの注文を見る</Link>
           </Button>
@@ -270,7 +270,7 @@ export function ShippingCenter({ rows, today, defaultCarrier }: { rows: Shipping
       {/* sticky bulk bar */}
       {(sel.size > 0 || filled.length > 0) && (
         <div className="sticky bottom-0 z-30 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          <div className="bg-background/95 flex flex-wrap items-center gap-2 rounded-2xl border p-2.5 shadow-lg backdrop-blur-md">
+          <div className="bg-background flex flex-wrap items-center gap-2 rounded-2xl border p-2.5 shadow-lg">
             {sel.size > 0 && (
               <>
                 <span className="flex items-center gap-1 pl-1 text-sm font-medium">

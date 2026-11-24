@@ -1,4 +1,3 @@
-import { MessagesSquare } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { EmptyState } from "@/components/common/empty-state";
@@ -51,7 +50,6 @@ export default async function MessagesPage({ searchParams }: PageProps<"/mypage/
             />
           ) : (
             <EmptyState
-              icon={MessagesSquare}
               title={requested ? "生産者が見つかりません" : "会話を選んでください"}
               description={requested ? "この生産者には現在メッセージを送れません。" : "左の一覧から会話を選ぶと、ここに表示されます。"}
               className="h-full"

@@ -38,7 +38,7 @@ export async function createReview(_prev: unknown, formData: FormData): Promise<
     if (farm) await notify({ userId: farm.ownerId, type: "review", title: "新しいレビューが投稿されました", body: `★${data.rating} ${data.title}`, href: routes.farmer.reviews });
     updateTag(tags.productReviews(data.productId));
     return { id: row.id };
-  }, "レビューを投稿しました。ありがとうございます！");
+  }, "レビューを投稿しました。");
 }
 
 /**

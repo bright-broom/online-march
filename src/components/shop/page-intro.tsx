@@ -72,7 +72,7 @@ export function PageIntro({
   return (
     <header className={cn("container-page pt-8 pb-10 sm:pt-10 sm:pb-12", className)}>
       <ShopBreadcrumbs items={crumbs} />
-      <div className="mt-8 max-w-3xl space-y-3 motion-safe:animate-fade-up">
+      <div className="mt-8 max-w-3xl space-y-3">
         <h1 className="heading-display text-3xl sm:text-4xl lg:text-5xl">{title}</h1>
         {lead && <p className="text-muted-foreground max-w-prose text-sm leading-relaxed sm:text-base">{lead}</p>}
       </div>
@@ -101,7 +101,7 @@ export function ImageHero({
       <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-t from-black/75 via-black/30 to-black/20" />
       <div className="container-page w-full pt-10 pb-12 sm:pb-16">
         <ShopBreadcrumbs items={crumbs} inverted />
-        <div className="mt-16 max-w-2xl space-y-4 motion-safe:animate-fade-up">
+        <div className="mt-16 max-w-2xl space-y-4">
           <h1 className="heading-display text-4xl leading-tight sm:text-5xl">{title}</h1>
           {lead && <p className="max-w-xl text-sm leading-relaxed text-white/85 sm:text-base">{lead}</p>}
           {children}

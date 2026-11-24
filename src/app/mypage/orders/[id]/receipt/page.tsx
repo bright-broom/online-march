@@ -1,4 +1,4 @@
-import { ArrowLeft, ReceiptText } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -49,7 +49,6 @@ export default async function ReceiptPage({ params }: PageProps<"/mypage/orders/
         />
       ) : (
         <EmptyState
-          icon={ReceiptText}
           title="領収書を発行できません"
           description="お支払いが完了したご注文のみ領収書を発行できます（キャンセル・全額返金済みのご注文は対象外です）。"
           className="bg-card rounded-xl border"

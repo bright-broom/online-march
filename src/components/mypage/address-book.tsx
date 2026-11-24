@@ -1,5 +1,5 @@
 "use client";
-import { MapPin, Pencil, Plus, Star, Trash2 } from "lucide-react";
+import { Pencil, Plus, Star, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { toast } from "sonner";
@@ -36,7 +36,7 @@ export function AddressBook({ addresses }: { addresses: SavedAddress[] }) {
         <AddressDialog trigger={addButton} />
       </div>
       {addresses.length === 0 ? (
-        <EmptyState icon={MapPin} title="登録されたお届け先はありません" description="よく使う住所を登録しておくと、ご購入手続きがスムーズです。" className="bg-card rounded-xl border" />
+        <EmptyState title="登録されたお届け先はありません" description="よく使う住所を登録しておくと、ご購入手続きがスムーズです。" className="bg-card rounded-xl border" />
       ) : (
         <ul className="grid gap-4 md:grid-cols-2">
           {addresses.map((a) => (

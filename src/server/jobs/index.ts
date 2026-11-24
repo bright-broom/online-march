@@ -112,7 +112,7 @@ export const jobs = {
         const overdue = list.filter((d) => (d.fo.shipByDate ?? "") < today).length;
         await notify({
           userId: owner.id, type: "shipping", title: `出荷期限が近い注文が${list.length}件あります`,
-          body: overdue ? `うち${overdue}件は期限超過です` : "出荷センターで送り状を発行しましょう", href: routes.farmer.shipping,
+          body: overdue ? `うち${overdue}件は期限超過です` : "出荷センターで送り状を発行してください", href: routes.farmer.shipping,
           email: emailTemplates.shipReminder({ to: owner.email, farmName: farm.name, count: list.length, overdue }),
         });
       }

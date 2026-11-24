@@ -105,7 +105,7 @@ export default async function ProductPage({ params }: PageProps<"/products/[slug
         <ProductGallery images={p.images} name={p.name} />
 
         <div className="space-y-7">
-          <header className="space-y-4 motion-safe:animate-fade-up">
+          <header className="space-y-4">
             <div className="flex flex-wrap items-center gap-2 text-xs">
               {category && (
                 <Link

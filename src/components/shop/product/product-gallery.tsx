@@ -43,9 +43,9 @@ export function ProductGallery({ images, name }: { images: { url: string; alt: s
         </CarouselContent>
         {list.length > 1 && (
           <>
-            <CarouselPrevious className="bg-background/85 left-3 size-10 border-0 opacity-0 shadow-sm backdrop-blur transition-opacity group-hover/gallery:opacity-100 focus-visible:opacity-100 max-md:hidden" />
-            <CarouselNext className="bg-background/85 right-3 size-10 border-0 opacity-0 shadow-sm backdrop-blur transition-opacity group-hover/gallery:opacity-100 focus-visible:opacity-100 max-md:hidden" />
-            <div className="bg-background/80 num absolute right-3 bottom-3 rounded-full px-2.5 py-1 text-[11px] backdrop-blur md:hidden">
+            <CarouselPrevious className="bg-background left-3 size-10 border-0 opacity-0 shadow-sm transition-opacity group-hover/gallery:opacity-100 focus-visible:opacity-100 max-md:hidden" />
+            <CarouselNext className="bg-background right-3 size-10 border-0 opacity-0 shadow-sm transition-opacity group-hover/gallery:opacity-100 focus-visible:opacity-100 max-md:hidden" />
+            <div className="bg-background num absolute right-3 bottom-3 rounded-full px-2.5 py-1 text-[11px] md:hidden">
               {index + 1} / {list.length}
             </div>
           </>

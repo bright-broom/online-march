@@ -1,5 +1,5 @@
 "use client";
-import { MapPin, MessageCircle, Tractor, UserMinus } from "lucide-react";
+import { MapPin, MessageCircle, UserMinus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useOptimistic, useTransition } from "react";
@@ -18,7 +18,7 @@ export function FollowedFarms({ farms }: { farms: FollowedFarm[] }) {
   const [visible, hide] = useOptimistic(farms, (list, id: string) => list.filter((f) => f.id !== id));
   if (!visible.length) {
     return (
-      <EmptyState icon={Tractor} title="フォロー中の生産者はいません" description="生産者ページの「フォロー」で、新商品のお知らせが届きます。" className="bg-card rounded-xl border">
+      <EmptyState title="フォロー中の生産者はいません" description="生産者ページの「フォロー」で、新商品のお知らせが届きます。" className="bg-card rounded-xl border">
         <Button asChild variant="outline" className="rounded-full">
           <Link href={routes.farms}>生産者を見る</Link>
         </Button>
