@@ -25,8 +25,10 @@ const isExternal = (href: string) => /^[a-z][a-z0-9+.-]*:/i.test(href);
 
 /** GitHub の見出しアンカーと同じ規則: タグを除き、小文字化し、文字・数字・空白・ハイフン以外を消して空白をハイフンに */
 function githubSlug(heading: string) {
-  return heading
-    .replace(/<[^>]+>/g, "")
+  // タグは消し切るまで繰り返す（<<b>b> のような入れ子で取り残しが出ないように）
+  let text = heading;
+  for (let prev = ""; prev !== text; ) [prev, text] = [text, text.replace(/<[^<>]*>/g, "")];
+  return text
     .toLowerCase()
     .replace(/[^\p{L}\p{M}\p{N}\s_-]/gu, "")
     .replace(/\s/g, "-");
