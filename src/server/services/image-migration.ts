@@ -44,7 +44,8 @@ export async function migrateBlobImages(fetchImpl: typeof fetch = fetch): Promis
   const reviewRows = await db.execute<{ url: string }>(
     sql`select distinct jsonb_array_elements_text(images) as url from reviews where images::text like '%.public.blob.vercel-storage.com/%'`,
   );
-  for (const r of reviewRows.rows) if (r.url.includes(".public.blob.vercel-storage.com/")) urls.add(r.url);
+  // 文字列が含まれるかではなく、ホストまで決まった形の URL だけを拾う（blobKey が先頭から最後まで照合する）
+  for (const r of reviewRows.rows) if (blobKey(r.url)) urls.add(r.url);
 
   let copied = 0;
   let skipped = 0;
