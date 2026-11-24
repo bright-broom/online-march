@@ -288,6 +288,8 @@ export const jobs = {
 
 export type JobName = keyof typeof jobs;
 export const isJobName = (n: string): n is JobName => n in jobs;
+/** 定期実行されるジョブ（manualOnly を除く）。止まっていないかの確認はこれだけを見る */
+export const scheduledJobNames = (Object.keys(jobs) as JobName[]).filter((n) => !(jobs[n] as Job).manualOnly);
 
 /**
  * Alerts when a job has not succeeded within its `maxAgeHours` — a cron that silently stopped (wrong
@@ -303,8 +305,7 @@ export async function alertOnStaleJobs(now = new Date()) {
     .orderBy(desc(jobRuns.startedAt))
     .limit(200);
   for (const r of rows) if (!lastSuccess.has(r.job)) lastSuccess.set(r.job, r.startedAt);
-  const stale = (Object.keys(jobs) as JobName[]).filter((name) => {
-    if ((jobs[name] as Job).manualOnly) return false;
+  const stale = scheduledJobNames.filter((name) => {
     const last = lastSuccess.get(name);
     return !last || now.getTime() - last.getTime() > jobs[name].maxAgeHours * 3_600_000;
   });

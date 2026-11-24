@@ -10,7 +10,7 @@ import { jobRuns, user } from "@/db/schema";
 import { toYmd } from "@/lib/dates";
 import { env, features, siteUrl } from "@/lib/env";
 import { formatDateTime } from "@/lib/format";
-import { jobs, type JobName } from "@/server/jobs";
+import { jobs, scheduledJobNames } from "@/server/jobs";
 
 /** 送信元が例のドメイン（example.com とそのサブドメイン）のままか。文字列を含むかではなく、ドメインで判定する */
 function isExampleAddress(from: string): boolean {
@@ -117,7 +117,7 @@ export async function getGoLiveChecks(): Promise<GoLiveCheck[]> {
   const paymentMethods = await paymentMethodsCheck();
   const now = new Date();
   const lastSuccess = await lastJobSuccess();
-  const staleJobs = (Object.keys(jobs) as JobName[]).filter((name) => {
+  const staleJobs = scheduledJobNames.filter((name) => {
     const last = lastSuccess.get(name);
     return !last || now.getTime() - last.getTime() > jobs[name].maxAgeHours * 3_600_000;
   });
@@ -185,7 +185,7 @@ export async function getGoLiveChecks(): Promise<GoLiveCheck[]> {
           ? `しばらく成功していない自動処理があります: ${staleJobs
               .map((n) => `${jobs[n].label}（${lastSuccess.get(n) ? `最終成功 ${toYmd(lastSuccess.get(n)!)}` : "実行記録なし"}）`)
               .join("・")}`
-          : `${Object.keys(jobs).length}件すべて動いています`,
+          : `${scheduledJobNames.length}件すべて動いています`,
     },
     {
       key: "email",
