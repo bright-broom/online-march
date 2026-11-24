@@ -14,10 +14,11 @@ const todoDefs: Todo[] = [
   { key: "lowStock", label: "在庫わずか", hint: "規格の在庫を補充", href: `${routes.farmer.products}?status=active`, icon: PackageMinus },
 ];
 
-/** Today's to-dos as tappable action cards. */
-export function TodoCards({ todos }: { todos: FarmTodos }) {
+/** Today's to-dos as tappable action cards. `setupPending`: 「販売を始めるまで」が残っている間は「すべて完了」を出さない */
+export function TodoCards({ todos, setupPending = false }: { todos: FarmTodos; setupPending?: boolean }) {
   const active = todoDefs.filter((t) => todos[t.key] > 0);
   if (!active.length) {
+    if (setupPending) return <p className="text-muted-foreground text-sm">いまは対応が必要な注文やメッセージはありません。</p>;
     return (
       <div className="bg-leaf/10 text-foreground flex items-center gap-3 rounded-xl border border-leaf/25 p-4">
         <CircleCheck className="text-leaf size-5 shrink-0" />

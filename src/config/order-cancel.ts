@@ -38,7 +38,7 @@ export const orderCancelCopy = {
     declineDone: "キャンセルの依頼をお断りしました。お客さまにお知らせしました",
     viewOnly: "回答できるのはオーナーと「すべて」の権限のスタッフです",
     answered: { approved: "承認して返金しました", declined: "お断りしました" },
-    startPreparingNote: "「準備を始める」を押すと、お客さまはご自身でキャンセルできなくなり、キャンセルは依頼（あなたの承認）に変わります。",
+    startPreparingNote: "「出荷準備を開始」を押すと、お客さまはご自身でキャンセルできなくなり、キャンセルは依頼（あなたの承認）に変わります。",
     listBadge: "キャンセル依頼",
   },
   /** お知らせの文面 */
