@@ -22,12 +22,22 @@ import { syncDeliveries } from "@/server/services/shipping/delivery";
 
 /**
  * Shipping/finance automation. Each job is idempotent and safe to re-run.
- * Triggered by Vercel Cron (vercel.json → /api/cron/[job]) or manually from /admin/automation.
+ * Triggered by Cloudflare Cron Triggers (worker.ts → /api/cron/[job], schedules in config/cron.ts) or manually from /admin/automation.
  * See docs/SHIPPING.md §Automation.
  */
 type JobResult = Record<string, number | string>;
-/** `maxAgeHours`: how long a job may go without a successful run before the operator is alerted. */
-type Job = { label: string; description: string; schedule: string; maxAgeHours: number; run: (now: Date) => Promise<JobResult> };
+/**
+ * `maxAgeHours`: how long a job may go without a successful run before the operator is alerted.
+ * `manualOnly`: 定期実行しない（/admin/automation の「今すぐ実行」だけ）。止まっている警告の対象にしない。
+ */
+type Job = {
+  label: string;
+  description: string;
+  schedule: string;
+  maxAgeHours: number;
+  manualOnly?: boolean;
+  run: (now: Date) => Promise<JobResult>;
+};
 
 const DAY = 86_400_000;
 
@@ -172,8 +182,8 @@ export const jobs = {
     schedule: "毎日 深夜",
     maxAgeHours: 30,
     async run(now): Promise<JobResult> {
-      const { runBackup, blobBackupDeps } = await import("@/server/services/backup");
-      const r = await runBackup(now, await blobBackupDeps());
+      const { runBackup, backupDeps } = await import("@/server/services/backup");
+      const r = await runBackup(now, await backupDeps());
       if ("skipped" in r) return { skipped: r.skipped };
       return { tables: r.tables, rows: r.rows, bytes: r.bytes, deleted: r.deleted, verified: r.verified };
     },
@@ -260,6 +270,20 @@ export const jobs = {
       return { created, transferred, awaitingManual };
     },
   },
+
+  "migrate-images": {
+    label: "画像を Cloudflare R2 へ移す（1回だけ）",
+    description: "旧 Vercel Blob に置いた画像を R2 にコピーし、DB の画像 URL を /uploads/… に書き換えます。何度実行しても同じ結果です",
+    schedule: "手動のみ",
+    maxAgeHours: 0,
+    manualOnly: true,
+    async run() {
+      const { migrateBlobImages } = await import("@/server/services/image-migration");
+      const r = await migrateBlobImages();
+      if (r.rowsUpdated) expireTags(tags.products, tags.farms, tags.reviews);
+      return r;
+    },
+  },
 } satisfies Record<string, Job>;
 
 export type JobName = keyof typeof jobs;
@@ -267,7 +291,7 @@ export const isJobName = (n: string): n is JobName => n in jobs;
 
 /**
  * Alerts when a job has not succeeded within its `maxAgeHours` — a cron that silently stopped (wrong
- * CRON_SECRET, disabled schedule, a deploy that dropped vercel.json) looks exactly like "nothing to do".
+ * CRON_SECRET, disabled schedule, a deploy that dropped the Cron Triggers) looks exactly like "nothing to do".
  * Runs after every job, so any job that still fires reports on the ones that no longer do.
  */
 export async function alertOnStaleJobs(now = new Date()) {
@@ -280,6 +304,7 @@ export async function alertOnStaleJobs(now = new Date()) {
     .limit(200);
   for (const r of rows) if (!lastSuccess.has(r.job)) lastSuccess.set(r.job, r.startedAt);
   const stale = (Object.keys(jobs) as JobName[]).filter((name) => {
+    if ((jobs[name] as Job).manualOnly) return false;
     const last = lastSuccess.get(name);
     return !last || now.getTime() - last.getTime() > jobs[name].maxAgeHours * 3_600_000;
   });

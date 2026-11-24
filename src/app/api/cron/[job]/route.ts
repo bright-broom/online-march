@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { env } from "@/lib/env";
 import { isJobName, runJob } from "@/server/jobs";
 
-/** Vercel Cron entrypoint. Vercel sends `Authorization: Bearer $CRON_SECRET`. */
+/** Cron entrypoint. worker.ts（Cloudflare Cron Triggers）が `Authorization: Bearer $CRON_SECRET` を付けて呼ぶ。 */
 export async function GET(req: Request, ctx: RouteContext<"/api/cron/[job]">) {
   const { job } = await ctx.params;
   if (env.CRON_SECRET && req.headers.get("authorization") !== `Bearer ${env.CRON_SECRET}`) {

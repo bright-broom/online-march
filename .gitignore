@@ -57,3 +57,8 @@ next-env.d.ts
 /skills-lock.json
 /.claude/skills/
 .neon
+
+# cloudflare (OpenNext / wrangler)
+/.open-next/
+/.wrangler/
+.dev.vars*

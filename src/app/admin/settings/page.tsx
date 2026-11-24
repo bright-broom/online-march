@@ -31,8 +31,8 @@ const docs = [
 const external = [
   { href: "https://dashboard.stripe.com/", title: "Stripe ダッシュボード" },
   { href: "https://resend.com/domains", title: "Resend（送信ドメイン）" },
-  { href: "https://vercel.com/docs/cron-jobs", title: "Vercel Cron Jobs" },
-  { href: "https://vercel.com/docs/storage/vercel-blob", title: "Vercel Blob" },
+  { href: "https://developers.cloudflare.com/workers/configuration/cron-triggers/", title: "Cloudflare Cron Triggers" },
+  { href: "https://developers.cloudflare.com/r2/", title: "Cloudflare R2" },
 ];
 
 export default async function AdminSettingsPage() {
@@ -68,28 +68,33 @@ export default async function AdminSettingsPage() {
       envVars: ["RESEND_API_KEY", "EMAIL_FROM"],
     },
     {
-      name: "Vercel Blob（画像）",
+      name: "画像の保存先",
       icon: ImageUp,
       state: features.blob ? "configured" : "demo",
-      summary: features.blob ? "アップロード画像を Blob に保存します" : "ローカル（public/uploads）に保存します",
-      detail: "商品・ショップ画像のアップロード（/api/upload）",
-      envVars: ["BLOB_READ_WRITE_TOKEN"],
+      summary: features.r2 ? "Cloudflare R2（UPLOADS）に保存します" : features.blob ? "Vercel Blob に保存します（移行前の設定）" : "ローカル（public/uploads）に保存します",
+      detail: "商品・ショップ・レビュー画像のアップロード（/api/upload）。配信は /uploads/…",
+      envVars: ["STORAGE_BACKEND"],
     },
     {
-      name: "Vercel Cron",
+      name: "定期実行（Cloudflare Cron Triggers）",
       icon: CalendarClock,
       state: env.CRON_SECRET ? "configured" : prod ? "warning" : "demo",
       summary: env.CRON_SECRET ? "CRON_SECRET で認証しています" : prod ? "本番で CRON_SECRET が未設定のため Cron は実行されません" : "未設定（ローカルでは認証なしで実行可能）",
-      detail: "vercel.json の crons → /api/cron/[job]。手動実行は「配送自動化」から",
+      detail: "wrangler.jsonc の triggers → worker.ts → /api/cron/[job]。手動実行は「配送自動化」から",
       envVars: ["CRON_SECRET"],
     },
     {
       name: "データベース",
       icon: Database,
-      state: env.DATABASE_URL ? "configured" : prod ? "warning" : "demo",
-      summary: env.DATABASE_URL ? "Postgres（Neon サーバーレス）" : "PGlite（埋め込み Postgres・ローカル用）",
-      detail: env.DATABASE_URL ? "接続先 URL は表示しません" : `データ保存先: ${env.PGLITE_DIR}`,
-      envVars: ["DATABASE_URL"],
+      state: process.env.DB_DRIVER === "hyperdrive" || env.DATABASE_URL ? "configured" : prod ? "warning" : "demo",
+      summary:
+        process.env.DB_DRIVER === "hyperdrive"
+          ? "Postgres（Neon）を Cloudflare Hyperdrive 経由で使っています"
+          : env.DATABASE_URL
+            ? "Postgres（Neon サーバーレス）"
+            : "PGlite（埋め込み Postgres・ローカル用）",
+      detail: process.env.DB_DRIVER === "hyperdrive" || env.DATABASE_URL ? "接続先 URL は表示しません" : `データ保存先: ${env.PGLITE_DIR}`,
+      envVars: ["DATABASE_URL", "DB_DRIVER"],
     },
     {
       name: "認証（Better Auth）",

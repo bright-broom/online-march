@@ -18,6 +18,7 @@ const csp = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline'",
   "style-src 'self' 'unsafe-inline'", // React sets style attributes (charts, layout)
+  // 旧 Vercel Blob の画像は、R2 への移行（ジョブ migrate-images）が終わるまで表示できるように残す
   "img-src 'self' data: blob: https://images.unsplash.com https://*.public.blob.vercel-storage.com",
   "font-src 'self' data:",
   "connect-src 'self' https://*.public.blob.vercel-storage.com",
@@ -28,8 +29,7 @@ const csp = [
   "object-src 'none'",
   "upgrade-insecure-requests",
 ].join("; ");
-// Dev is exempt: React's development build uses eval() for debugging, and the analytics scripts load from
-// va.vercel-scripts.com instead of the same-origin production path.
+// Dev is exempt: React's development build uses eval() for debugging.
 // HSTS: browsers remember to use HTTPS only (2 years). Production only: dev runs on plain http://localhost.
 // No `preload` yet: submitting to the preload list is a commitment for the custom domain, decide it with the domain.
 const hsts = "max-age=63072000; includeSubDomains";

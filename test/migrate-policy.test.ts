@@ -9,6 +9,15 @@ describe("ビルド時のマイグレーション", () => {
     expect(migrateDecision({ DATABASE_URL: url, VERCEL_ENV: "development" })).toMatchObject({ run: false });
   });
 
+  it("Cloudflare Workers Builds の main 以外のブランチでは、DATABASE_URL があっても当てない", () => {
+    expect(migrateDecision({ DATABASE_URL: url, WORKERS_CI: "1", WORKERS_CI_BRANCH: "feat/x" })).toMatchObject({ run: false });
+    expect(migrateDecision({ DATABASE_URL: url, WORKERS_CI: "1" })).toMatchObject({ run: false });
+  });
+
+  it("Cloudflare Workers Builds の main では当てる", () => {
+    expect(migrateDecision({ DATABASE_URL: url, WORKERS_CI: "1", WORKERS_CI_BRANCH: "main" })).toEqual({ run: true });
+  });
+
   it("本番ビルドでは当てる", () => {
     expect(migrateDecision({ DATABASE_URL: url, VERCEL_ENV: "production" })).toEqual({ run: true });
   });

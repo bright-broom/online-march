@@ -1,7 +1,9 @@
 /**
  * Database client factory.
  *
- * - DATABASE_URL set  → Neon serverless (WebSocket Pool, supports transactions). Production / Preview.
+ * - DB_DRIVER=hyperdrive → Cloudflare Workers（本番）。Hyperdrive 経由で Neon へ。接続はリクエストごとに作る
+ *     （Workers は別のリクエストで開いたソケットを使えないため。接続の使い回しは Hyperdrive が担う）
+ * - DATABASE_URL set  → Neon serverless (WebSocket Pool, supports transactions). Build-time prerender / scripts.
  * - DATABASE_URL unset → embedded PGlite (Postgres 18 in WASM). Zero-config local dev.
  *     PGLITE_DIR=.data/pglite (default, persistent) | memory:// (build / CI, ephemeral)
  *     PGlite is migrated + seeded automatically on first use; queries wait for readiness.
@@ -12,6 +14,9 @@ import path from "node:path";
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, unlinkSync, writeSync } from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
 import { Pool, neonConfig } from "@neondatabase/serverless";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { Pool as PgPool } from "pg";
+import { drizzle as drizzlePg } from "drizzle-orm/node-postgres";
 import { drizzle as drizzleNeon, type NeonDatabase } from "drizzle-orm/neon-serverless";
 import { drizzle as drizzlePglite } from "drizzle-orm/pglite";
 import { migrate as migratePglite } from "drizzle-orm/pglite/migrator";
@@ -28,6 +33,33 @@ function createNeon(url: string): Database {
   if (typeof WebSocket !== "undefined") neonConfig.webSocketConstructor = WebSocket;
   const pool = (globalForDb.__neonPool ??= new Pool({ connectionString: url }));
   return drizzleNeon({ client: pool, schema });
+}
+
+/**
+ * Cloudflare Workers: Hyperdrive の接続文字列で、リクエストごとに node-postgres のプールを作る。
+ * `db` はこの関数が返す Proxy で、使われた時点のリクエスト（ExecutionContext）に紐づく接続へ処理を渡す。
+ */
+function createHyperdrive(): Database {
+  const perRequest = new WeakMap<object, Database>();
+  const current = (): Database => {
+    const { env, ctx } = getCloudflareContext();
+    const hit = perRequest.get(ctx);
+    if (hit) return hit;
+    const connectionString = env.HYPERDRIVE?.connectionString;
+    if (!connectionString) throw new Error("HYPERDRIVE binding is missing (wrangler.jsonc)");
+    // max: 1ページで十数本のクエリを並べて投げるため。maxUses: 1 で、終わった接続を次のリクエストへ持ち越さない
+    const pool = new PgPool({ connectionString, max: 5, maxUses: 1 });
+    const client = drizzlePg({ client: pool, schema }) as unknown as Database;
+    perRequest.set(ctx, client);
+    return client;
+  };
+  return new Proxy({} as Database, {
+    get(_target, prop) {
+      const client = current();
+      const value = Reflect.get(client, prop, client) as unknown;
+      return typeof value === "function" ? (value as (...a: unknown[]) => unknown).bind(client) : value;
+    },
+  });
 }
 
 const isAlive = (pid: number) => {
@@ -122,8 +154,12 @@ function createPglite(): Database {
   return drizzlePglite({ client: facade, schema }) as unknown as Database;
 }
 
-export const isEmbeddedDb = !process.env.DATABASE_URL;
+const useHyperdrive = process.env.DB_DRIVER === "hyperdrive";
 
-export const db: Database = process.env.DATABASE_URL
-  ? createNeon(process.env.DATABASE_URL)
-  : createPglite();
+export const isEmbeddedDb = !useHyperdrive && !process.env.DATABASE_URL;
+
+export const db: Database = useHyperdrive
+  ? createHyperdrive()
+  : process.env.DATABASE_URL
+    ? createNeon(process.env.DATABASE_URL)
+    : createPglite();

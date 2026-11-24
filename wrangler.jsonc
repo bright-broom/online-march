@@ -1,0 +1,45 @@
+/**
+ * Cloudflare Workers の設定（ADR #14・docs/DEPLOY.md）。
+ * main への push で Workers Builds がビルド・デプロイする（ビルド: `npx opennextjs-cloudflare build`、デプロイ: `npx opennextjs-cloudflare deploy`）。
+ * 各リソースの ID は Cloudflare のダッシュボードで作ったもの。名前を変えるときはダッシュボードと両方を直す。
+ */
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "awaji-marche",
+  // Next.js（OpenNext）の Worker に、定期実行（scheduled）を足した入口
+  "main": "worker.ts",
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "awaji-marche" }],
+  "images": { "binding": "IMAGES" },
+  "observability": { "enabled": true },
+
+  // DB は Neon（シンガポール）のまま。Hyperdrive が接続をまとめて使い回す（docs/ARCHITECTURE.md の ADR #14）
+  "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "REPLACE_WITH_HYPERDRIVE_ID" }],
+
+  "r2_buckets": [
+    // 生産者・お客さまがアップロードした画像。/uploads/<key> で配る（app/uploads/[...key]/route.ts）
+    { "binding": "UPLOADS", "bucket_name": "awaji-marche-uploads" },
+    // DB の毎日のバックアップ（非公開。お客さまの情報を含む）
+    { "binding": "BACKUPS", "bucket_name": "awaji-marche-backups" },
+    // Next.js のキャッシュ（"use cache"・ISR）
+    { "binding": "NEXT_INC_CACHE_R2_BUCKET", "bucket_name": "awaji-marche-next-cache" }
+  ],
+  // updateTag / revalidateTag の記録
+  "d1_databases": [
+    { "binding": "NEXT_TAG_CACHE_D1", "database_name": "awaji-marche-tag-cache", "database_id": "REPLACE_WITH_D1_ID" }
+  ],
+  "durable_objects": { "bindings": [{ "name": "NEXT_CACHE_DO_QUEUE", "class_name": "DOQueueHandler" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["DOQueueHandler"] }],
+
+  "vars": {
+    "DB_DRIVER": "hyperdrive",
+    "STORAGE_BACKEND": "r2"
+  },
+
+  // 定期実行（時刻は UTC。日本時間 = +9時間）。対応するジョブは worker.ts の cronJobs
+  "triggers": {
+    "crons": ["15 15 * * *", "0 23 * * *", "0 21 * * *", "0 1 * * *", "0 16 * * *", "30 17 * * *", "45 19 * * *"]
+  }
+}
