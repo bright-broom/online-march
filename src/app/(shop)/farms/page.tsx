@@ -19,7 +19,7 @@ export default async function FarmsPage() {
   const farms = await listFarms();
   return (
     <>
-      <PageIntro crumbs={[{ label: navTitle }]} eyebrow={homeContent.farms.eyebrow} title={homeContent.farms.title} lead={homeContent.farms.lead} />
+      <PageIntro crumbs={[{ label: navTitle }]} title={homeContent.farms.title} lead={homeContent.farms.lead} />
       <div className="container-page pb-20 sm:pb-28">
         {farms.length ? (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">

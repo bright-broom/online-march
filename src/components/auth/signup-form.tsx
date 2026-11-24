@@ -1,5 +1,5 @@
 "use client";
-import { AlertCircle, ArrowRight, Mail, UserRound } from "lucide-react";
+import { AlertCircle, Mail, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -131,7 +131,6 @@ export function SignupForm() {
         <Button type="submit" size="lg" className="h-11 rounded-full text-base" disabled={pending}>
           {pending && <Spinner />}
           無料で会員登録
-          {!pending && <ArrowRight />}
         </Button>
       </FieldGroup>
       <p className="text-muted-foreground text-center text-sm">

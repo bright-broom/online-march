@@ -14,7 +14,7 @@ export function ReviewSummaryPanel({ summary, className }: { summary: ReviewSumm
   return (
     <div className={cn("bg-paper rounded-2xl p-6", className)}>
       <div className="flex items-end gap-3">
-        <span className="font-display text-5xl leading-none font-medium">{summary.count ? summary.average.toFixed(1) : "—"}</span>
+        <span className="text-4xl leading-none font-semibold tabular-nums">{summary.count ? summary.average.toFixed(1) : "—"}</span>
         <div className="space-y-1 pb-1">
           <RatingStars value={summary.average} size={16} />
           <p className="text-muted-foreground text-xs">

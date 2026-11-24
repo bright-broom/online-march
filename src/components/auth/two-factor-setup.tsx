@@ -1,6 +1,6 @@
 "use client";
 import { REGEXP_ONLY_DIGITS } from "input-otp";
-import { AlertCircle, ArrowRight, Copy, ShieldCheck } from "lucide-react";
+import { AlertCircle, Copy, ShieldCheck } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -87,7 +87,6 @@ export function TwoFactorSetup({ role }: { role: string }) {
           <Button type="submit" size="lg" className="h-11 rounded-full text-base" disabled={pending}>
             {pending ? <Spinner /> : null}
             設定をはじめる
-            {!pending && <ArrowRight />}
           </Button>
         </FieldGroup>
       </form>

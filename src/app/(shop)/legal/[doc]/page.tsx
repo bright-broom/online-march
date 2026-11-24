@@ -79,7 +79,7 @@ export default async function LegalPage({ params }: PageProps<"/legal/[doc]">) {
 
   return (
     <>
-      <PageIntro crumbs={[{ label: title }]} eyebrow="LEGAL" title={title} />
+      <PageIntro crumbs={[{ label: title }]} title={title} />
       <div className="container-page grid gap-10 pb-20 sm:pb-28 lg:grid-cols-[14rem_1fr] lg:gap-16">
         <nav aria-label="規約・表記" className="order-last lg:order-first">
           <ul className="space-y-1 lg:sticky lg:top-24">

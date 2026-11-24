@@ -25,14 +25,14 @@ export default function FaqPage() {
           mainEntity: faqContent.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
         }}
       />
-      <PageIntro crumbs={[{ label: "よくある質問" }]} eyebrow="FAQ" title="よくある質問" lead="お問い合わせの前に、こちらもご覧ください。" />
+      <PageIntro crumbs={[{ label: "よくある質問" }]} title="よくある質問" lead="お問い合わせの前に、こちらもご覧ください。" />
       <div className="container-page grid gap-12 pb-20 sm:pb-28 lg:grid-cols-[1fr_20rem] lg:gap-16">
         <Accordion type="single" collapsible defaultValue="faq-0" className="border-t">
           {faqContent.map((f, i) => (
             <AccordionItem key={f.q} value={`faq-${i}`} className="border-b">
               <AccordionTrigger className="py-5 text-left font-serif text-base font-semibold hover:no-underline sm:text-lg">
                 <span className="flex gap-3">
-                  <span className="font-display text-primary">Q.</span>
+                  <span className="text-primary font-semibold">Q.</span>
                   {f.q}
                 </span>
               </AccordionTrigger>

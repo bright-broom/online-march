@@ -20,7 +20,6 @@ export default function SignupPage({ searchParams }: PageProps<"/signup">) {
         <RedirectIfSignedIn searchParams={searchParams} />
       </Suspense>
       <div className="space-y-2">
-        <p className="eyebrow">Create account</p>
         <h1 className="heading-display text-3xl">会員登録（無料）</h1>
         <p className="text-muted-foreground text-sm leading-relaxed">登録は1分。すぐにお買い物をはじめられます。</p>
       </div>

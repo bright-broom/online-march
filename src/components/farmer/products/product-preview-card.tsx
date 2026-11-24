@@ -36,7 +36,7 @@ export function ProductPreviewCard({ p }: { p: ProductPreview }) {
         )}
         {p.imageCount > 1 && <span className="bg-background/80 absolute right-2 bottom-2 rounded-full px-2 py-0.5 text-[10px] backdrop-blur">1 / {p.imageCount}</span>}
         {p.compareAt && p.price && p.compareAt > p.price && (
-          <Badge className="bg-onion-red text-sea-foreground absolute top-2 left-2 rounded-full">SALE</Badge>
+          <Badge className="bg-onion-red text-sea-foreground absolute top-2 left-2 rounded-full">セール</Badge>
         )}
       </div>
       <div className="space-y-2 p-4">

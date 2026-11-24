@@ -1,4 +1,3 @@
-import { ArrowRight } from "lucide-react";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -21,7 +20,7 @@ export default function AboutPage() {
   const { hero, sections, tips } = aboutContent;
   return (
     <>
-      <ImageHero image={images[hero.image]} crumbs={[{ label: hero.title }]} eyebrow={hero.eyebrow} title={hero.title} lead={hero.lead} />
+      <ImageHero image={images[hero.image]} crumbs={[{ label: hero.title }]} title={hero.title} lead={hero.lead} />
 
       <div className="container-page space-y-20 py-16 sm:space-y-28 sm:py-24">
         {sections.map((s, i) => (
@@ -30,7 +29,6 @@ export default function AboutPage() {
               <Image src={images[s.image]} alt="" fill sizes="(min-width: 1024px) 45vw, 92vw" className="object-cover" />
             </div>
             <div className="space-y-5">
-              <p className="font-display text-primary text-5xl font-light">0{i + 1}</p>
               <h2 className="heading-display text-2xl sm:text-3xl">{s.title}</h2>
               <p className="text-foreground/85 max-w-prose text-[15px] leading-loose">{s.body}</p>
             </div>
@@ -54,7 +52,6 @@ export default function AboutPage() {
           <Button asChild className="h-12 rounded-full px-7">
             <Link href={homeContent.hero.primaryCta.href}>
               {homeContent.hero.primaryCta.label}
-              <ArrowRight />
             </Link>
           </Button>
         </div>

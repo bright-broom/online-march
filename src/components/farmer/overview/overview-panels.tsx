@@ -1,4 +1,4 @@
-import { ArrowRight, MessageSquareReply, PackageCheck, Star } from "lucide-react";
+import { MessageSquareReply, PackageCheck, Star } from "lucide-react";
 import Link from "next/link";
 import { EmptyState } from "@/components/common/empty-state";
 import { RatingStars } from "@/components/common/rating";
@@ -19,7 +19,7 @@ export function UpcomingShipments({ rows, today }: { rows: Awaited<ReturnType<ty
         <CardDescription>出荷期限の近い順</CardDescription>
         <CardAction>
           <Button asChild variant="ghost" size="sm">
-            <Link href={routes.farmer.shipping}>出荷センター<ArrowRight /></Link>
+            <Link href={routes.farmer.shipping}>出荷センター</Link>
           </Button>
         </CardAction>
       </CardHeader>
@@ -57,7 +57,7 @@ export function LatestReviews({ rows, now }: { rows: Awaited<ReturnType<typeof g
         <CardDescription>お客さまの声にひとこと返信しましょう</CardDescription>
         <CardAction>
           <Button asChild variant="ghost" size="sm">
-            <Link href={routes.farmer.reviews}>すべて見る<ArrowRight /></Link>
+            <Link href={routes.farmer.reviews}>すべて見る</Link>
           </Button>
         </CardAction>
       </CardHeader>

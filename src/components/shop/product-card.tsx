@@ -18,7 +18,7 @@ function CardBadges({ p }: { p: ProductCardDTO }) {
   if (p.soldOut) badges.push({ label: "売り切れ", className: "bg-foreground/80 text-background" });
   else if (p.lowStock) badges.push({ label: "残りわずか", className: "bg-primary text-primary-foreground" });
   if (p.isNew) badges.push({ label: "新着", className: "bg-leaf text-primary-foreground" });
-  if (p.compareAt) badges.push({ label: "SALE", className: "bg-onion-red text-primary-foreground font-display tracking-wider" });
+  if (p.compareAt) badges.push({ label: "セール", className: "bg-onion-red text-primary-foreground" });
   if (!badges.length) return null;
   return (
     <div className="pointer-events-none absolute top-2.5 left-2.5 flex flex-col items-start gap-1">

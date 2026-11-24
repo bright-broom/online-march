@@ -1,5 +1,5 @@
 "use client";
-import { AlertCircle, ArrowRight, MailCheck, Mail } from "lucide-react";
+import { AlertCircle, MailCheck, Mail } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -95,7 +95,6 @@ export function ForgotPasswordForm() {
         <Button type="submit" size="lg" className="h-11 rounded-full text-base" disabled={pending}>
           {pending ? <Spinner /> : null}
           再設定メールを送る
-          {!pending && <ArrowRight />}
         </Button>
         <p className="text-muted-foreground text-center text-sm">
           <Link href={routes.login} className="text-primary font-medium underline-offset-4 hover:underline">

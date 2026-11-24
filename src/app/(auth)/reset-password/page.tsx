@@ -9,7 +9,6 @@ export default function ResetPasswordPage() {
   return (
     <div className="space-y-8">
       <div className="space-y-2">
-        <p className="eyebrow">Reset password</p>
         <h1 className="heading-display text-3xl">新しいパスワードの設定</h1>
       </div>
       {/* ?token= を読むので Suspense の中（Cache Components） */}

@@ -1,4 +1,3 @@
-import { ArrowUpRight } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { SectionHeading } from "@/components/common/section-heading";
@@ -8,12 +7,12 @@ import { images } from "@/config/images";
 import { routes } from "@/config/nav";
 import { cn } from "@/lib/utils";
 
-/** Bento-style category tiles: first tile spans two rows on desktop. */
+/** Category tiles: the first (定番の貯蔵玉ねぎ) is shown larger. */
 export function HomeCategoryTiles() {
   const { seasonal } = homeContent;
   return (
     <section className="container-page py-16 sm:py-24">
-      <SectionHeading eyebrow={seasonal.eyebrow} title={seasonal.title} lead={seasonal.lead} />
+      <SectionHeading title={seasonal.title} lead={seasonal.lead} />
       <ul className="mt-10 grid auto-rows-[11rem] grid-cols-2 gap-3 sm:auto-rows-[13rem] sm:gap-4 lg:grid-cols-4">
         {categoryKeys.map((key, i) => {
           const c = categories[key];
@@ -37,9 +36,6 @@ export function HomeCategoryTiles() {
                     <span className={cn("text-xs leading-relaxed text-white/80", i === 0 ? "block max-w-sm sm:text-sm" : "line-clamp-2 max-sm:hidden")}>
                       {c.description}
                     </span>
-                  </span>
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/15 backdrop-blur-md transition-colors group-hover:bg-white group-hover:text-black">
-                    <ArrowUpRight className="size-4" />
                   </span>
                 </span>
               </Link>

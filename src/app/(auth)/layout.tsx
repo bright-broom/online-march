@@ -35,7 +35,6 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         />
         <div className="from-foreground/75 via-foreground/20 absolute inset-0 bg-linear-to-t to-transparent" />
         <div className="text-background absolute inset-x-0 bottom-0 space-y-4 p-12">
-          <p className="font-display text-xs tracking-[0.32em] uppercase opacity-80">{siteConfig.shortName}</p>
           <p className="heading-display text-3xl leading-snug xl:text-4xl">{siteConfig.tagline}</p>
           <p className="max-w-md text-sm leading-relaxed opacity-85">{siteConfig.description}</p>
         </div>

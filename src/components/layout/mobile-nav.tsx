@@ -53,7 +53,7 @@ export function MobileNav() {
           </nav>
 
           <div>
-            <p className="eyebrow mb-3">Categories</p>
+            <p className="text-muted-foreground mb-3 text-xs font-medium">カテゴリー</p>
             <ul className="grid grid-cols-2 gap-2">
               {categoryKeys.map((key) => (
                 <li key={key}>

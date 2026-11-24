@@ -76,7 +76,7 @@ async function RelatedProducts({ product }: { product: ProductDetailDTO }) {
   if (!related.length) return null;
   return (
     <section className="border-t py-16 sm:py-20">
-      <SectionHeading eyebrow="YOU MAY ALSO LIKE" title="こちらもおすすめ" />
+      <SectionHeading title="こちらもおすすめ" />
       <ProductGrid products={related} className="mt-10" />
     </section>
   );
@@ -145,7 +145,7 @@ export default async function ProductPage({ params }: PageProps<"/products/[slug
         <div className="space-y-10">
           {p.highlights.length > 0 && (
             <div>
-              <p className="eyebrow">POINT</p>
+              <h2 className="text-sm font-semibold">この商品のポイント</h2>
               <ul className="mt-4 grid gap-3 sm:grid-cols-3">
                 {p.highlights.map((h) => (
                   <li key={h} className="bg-paper flex items-start gap-2.5 rounded-2xl p-4 text-sm leading-relaxed">
@@ -192,7 +192,7 @@ export default async function ProductPage({ params }: PageProps<"/products/[slug
       </section>
 
       <section id="reviews" className="scroll-mt-24 border-t py-16 sm:py-20">
-        <SectionHeading eyebrow="REVIEWS" title="お客さまのレビュー" />
+        <SectionHeading title="お客さまのレビュー" />
         <div className="mt-10">
           <Suspense fallback={<ReviewsSkeleton />}>
             <ProductReviews productId={p.id} />
