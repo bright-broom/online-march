@@ -2,6 +2,7 @@ import "server-only";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { put } from "@vercel/blob";
+import { r2Bucket } from "./cloudflare";
 import { catalogLimits } from "@/config/catalog";
 import { features } from "@/lib/env";
 import { randomCode } from "@/lib/ids";
@@ -41,8 +42,11 @@ export function sniffImageType(head: Uint8Array): ImageType | null {
 }
 
 /**
- * Store an uploaded image. Vercel Blob when BLOB_READ_WRITE_TOKEN is set, otherwise
- * public/uploads (local dev only — not persistent on Vercel). The folder must come from uploadFolderFor().
+ * Store an uploaded image. The folder must come from uploadFolderFor().
+ * - Cloudflare（STORAGE_BACKEND=r2）: R2 の UPLOADS に置き、`/uploads/<key>` で配る（app/uploads/[...key]/route.ts）
+ * - 旧 Vercel Blob（BLOB_READ_WRITE_TOKEN）: 移行が終わるまでの互換
+ * - どちらも無い: public/uploads（手元の開発だけ）
+ * R2 と手元で URL の形を揃えてあるので、レビュー写真の URL の検証（validators/engagement.ts）は1つで済む。
  */
 export async function storeImage(file: File, folder: UploadFolder) {
   if (file.size > catalogLimits.maxImageBytes) throw new Error("画像サイズが大きすぎます（8MBまで）");
@@ -51,6 +55,11 @@ export async function storeImage(file: File, folder: UploadFolder) {
   if (!type) throw new Error("対応していない画像形式です（JPEG / PNG / WebP / AVIF）");
   const name = `${folder}/${Date.now().toString(36)}-${randomCode(6).toLowerCase()}.${extOf[type]}`;
 
+  if (features.r2) {
+    const bucket = await r2Bucket("UPLOADS");
+    await bucket.put(name, bytes, { httpMetadata: { contentType: type, cacheControl: "public, max-age=31536000, immutable" } });
+    return `/uploads/${name}`;
+  }
   if (features.blob) {
     const blob = await put(name, Buffer.from(bytes), { access: "public", contentType: type, addRandomSuffix: false });
     return blob.url;

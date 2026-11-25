@@ -25,6 +25,8 @@ const schema = z.object({
   /** Read-write token of a SEPARATE, private Blob store used for database backups (customer data). */
   BACKUP_BLOB_READ_WRITE_TOKEN: z.string().optional(),
   CRON_SECRET: z.string().optional(),
+  /** "r2" on Cloudflare (wrangler.jsonc vars): images go to the UPLOADS bucket, backups to BACKUPS */
+  STORAGE_BACKEND: z.enum(["r2"]).optional(),
   DEMO_MODE: z
     .enum(["true", "false"])
     .optional()
@@ -36,16 +38,17 @@ export const env = schema.parse(process.env);
 export const siteUrl =
   env.NEXT_PUBLIC_SITE_URL ??
   env.BETTER_AUTH_URL ??
-  (process.env.VERCEL_PROJECT_PRODUCTION_URL
-    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-    : "http://localhost:3000");
+  "http://localhost:3000";
 
 /** Feature switches derived from env. Adapters in src/server/services read these. */
 export const features = {
   stripe: Boolean(env.STRIPE_SECRET_KEY),
   email: Boolean(env.RESEND_API_KEY),
-  blob: Boolean(env.BLOB_READ_WRITE_TOKEN),
-  backups: Boolean(env.BACKUP_BLOB_READ_WRITE_TOKEN),
+  /** 画像をアップロードできる置き場がある（Cloudflare R2、または旧 Vercel Blob） */
+  blob: env.STORAGE_BACKEND === "r2" || Boolean(env.BLOB_READ_WRITE_TOKEN),
+  r2: env.STORAGE_BACKEND === "r2",
+  /** DB の毎日のバックアップ先がある（R2 の非公開バケット、または旧 Vercel Blob の非公開ストア） */
+  backups: env.STORAGE_BACKEND === "r2" || Boolean(env.BACKUP_BLOB_READ_WRITE_TOKEN),
   /** Shows demo accounts on login & allows one-click demo payment. */
   demo: env.DEMO_MODE || !env.STRIPE_SECRET_KEY,
 } as const;

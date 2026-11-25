@@ -21,7 +21,7 @@ describe("database backup", () => {
     vi.resetModules();
     const { runBackup: fresh } = await import("../backup");
     const d = deps();
-    expect(await fresh(new Date(), d)).toEqual({ skipped: "BACKUP_BLOB_READ_WRITE_TOKEN 未設定" });
+    expect(await fresh(new Date(), d)).toEqual({ skipped: "バックアップ先が未設定（R2 の BACKUPS か BACKUP_BLOB_READ_WRITE_TOKEN）" });
     expect(d.put).not.toHaveBeenCalled();
     vi.unstubAllEnvs();
   });

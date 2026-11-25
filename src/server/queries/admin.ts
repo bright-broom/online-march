@@ -30,8 +30,7 @@ import { features } from "@/lib/env";
 import { zoneOf } from "@/lib/shipping";
 import { isJobName, jobs } from "@/server/jobs";
 import type { PeriodDays } from "@/lib/validators/admin";
-// vercel.json lives at the repo root (outside src/, so no "@/" alias).
-import vercelConfig from "../../../vercel.json";
+import { cronJobs } from "@/config/cron";
 
 /**
  * 運営 (admin) read models.
@@ -644,9 +643,8 @@ export async function getAdminAnnouncements() {
 
 const jobLabel = (name: string) => (isJobName(name) ? jobs[name].label : name);
 
-/** Static job registry (label / description / schedule + vercel.json cron) — serializable for client components. */
+/** Static job registry (label / description / schedule + Cron Triggers の時刻) — serializable for client components. */
 export function getJobCatalog() {
-  const crons = (vercelConfig.crons ?? []) as { path: string; schedule: string }[];
   return (Object.keys(jobs) as (keyof typeof jobs)[]).map((name) => {
     const path = `/api/cron/${name}`;
     return {
@@ -655,7 +653,7 @@ export function getJobCatalog() {
       description: jobs[name].description,
       schedule: jobs[name].schedule,
       path,
-      cron: crons.find((c) => c.path === path)?.schedule ?? null,
+      cron: cronJobs.find((c) => c.job === name)?.schedule ?? null,
     };
   });
 }

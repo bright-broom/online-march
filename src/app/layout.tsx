@@ -1,5 +1,3 @@
-import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata, Viewport } from "next";
 import { Noto_Sans_JP, Shippori_Mincho } from "next/font/google";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
@@ -56,8 +54,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <Toaster richColors position="top-center" />
         </ThemeProvider>
         {/* Real-user Core Web Vitals & page analytics (no-ops outside Vercel) */}
-        <SpeedInsights />
-        <Analytics />
       </body>
     </html>
   );

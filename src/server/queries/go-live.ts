@@ -10,7 +10,7 @@ import { jobRuns, user } from "@/db/schema";
 import { toYmd } from "@/lib/dates";
 import { env, features, siteUrl } from "@/lib/env";
 import { formatDateTime } from "@/lib/format";
-import { jobs, type JobName } from "@/server/jobs";
+import { jobs, scheduledJobNames } from "@/server/jobs";
 
 /** 送信元が例のドメイン（example.com とそのサブドメイン）のままか。文字列を含むかではなく、ドメインで判定する */
 function isExampleAddress(from: string): boolean {
@@ -117,12 +117,13 @@ export async function getGoLiveChecks(): Promise<GoLiveCheck[]> {
   const paymentMethods = await paymentMethodsCheck();
   const now = new Date();
   const lastSuccess = await lastJobSuccess();
-  const staleJobs = (Object.keys(jobs) as JobName[]).filter((name) => {
+  const staleJobs = scheduledJobNames.filter((name) => {
     const last = lastSuccess.get(name);
     return !last || now.getTime() - last.getTime() > jobs[name].maxAgeHours * 3_600_000;
   });
   const lastBackup = lastSuccess.get("backup-db") ?? null;
   const backupStale = !lastBackup || now.getTime() - lastBackup.getTime() > 48 * 3_600_000;
+  const hasBackupStore = env.STORAGE_BACKEND === "r2" || Boolean(env.BACKUP_BLOB_READ_WRITE_TOKEN);
   const [adminRow] = await db
     .select({ emails: sql<string[]>`coalesce(array_agg(${user.email}), '{}')` })
     .from(user)
@@ -184,7 +185,7 @@ export async function getGoLiveChecks(): Promise<GoLiveCheck[]> {
           ? `しばらく成功していない自動処理があります: ${staleJobs
               .map((n) => `${jobs[n].label}（${lastSuccess.get(n) ? `最終成功 ${toYmd(lastSuccess.get(n)!)}` : "実行記録なし"}）`)
               .join("・")}`
-          : `${Object.keys(jobs).length}件すべて動いています`,
+          : `${scheduledJobNames.length}件すべて動いています`,
     },
     {
       key: "email",
@@ -201,16 +202,21 @@ export async function getGoLiveChecks(): Promise<GoLiveCheck[]> {
     {
       key: "blob",
       label: "画像アップロード",
-      state: env.BLOB_READ_WRITE_TOKEN ? "ready" : "warning",
-      detail: env.BLOB_READ_WRITE_TOKEN ? "Vercel Blob に接続済み" : "未設定です。生産者が写真を追加できません",
+      state: env.STORAGE_BACKEND === "r2" || env.BLOB_READ_WRITE_TOKEN ? "ready" : "warning",
+      detail:
+        env.STORAGE_BACKEND === "r2"
+          ? "Cloudflare R2 に保存します"
+          : env.BLOB_READ_WRITE_TOKEN
+            ? "Vercel Blob に接続済み"
+            : "未設定です。生産者が写真を追加できません",
     },
     {
       key: "backups",
       label: "データベースのバックアップ",
       // トークンがあっても cron が落ちていれば取れていない。最後に取れた日時で見る
-      state: !env.BACKUP_BLOB_READ_WRITE_TOKEN ? "warning" : backupStale ? "blocker" : "ready",
-      detail: !env.BACKUP_BLOB_READ_WRITE_TOKEN
-        ? "未設定です。非公開の Blob ストアを作り BACKUP_BLOB_READ_WRITE_TOKEN を設定すると、毎日自動保存します"
+      state: !hasBackupStore ? "warning" : backupStale ? "blocker" : "ready",
+      detail: !hasBackupStore
+        ? "未設定です。非公開の R2 バケット（BACKUPS）をつなぐと、毎日自動保存します"
         : lastBackup
           ? `最後に取れたのは ${formatDateTime(lastBackup)}${backupStale ? "（48時間以上前です。/admin/automation で確認してください）" : ""}`
           : "まだ一度も取れていません。/admin/automation から「今すぐ実行」で確認してください",

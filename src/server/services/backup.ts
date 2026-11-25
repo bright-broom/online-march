@@ -29,15 +29,15 @@ export async function exportDatabase(): Promise<DatabaseDump> {
 }
 
 /**
- * Daily logical backup to a **private** Blob store (customer data must not land in the public image store).
- * Without BACKUP_BLOB_READ_WRITE_TOKEN the job is a no-op so the automation page does not show a permanent
- * failure — /admin/settings reports the missing token instead.
+ * Daily logical backup to a **private** store (customer data must not land in the public image store):
+ * Cloudflare R2 の BACKUPS バケット（STORAGE_BACKEND=r2）、または旧 Vercel Blob の非公開ストア。
+ * どちらも無いときは何もしない（自動化の画面にずっと失敗が出ないように）。/admin/settings が未設定を知らせる。
  */
 export type BackupResult = { skipped: string } | { tables: number; rows: number; bytes: number; deleted: number; verified: number };
 
 export async function runBackup(now: Date, deps: BackupDeps): Promise<BackupResult> {
-  const token = env.BACKUP_BLOB_READ_WRITE_TOKEN;
-  if (!token) return { skipped: "BACKUP_BLOB_READ_WRITE_TOKEN 未設定" };
+  const token = env.STORAGE_BACKEND === "r2" ? "r2" : env.BACKUP_BLOB_READ_WRITE_TOKEN;
+  if (!token) return { skipped: "バックアップ先が未設定（R2 の BACKUPS か BACKUP_BLOB_READ_WRITE_TOKEN）" };
 
   const dump = await exportDatabase();
   const body = gzipSync(Buffer.from(JSON.stringify(dump)));
@@ -60,7 +60,40 @@ export async function runBackup(now: Date, deps: BackupDeps): Promise<BackupResu
   return { tables, rows: Object.values(dump.tables).reduce((a, r) => a + r.length, 0), bytes: body.byteLength, deleted: old.length, verified: 1 };
 }
 
-/** Real Vercel Blob implementation; injected so tests can run without network. */
+/** The store for this deployment: R2 on Cloudflare, otherwise the legacy Vercel Blob store. */
+export async function backupDeps(): Promise<BackupDeps> {
+  return env.STORAGE_BACKEND === "r2" ? r2BackupDeps() : blobBackupDeps();
+}
+
+/** Cloudflare R2 (private bucket BACKUPS). `url` is the object key — the bucket has no public URL. */
+export async function r2BackupDeps(): Promise<BackupDeps> {
+  const { r2Bucket } = await import("./cloudflare");
+  const bucket = await r2Bucket("BACKUPS");
+  return {
+    put: async (path, bodyBuf) => {
+      await bucket.put(path, bodyBuf, { httpMetadata: { contentType: "application/gzip" } });
+      return { url: path };
+    },
+    download: async (path) => {
+      const obj = await bucket.get(path);
+      if (!obj) throw new Error("バックアップを読み戻せませんでした（not found）");
+      return Buffer.from(await obj.arrayBuffer());
+    },
+    list: async (prefix) => {
+      const out: BackupBlob[] = [];
+      let cursor: string | undefined;
+      do {
+        const page = await bucket.list({ prefix, cursor });
+        out.push(...page.objects.map((o) => ({ url: o.key, pathname: o.key, uploadedAt: o.uploaded })));
+        cursor = page.truncated ? page.cursor : undefined;
+      } while (cursor);
+      return out;
+    },
+    del: async (keys) => bucket.delete(keys),
+  };
+}
+
+/** Legacy Vercel Blob implementation; injected so tests can run without network. */
 export async function blobBackupDeps(): Promise<BackupDeps> {
   const { put, list, del, get } = await import("@vercel/blob");
   return {
